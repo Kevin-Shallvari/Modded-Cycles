@@ -70,8 +70,8 @@ FEATURES = [
         ],
         # avec les moteurs du Syntakt : la base de la version combinee (notes/31), et pour chaque combinaison de
         # moteurs son tweak syntakt-tg-<moteurs> (« tg » des combinaisons de la carte des moteurs) ; de meme avec
-        # la machine MACRO (notes/43), qui prend alors macro-tg
-        "with": {"syntakt": "30-model-tg-st", "macro": "30-model-tg-st"},
+        # la machine MACRO (notes/43), qui prend alors macro-tg, et Acid (notes/44), acid-tg
+        "with": {"syntakt": "30-model-tg-st", "macro": "30-model-tg-st", "acid": "30-model-tg-st"},
     },
     {
         "id": "latching-mute",
@@ -179,16 +179,17 @@ FEATURES = [
         "id": "acid",
         "cat": "sound",
         "label": "Machine Acid",
-        "desc": "Une machine ajoutee apres Chord : une basse facon 303. COLOR = filtre facon DJ (passe-bas, ouvert a "
+        "desc": "Une machine ajoutee apres Chord (apres le Sampler avec Model-TG) : une basse facon 303. COLOR = filtre facon DJ (passe-bas, ouvert a "
                 "64, passe-haut), SHAPE = scie vers carre, SWEEP = resonance, CONTOUR = enveloppe du filtre, "
                 "PUNCH = accent.",
         "status": "experimental",
         "credit": None,
-        # meme place que MACRO et les moteurs du Syntakt ; pas de version Model-TG (notes/44 §6)
-        "excludes": ["syntakt", "macro", "model-tg"],
+        # meme place que MACRO et les moteurs du Syntakt (notes/44 §6)
+        "excludes": ["syntakt", "macro"],
         "variants": [
             {"file": "26-acid", "label": None},
         ],
+        "with": {"model-tg": "33-acid-tg"},
     },
     {
         "id": "syntakt",

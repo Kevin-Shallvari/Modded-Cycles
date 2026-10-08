@@ -3,6 +3,12 @@
  *   { version: "1.1", date: "2026-10-15", changes: [{ en: "…", fr: "…" }] }
  */
 window.MC_RELEASES = [
+  { version: "1.33", date: "2026-10-08", changes: [
+    { en: "Acid machine with Model-TG (experimental): tick both and Acid becomes the 8th machine, after the Sampler, with Model-TG's Attack and filter on top. The sound is the same as Acid alone",
+      fr: "Machine Acid avec Model-TG (expérimental) : cochez les deux et Acid devient la 8e machine, après le Sampler, avec l'Attack et le filtre de Model-TG en plus. Le son est le même qu'Acid seule" },
+    { en: "Checked in the emulator on the OS's own code; not yet tested on a Model:Cycles. A project using Acid needs a firmware with Acid at the same place (7th machine alone, 8th with Model-TG)",
+      fr: "Vérifiée en émulation sur le code même de l'OS ; pas encore essayée sur un Model:Cycles. Un projet qui utilise Acid demande un firmware où Acid est à la même place (7e machine seule, 8e avec Model-TG)" },
+  ] },
   { version: "1.32", date: "2026-10-08", changes: [
     { en: "New mod, Acid machine (experimental): one extra machine after Chord, a 303-style bass. SHAPE blends saw into square, COLOR is a DJ-style filter (low-pass below 64, none at 64, high-pass above, same volume across the middle), SWEEP is the resonance, CONTOUR sends the filter envelope up or down, PUNCH is the accent",
       fr: "Nouveau mod, Machine Acid (expérimental) : une machine ajoutée après Chord, une basse façon 303. SHAPE fond la scie en carré, COLOR est un filtre façon DJ (passe-bas sous 64, rien à 64, passe-haut au-dessus, même volume de part et d'autre du milieu), SWEEP est la résonance, CONTOUR envoie l'enveloppe du filtre vers le haut ou vers le bas, PUNCH est l'accent" },

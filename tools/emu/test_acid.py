@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Preuve de la machine Acid (notes/44) : une basse façon 303 en machine ajoutée (26-acid.json, 7e machine).
+"""Preuve de la machine Acid (notes/44) : une basse façon 303 en machine ajoutée, seule (26-acid.json, 7e machine)
+et avec Model-TG (33-acid-tg.json par-dessus 30-model-tg-st.json, 8e machine, mêmes vérifications).
 Le vrai code de l'OS, émulé (Unicorn), avec la charge utile telle que le crochet de démarrage la reconstitue.
 
   1. Démarrage : le décompresseur du bootstrap relit l'OS agrandi ; le crochet (stub.S, PACK) remet à zéro la zone
@@ -24,7 +25,7 @@ Le vrai code de l'OS, émulé (Unicorn), avec la charge utile telle que le croch
   5. Avec les autres mods (--with) : démarrage, machines d'origine identiques aux mêmes mods sans Acid, et Acid
      identique à Acid seule.
 
-    python3 tools/emu/test_acid.py --cycles model-cycles_OS1.13.syx [--with 6ch-usbup,trig-hold,arp,tempo-max,boot-anim]
+    python3 tools/emu/test_acid.py --cycles model-cycles_OS1.13.syx [--with 6ch-usbup,model-tg-st,trig-hold,arp,tempo-max,boot-anim]
 """
 import argparse
 import json
@@ -47,6 +48,8 @@ import gen_acid as ga               # noqa: E402
 import gen_syntakt_engines as gs    # noqa: E402
 import mcengine as E                # noqa: E402
 import test_sdvintage as T          # noqa: E402
+import test_model_tg as TM          # noqa: E402
+import test_model_tg_syntakt as tms  # noqa: E402
 import test_sdvintage_7th as t7     # noqa: E402
 import test_syntakt_machines as tsm  # noqa: E402
 
@@ -74,7 +77,9 @@ class Fw:
         p, _ = build.apply_writes(stock, tweaks)
         pl, _ = build.build_payload(tweaks, stock, None)
         self.img, self.tweaks = bytes(p) + pl, tweaks
-        ours = [t for t in tweaks if t["id"] == "acid"]
+        tg = [t for t in tweaks if t["id"].startswith("model-tg")]
+        self.blob_end = BASE + len(stock) + tg[0]["append"]["size"] if tg else None
+        ours = [t for t in tweaks if t["id"].startswith("acid")]
         self.payload = None
         if not ours:
             return
@@ -83,7 +88,8 @@ class Fw:
         self.runtime = build.payload_runtime(ours[0], stock, None)
         self.payload = (self.pay, self.runtime)
         self.code_end = self.pay + len(ap_["parts"][0]["hex"]) // 2          # code et tables d'Acid
-        self.nm, self.index = 7, 6
+        self.nm = gs.TG_FIRST + 1 if tg else 7
+        self.index = self.nm - 1
         self.upd = int(ours[0]["symbols"]["acid_update"], 16)
         self.rnd = int(ours[0]["symbols"]["acid_render"], 16)
         data = self.pay + gs.LAYOUT["DATA"]
@@ -92,7 +98,10 @@ class Fw:
             raise SystemExit("!! tables update/render de la charge utile")
 
     def engine(self, solo=None):
-        e = E.Engine(self.img, payload=self.payload)
+        if self.blob_end:
+            e = TM.engine(self.img, end=self.blob_end, payload=self.payload)
+        else:
+            e = E.Engine(self.img, payload=self.payload)
         if solo is not None:             # les autres pistes : machine hors limites, rien n'est calculé
             for t in range(6):
                 if t != solo:
@@ -101,9 +110,9 @@ class Fw:
 
 
 # --- 1. démarrage ----------------------------------------------------------------------------------------------
-def boot(fw):
-    """Le crochet de démarrage, exécuté pour de vrai, au début de la remise à zéro du BSS (0x400004b2, jusqu'à son
-    retour)."""
+def boot(fw, tg=None):
+    """Le crochet de démarrage, exécuté pour de vrai : au début de la remise à zéro du BSS (0x400004b2, jusqu'à son
+    retour) ; avec Model-TG, par le jsr de 0x40000530, jusqu'à son boot_extra_hook."""
     uc = Uc(UC_ARCH_M68K, UC_MODE_BIG_ENDIAN)
     uc.ctl_set_cpu_model(mk.UC_CPU_M68K_ANY)
     uc.mem_map(0x40000000, 0x02400000)
@@ -127,18 +136,29 @@ def boot(fw):
     for r, v in keep.items():
         uc.reg_write(r, v)
     sp0 = 0x90010000
-    uc.mem_write(sp0, struct.pack(">I", E.STOP))
-    uc.reg_write(mk.UC_M68K_REG_A7, sp0)
-    uc.emu_start(0x400004b2, E.STOP, count=100_000_000)
-    regs = all(uc.reg_read(r) == v for r, v in keep.items())
-    tail = BASE + E.IMAGE_LEN
-    cleared = not any(uc.mem_read(tail, len(fw.img) - E.IMAGE_LEN)) and not any(uc.mem_read(0x42338000, 0xb0))
-    check(uc.reg_read(mk.UC_M68K_REG_PC) == E.STOP and uc.reg_read(mk.UC_M68K_REG_A7) == sp0 + 4 and regs
-          and cleared and not bad,
-          "0x400004b2 -> notre crochet -> remise à zéro du BSS de l'OS (nos morceaux rangés compris), retour normal, "
-          "d2..d7/a2..a6 intacts")
+    if tg:
+        uc.reg_write(mk.UC_M68K_REG_A7, sp0)
+        uc.emu_start(gs.BOOT_CALL, tg["boot_extra_hook"], count=5_000_000)
+        pc, sp = uc.reg_read(mk.UC_M68K_REG_PC), uc.reg_read(mk.UC_M68K_REG_A7)
+        ret = struct.unpack(">I", uc.mem_read(sp, 4))[0]
+        regs = all(uc.reg_read(r) == v for r, v in keep.items())
+        check(pc == tg["boot_extra_hook"] and sp == sp0 - 4 and ret == gs.BOOT_CALL + 6 and regs and not bad,
+              f"jsr 0x40000530 -> notre crochet -> boot_extra_hook {tg['boot_extra_hook']:#x}, pile et d2..d7/a2..a6 "
+              "intactes")
+        check(bytes(uc.mem_read(BASE, len(fw.img))) == fw.img, "image (OS, Model-TG, nos morceaux) inchangée")
+    else:
+        uc.mem_write(sp0, struct.pack(">I", E.STOP))
+        uc.reg_write(mk.UC_M68K_REG_A7, sp0)
+        uc.emu_start(0x400004b2, E.STOP, count=100_000_000)
+        regs = all(uc.reg_read(r) == v for r, v in keep.items())
+        tail = BASE + E.IMAGE_LEN
+        cleared = not any(uc.mem_read(tail, len(fw.img) - E.IMAGE_LEN)) and not any(uc.mem_read(0x42338000, 0xb0))
+        check(uc.reg_read(mk.UC_M68K_REG_PC) == E.STOP and uc.reg_read(mk.UC_M68K_REG_A7) == sp0 + 4 and regs
+              and cleared and not bad,
+              "0x400004b2 -> notre crochet -> remise à zéro du BSS de l'OS (nos morceaux rangés compris), retour "
+              "normal, d2..d7/a2..a6 intacts")
     got = bytes(uc.mem_read(dst, len(rt)))
-    packed = sum(n for _, n in next(t for t in fw.tweaks if t["id"] == "acid")["append"]["pack"])
+    packed = sum(n for _, n in next(t for t in fw.tweaks if t["id"].startswith("acid"))["append"]["pack"])
     check(got == rt, f"charge utile reconstituée à {dst:#x} : {len(rt)} o (code et tables d'Acid, détours, données, "
                      f"puis ses états à zéro), rangée en {packed} o dans l'image")
     check(bytes(uc.mem_read(0x80000000, 0x10000)) == bytes(sram), "SRAM intacte")
@@ -165,18 +185,20 @@ def interface_alone(stock, fw):
     pictures(stock, fw)
 
 
-def pictures(stock, fw):
+def pictures(stock, fw, ref=None):
     """Les images d'Acid (notes/44 §3.4) : objets Bitmap tels que les construirait l'OS, pixels voulus, et les 5 sites
-    qui dessinent une image de machine (écran MACHINES, petite lettre, 3 autres) : nos objets pour Acid, ceux de l'OS
-    pour les machines 0..5."""
-    sym = next(t for t in fw.tweaks if t["id"] == "acid")["symbols"]
+    qui dessinent une image de machine : nos objets pour Acid, ceux de ref (l'OS d'origine, ou Model-TG seul) pour
+    les autres machines."""
+    ref_img = ref.img if ref else stock
+    ui = lambda f: tms.UI(f) if f.blob_end else t7.UI(f.img, f.runtime)       # avec Model-TG : sa mémoire
+    sym = next(t for t in fw.tweaks if t["id"].startswith("acid"))["symbols"]
     obj = {k: int(sym[f"art_{k}"], 16) for k in ("card", "mid", "small")}
     rt = lambda a, n: fw.runtime[a - fw.pay:a - fw.pay + n]
     # 1. les objets : octet pour octet ce que fait le constructeur de l'OS (0x40070172) avec nos images et ses masques
     ok, grids = True, {}
     for name, (w, h, mask, _, _) in ga.ART.items():
         image = struct.unpack(">I", rt(obj[name] + 0x10, 4))[0]
-        u = t7.UI(fw.img, fw.runtime)
+        u = ui(fw)
         u.call(0x40070172, 0x91000000, w, h, image, mask)
         ok &= bytes(u.uc.mem_read(0x91000000, 25)) == rt(obj[name], 25) and not u.bad
         grids[name] = ga.bm_read(rt(image, 4 * w * ga.bm_words(h)), w, h)
@@ -193,23 +215,28 @@ def pictures(stock, fw):
               f"34 x 34 et 25 x 22, masques de l'OS) ; fiche = celle de TONE (CLASS:SYNTH, libellés) avec STYLE:ACID et "
               f"STR/DEX/MAG {ga.STARS}")
     # 3. écran MACHINES : fiche et lettre
-    ok = True
-    for m in range(7):
-        _, is_, _, _ = t7.drum_select(stock, b"", m)
-        _, ip, _, bp = t7.drum_select(fw.img, fw.runtime, m)
-        ok &= not bp and (ip == [obj["card"], obj["mid"]] if m == 6 else ip == is_)
-    check(ok, "écran MACHINES : machines 0..5 identiques au stock ; Acid -> sa fiche et son smiley")
+    ok, A = True, fw.index
+    for m in range(A + 1):
+        if ref:                                                  # sans lire les noms (celui du Sampler est en RAM)
+            is_, ip = ([a[1] for k, a in tms.machines_screen(f, m) if k == "image"] for f in (ref, fw))
+            bp = []
+        else:
+            _, is_, _, _ = t7.drum_select(ref_img, b"", m)
+            _, ip, _, bp = t7.drum_select(fw.img, fw.runtime, m)
+        ok &= not bp and (ip == [obj["card"], obj["mid"]] if m == A else ip == is_)
+    check(ok, f"écran MACHINES : machines 0..{A - 1} identiques {'à Model-TG seul' if ref else 'au stock'} ; Acid -> sa "
+              "fiche et son smiley")
     # 4. petite lettre (0x400a4dc4) et les 3 autres sites : l'image passée à la fonction de dessin 0x40071da4
-    sites = (("petite lettre", 0x400a4dc4, None, 0x40fe37f0, "small"),
-             ("lettre 0x4001b6a6", 0x4001b696, None, 0x40fe384c, "mid"),
-             ("petite lettre 0x400a40bc", 0x400a40a2, 5, 0x40fe37f0, "small"),
-             ("petite lettre 0x400a4fc6", 0x400a4fac, 5, 0x40fe37f0, "small"))
+    sites = (("petite lettre", 0x400a4dc4, 0, 0x40fe37f0, "small"),       # (nom, départ, d0 = m << .., tableau, objet)
+             ("lettre 0x4001b6a6", 0x4001b696, 0, 0x40fe384c, "mid"),
+             ("petite lettre 0x400a40bc", 0x400a4096, 0, 0x40fe37f0, "small"),
+             ("petite lettre 0x400a4fc6", 0x400a4f9e, 8, 0x40fe37f0, "small"))
     res = []
-    for label, start, d1, table, name in sites:
+    for label, start, sh, table, name in sites:
         got = {}
-        for which, img, pl in (("stock", stock, b""), ("modifié", fw.img, fw.runtime)):
-            for m in range(8):
-                u = t7.UI(img, pl)
+        for which, mk_ui in (("ref", lambda: ui(ref) if ref else t7.UI(stock)), ("modifié", lambda: ui(fw))):
+            for m in range(A + 2):
+                u = mk_ui()
                 u.hooks = {0x40071da4: "image"}
                 # on entre au milieu d'une fonction : arrêt dès que l'image est passée au dessin
                 u.uc.hook_add(UC_HOOK_CODE, lambda uc, a, s_, d: uc.emu_stop(), begin=0x40071da4, end=0x40071da4)
@@ -219,21 +246,19 @@ def pictures(stock, fw):
                 u.uc.mem_write(t7.STACK - 0x800, struct.pack(">I", t7.STOP) * 64)
                 u.uc.reg_write(mk.UC_M68K_REG_A6, fp)
                 u.uc.reg_write(mk.UC_M68K_REG_A7, t7.STACK - 0x800)
-                u.uc.reg_write(mk.UC_M68K_REG_D0, m)
+                u.uc.reg_write(mk.UC_M68K_REG_D0, m << sh)
                 u.uc.reg_write(mk.UC_M68K_REG_D2, m)
                 u.uc.reg_write(mk.UC_M68K_REG_A0, 0x91000000)
-                if d1 is not None:
-                    u.uc.reg_write(mk.UC_M68K_REG_D1, d1)
                 u.uc.emu_start(start, t7.STOP, count=100_000)
                 calls = [args[1] for k, args in u.calls if k == "image"]
                 got[which, m] = calls[:1]
-        ok = all(got["stock", m] == got["modifié", m] for m in range(6))
-        ok &= got["modifié", 6] == [obj[name]] and got["stock", 6] == [0x92200000 + 28 * 5]
-        res.append((label, ok, got["modifié", 7]))
+        ok = all(got["ref", m] == got["modifié", m] for m in range(A))
+        ok &= got["modifié", A] == [obj[name]] and got["ref", A] == [0x92200000 + 28 * 5]
+        res.append((label, ok, got["modifié", A + 1]))
     check(all(ok for _, ok, _ in res),
-          f"images aux 4 autres sites ({', '.join(l for l, _, _ in res)}) : machines 0..5 identiques au stock, Acid -> "
-          f"son smiley (stock : CHORD) ; machine hors limites 7 -> "
-          f"{['smiley' if g == [obj['small']] or g == [obj['mid']] else g for _, _, g in res]}")
+          f"images aux 4 autres sites ({', '.join(l for l, _, _ in res)}) : machines 0..{A - 1} identiques "
+          f"{'à Model-TG seul' if ref else 'au stock'}, Acid -> son smiley (sans Acid : CHORD) ; machine hors limites "
+          f"{A + 1} -> {['smiley' if g == [obj['small']] or g == [obj['mid']] else g for _, _, g in res]}")
 
 
 # --- 3. son : la référence -------------------------------------------------------------------------------------
@@ -477,11 +502,11 @@ def six_tracks(fw, label):
     check(ok, f"{label} : 6 pistes Acid ensemble (6 réglages), chacune identique à la même piste jouée seule")
 
 
-def mixed(fw, ref_fw, label):
-    """Acid mêlée aux autres machines : les pistes d'origine identiques au même firmware sans Acid, chaque piste Acid
-    identique à la même piste jouée seule."""
+def mixed(fw, ref_fw, label, sampler=False):
+    """Acid mêlée aux autres machines (et au Sampler de Model-TG, muet sans échantillon) : les autres pistes identiques
+    au même firmware sans Acid, chaque piste Acid identique à la même piste jouée seule."""
     trigs = {1: 0x3f, 150: 0x3f}
-    mach = [0, fw.index, 2, 5, fw.index, TONE]
+    mach = [0, fw.index, 6 if sampler else 2, 5, fw.index, TONE]
     ours = {1: dict(color=20), 4: dict(color=100)}
     setup = {t: dict(BASE_KW, machine=m, note=48, decay=40, **ours.get(t, {})) for t, m in enumerate(mach)}
 
@@ -499,7 +524,9 @@ def mixed(fw, ref_fw, label):
             ok &= np.array_equal(x[:, t], y) and y.any() and not unm_s
         else:
             ok &= np.array_equal(x[:, t], r[:, t])
-    check(ok, f"{label} : pistes {[m + 1 for m in mach]} ensemble ; machines d'origine identiques sans Acid, chaque "
+    if sampler:
+        ok &= not x[:, 2].any()
+    check(ok, f"{label} : pistes {[m + 1 for m in mach]} ensemble ; autres machines identiques sans Acid, chaque "
               "piste Acid identique à la même piste jouée seule")
 
 
@@ -583,14 +610,15 @@ def cost(fw, label):
     return rows
 
 
-def with_others(stock, cycles, ids, alone):
-    """Acid avec d'autres mods (--with)."""
+def with_others(stock, cycles, ids, alone, tg_fw, tg):
+    """Acid avec d'autres mods (--with) : Acid seule, ou sa version combinée si model-tg-st est dans la liste."""
     by_id = {t["id"]: t for t in (load(f.name) for f in sorted(DEV.glob("[0-9]*.json")))}
     unknown = [i for i in ids if i not in by_id]
     if unknown:
         raise SystemExit(f"!! tweaks inconnus : {unknown}")
     others = [by_id[i] for i in ids]
-    mine = by_id["acid"]
+    with_tg = any(t["id"].startswith("model-tg") for t in others)
+    mine = by_id["acid-tg" if with_tg else "acid"]
     clash = [t["id"] for t in others if mine["id"] in t.get("conflicts", []) or t["id"] in mine["conflicts"]]
     if clash:
         raise SystemExit(f"!! incompatibles avec acid : {clash}")
@@ -600,12 +628,12 @@ def with_others(stock, cycles, ids, alone):
     print(f"\n== acid avec {label}")
     print("démarrage")
     t7.X.bootstrap_depack_ok(cycles, fw.tweaks, None) or t7.FAIL.append("bootstrap avec " + label)
-    boot(fw)
+    boot(fw, tg if with_tg else None)
     print("son")
     stock_unchanged(ref_fw, fw, "ces mods sans Acid")
-    like(alone, fw, f"Acid avec {label} = Acid seule")
+    like(tg_fw if with_tg else alone, fw, f"Acid avec {label} = Acid {'avec Model-TG seul' if with_tg else 'seule'}")
     locks(fw, f"Acid avec {label}")
-    mixed(fw, ref_fw, f"Acid avec {label}")
+    mixed(fw, ref_fw, f"Acid avec {label}", sampler=with_tg)
 
 
 def main():
@@ -635,9 +663,33 @@ def main():
         behaviour(alone)
         print("coût")
         cost(alone, "Acid seule")
+
+        gs.set_base(gs.PAY_TG)
+        gs.CATALOG["acid"] = ga.MACHINE
+        tg_tw, acid_tg = load("30-model-tg-st.json"), load("33-acid-tg.json")
+        fw, ref_tg = Fw(stock, [tg_tw, acid_tg]), Fw(stock, [tg_tw])
+        tg = {k: int(v, 16) for k, v in tg_tw["symbols"].items()}
+        tg["knob_vec"] = tms.knob_vec_at(acid_tg)
+        print(f"\n== {acid_tg['id']} : avec Model-TG, Acid en machine {fw.index + 1}")
+        print("démarrage")
+        t7.X.bootstrap_depack_ok(args.cycles, [tg_tw, acid_tg], None) or t7.FAIL.append("bootstrap avec Model-TG")
+        boot(fw, tg)
+        print("interface")
+        tms.interface(ref_tg, fw, ["acid"], tg)
+        pictures(stock, fw, ref_tg)
+        print("son")
+        exact(fw, ref, [c for c in cases() if c[0].startswith(("réglages", "passe-haut (COLOR 80", "accent", "DECAY 10"))],
+              "Acid avec Model-TG")
+        stock_unchanged(ref_tg, fw, "Model-TG seul")
+        like(alone, fw, "Acid avec Model-TG = Acid seule")
+        locks(fw, "Acid avec Model-TG")
+        six_tracks(fw, "Acid avec Model-TG")
+        mixed(fw, ref_tg, "Acid avec Model-TG", sampler=True)
+        print("coût")
+        cost(fw, "Acid avec Model-TG")
         if args.others:
-            with_others(stock, args.cycles, args.others.split(","), alone)
-    fail = t7.FAIL + tsm.FAIL if hasattr(tsm, "FAIL") else t7.FAIL
+            with_others(stock, args.cycles, args.others.split(","), alone, fw, tg)
+    fail = t7.FAIL + tms.FAIL + getattr(tsm, "FAIL", [])
     print("\nTOUT OK" if not fail else f"\n{len(fail)} ÉCHEC(S)")
     return 1 if fail else 0
 

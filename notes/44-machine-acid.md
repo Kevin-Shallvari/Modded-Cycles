@@ -20,8 +20,8 @@ générateur `tools/gen_acid.py`, moteur `tools/machines/acid/acid.c`, preuve `t
 - **Charge** : une voix Acid coûte **0,45 à 0,97 voix TONE** en instructions, réglage par réglage (0,85 au défaut,
   filtre passe-bas), jusqu'à 1,06 en cumulant passe-haut, carré, accent et résonance 127 ; environ deux fois moins
   qu'une voix MACRO ; voix muette : 572 instructions par bloc (§8).
-- **Incompatible** avec MACRO et les moteurs du Syntakt (même place, même mécanique), et avec Model-TG pour l'instant
-  (pas de version combinée).
+- **Avec Model-TG** : version combinée `33-acid-tg.json`, Acid en 8e machine après le Sampler (§6).
+- **Incompatible** avec MACRO et les moteurs du Syntakt (même place, même mécanique).
 
 ## 1. Ce que l'OS impose `[FAIT]`
 
@@ -186,7 +186,11 @@ solution sans retard aux étages du filtre de 9 LSB de Q27 au plus sur 350 000 �
 
 - **MACRO**, **moteurs du Syntakt**, **SD VINTAGE** : même mécanique de machines ajoutées, même place, même crochet.
   Une charge utile commune les réunirait [À FAIRE si on le demande].
-- **Model-TG** : pas de version combinée pour l'instant (MACRO en a une, `32-macro-tg.json`) [À FAIRE].
+- **Model-TG** : version combinée `33-acid-tg.json` (`requires` `model-tg-st`), comme `32-macro-tg.json` `[FAIT en
+  émulation]` : charge utile à `0x46700000`, Acid en 8e machine, détour `0x400a7dfe` (machines 0..6 vers Model-TG, Acid
+  vers nos `update`/`render`, puis son étage `ah_noenv` : Attack, filtre), crochet de démarrage chaîné à son
+  `boot_extra_hook`. Images : aux 3 sites de la lettre, la borne passe de 5 à 7 (`0x4001b696`, `0x400a4096`,
+  `0x400a4f9e`) ; notre détour rend le smiley pour 7 et l'image de CHORD pour le Sampler (6), comme Model-TG seul.
 - Avec les autres mods (6 canaux, arpégiateur, trig-hold, tempo, animation, drumkilla) : voir §7.
 
 ## 7. Le tweak et la preuve
@@ -196,8 +200,10 @@ solution sans retard aux étages du filtre de 9 LSB de Q27 au plus sur 350 000 �
 - Compilé par `m68k-linux-gnu-gcc` 13.3 (Ubuntu 24.04, le compilateur de MACRO) ; un autre GCC donne d'autres
   octets, `--check` le dit.
 
-Preuve (`tools/emu/test_acid.py`, 08/10/2026) `[FAIT en émulation]`, **tout OK**, seule et avec
-`6ch-usbup,trig-hold,arp,tempo-max,boot-anim` :
+Preuve (`tools/emu/test_acid.py`, 08/10/2026) `[FAIT en émulation]`, **tout OK**, seule, avec Model-TG (`acid-tg`
+sur `model-tg-st`, mêmes vérifications, plus celles de `test_model_tg_syntakt.py` : 8 machines sur 2 lignes, touche
+Attack, potards, images comparées à Model-TG seul, Sampler mêlé), et avec
+`6ch-usbup,model-tg-st,trig-hold,arp,tempo-max,boot-anim` :
 
 | Vérification | Résultat |
 |---|---|
@@ -239,6 +245,9 @@ plus que TONE (CHORD ~8 300 au même réglage) : six pistes Acid restent sous la
 sans régulateur de charge, mais pas forcément sous celle de six pistes TONE. Ce sont des
 instructions, pas des cycles (caches de 8 Ko, attentes de l'EMAC) : le compteur de charge sur la machine le dira
 ([23](23-optimisation-charge.md)).
+
+Avec Model-TG (son étage `ah_noenv` compris) : TONE 5 669 ; Acid de 2 461 (ouvert) à 5 173 (carré) en moyenne, 0,43 à
+0,91 TONE.
 
 ## 9. À vérifier sur la machine
 
@@ -328,8 +337,8 @@ Conséquences :
 - **SLD ne peut pas être la valeur 128** : la longueur du pas est un octet signé (128 y vaut −128) et, sur l'OS
   d'origine, l'indice 128 de la table donne une durée de 1, une note coupée aussitôt.
 - **SLD = longueur 127 (INF) + bit 12 du pas.** Sur l'OS d'origine (retour par CONFIG › UPGRADE), un pattern fait
-  avec SLD joue INF : rien ne casse. Avec Model-TG, ce même bit est un slide trig : sens voisin. Acid est déjà
-  incompatible avec Model-TG, donc pas de nouveau conflit.
+  avec SLD joue INF : rien ne casse. Avec Model-TG, ce même bit est un slide trig : les deux se
+  marcheraient dessus avec `acid-tg` (d'où le choix du §10.5).
 - **À écrire** (détours) :
   1. le potard : une valeur de plus après INF (max du descripteur 127 → 128), avec un détour du setter et du getter
      de la longueur du pas : 128 ↔ (127, bit 12) ;

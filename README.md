@@ -42,7 +42,7 @@ Going back to the official firmware is one click away.
 | **Syntakt engines** | Up to five real Syntakt machines added next to the original six: **SD VINTAGE**, **CP VINTAGE**, **SY TOY**, **SY BITS** and **SY SWARM**, with the Syntakt's knob names and defaults. They are read from your own Syntakt OS file. | ✅ Tested |
 | **Model-TG** | A full Sampler machine with seven playback modes, resampling, a beat-repeat page with master FX, slide trigs, Scale Lock and more, by [TinyGregAudio](https://github.com/TinyGregAudio/Model-TG). Works with the 6-channel mod and the Syntakt engines. | 🧪 Experimental |
 | **MACRO machine** | One extra machine with the 47 synthesis models of Braids, Émilie Gillet's open-source macro-oscillator, from [her own code](https://github.com/pichenettes/eurorack): analog-style waves, FM, vowels, physical models, drums, wavetables and noises. `SHAPE` picks the model, `COLOR` and `SWEEP` shape it. Works with Model-TG, not with the Syntakt engines. | ✅ Tested |
-| **Acid machine** | One extra machine: a 303-style bass. Saw blends into square, `COLOR` is a DJ-style low-pass / high-pass filter, `SWEEP` the resonance, `CONTOUR` the filter envelope, `PUNCH` the accent. Not with Model-TG, MACRO or the Syntakt engines yet. | 🧪 Experimental |
+| **Acid machine** | One extra machine: a 303-style bass. Saw blends into square, `COLOR` is a DJ-style low-pass / high-pass filter, `SWEEP` the resonance, `CONTOUR` the filter envelope, `PUNCH` the accent. Works with Model-TG, not with MACRO or the Syntakt engines. | 🧪 Experimental |
 | **Arpeggiator** | Hold several notes with RETRIG and they play as an arpeggio. `FUNC` + `RETRIG` adds direction (up, down, up/down, random, or in the order played) and range (1 to 4 octaves), saved with the pattern. | ✅ Tested |
 | **Tempo up to 546 BPM** | The TEMPO knob, tap tempo, MIDI clock and saved projects go past 300 BPM. Tempo-synced LFOs stay in time. | ✅ Tested |
 | **Startup animation** | When the Model:Cycles starts, the four squares of the modded-cycles logo pop in and “modded-cycles” types itself underneath, instead of the original tile animation. Same duration. | ✅ Tested |
@@ -53,7 +53,7 @@ Going back to the official firmware is one click away.
 | **Samples OS** | Turns the Model:Cycles into a Model:Samples, built from both official OS files. Coming back needs a MIDI interface. | ✅ Tested |
 | **Cycles OS for Model:Samples** | The other way round: turns a Model:Samples into a Model:Cycles, over USB, from both official OS files. Going back to the Model:Samples OS works over USB too, from the same tab. | 🧪 Experimental |
 
-The mods can be combined freely (Samples OS and Cycles OS for Model:Samples are separate installs; MACRO, Acid and the Syntakt engines not together, Acid not with Model-TG). Each one is explained step by step, with the buttons to press, in the
+The mods can be combined freely (Samples OS and Cycles OS for Model:Samples are separate installs; MACRO, Acid and the Syntakt engines not together). Each one is explained step by step, with the buttons to press, in the
 **[guide](https://18nelli18.github.io/Modded-Cycles/guide/)**.
 
 <p align="center">

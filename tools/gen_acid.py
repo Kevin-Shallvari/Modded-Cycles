@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Génère le tweak de la machine Acid : une basse façon 303 (dent de scie -> carré, filtre en échelle à 4 pôles sans
+"""Génère les tweaks de la machine Acid : une basse façon 303 (dent de scie -> carré, filtre en échelle à 4 pôles sans
 retard, passe-bas ou passe-haut, résonance écrasée par un coude), en machine ajoutée du Model:Cycles (notes/44).
 
-  - 26-acid.json : 7e machine, après les 6 d'origine.
+  - 26-acid.json : 7e machine, après les 6 d'origine ;
+  - 33-acid-tg.json : avec Model-TG (après model-tg-st), 8e machine, après son Sampler.
 
 Le moteur est notre code (tools/machines/acid/acid.c, en entiers, compilé ici) ; ses tables (coupure, enveloppe,
 hauteur) sont calculées ici et écrites dans acid_tables.h au moment de la compilation. La mécanique des machines
@@ -39,6 +40,7 @@ import voice_loop                  # noqa: E402
 
 DEV = HERE.parent / "tweaks" / "model-cycles_OS1.13"
 OUT = DEV / "26-acid.json"
+OUT_TG = DEV / "33-acid-tg.json"
 SRC = HERE / "machines" / "acid"
 BASE = gx.BASE
 
@@ -195,10 +197,11 @@ def art(img, pay):
     return parts, reloc, addr, at
 
 
-def art_asm(addr):
-    """Détours d'Acid pour ses images (à la suite de gs.detours_asm, dont ils appellent shown) : l'écran MACHINES et
-    la petite lettre comme drum_icons et small_icon, avec nos objets pour la machine 6 ; aux 3 autres sites, un jsr à
-    la place de « add.l tableau, %d0 » (d0 = 28 x machine, la machine 6 n'est plus ramenée à SNARE)."""
+def art_asm(addr, first, tg):
+    """Détours des images d'Acid (machine first), à la suite de gs.detours_asm : drum_icons et small_icon avec nos
+    objets ; aux 3 autres sites, jsr à la place de « add.l tableau, %d0 » (d0 = 28 x machine). Avec Model-TG, son
+    Sampler (6) garde l'image de CHORD."""
+    sampler = "\tcmpi.l\t#168, %d0\n\tbne.s\t1f\n\tmove.l\t#140, %d0\n" if tg else ""          # Sampler -> CHORD
     return f"""
 	.globl	acid_drum_icons
 acid_drum_icons:
@@ -215,7 +218,7 @@ acid_drum_icons:
 	movea.l	0x40fe32cc, %a1
 	adda.l	%d4, %a1
 	add.l	0x40fe384c, %d4
-	moveq	#6, %d0
+	moveq	#{first}, %d0
 	cmp.l	%d0, %d3
 	bne.s	1f
 	lea	{addr['card']:#x}, %a1
@@ -237,7 +240,7 @@ acid_small_icon:
 	lea	10(%a0), %a0
 	move.l	%a0, -(%sp)
 	move.l	16(%fp), -(%sp)
-	moveq	#6, %d0
+	moveq	#{first}, %d0
 	cmp.l	%d0, %d2
 	bne.s	1f
 	move.l	#{addr['small']:#x}, %d0
@@ -256,19 +259,21 @@ acid_small_icon:
 3:	jmp	0x400a4dde
 	.globl	acid_mid_at
 acid_mid_at:
-	cmpi.l	#168, %d0
-	bne.s	1f
+	cmpi.l	#{28 * first}, %d0
+	bne.s	2f
 	move.l	#{addr['mid']:#x}, %d0
 	rts
-1:	add.l	0x40fe384c, %d0
+2:
+{sampler}1:	add.l	0x40fe384c, %d0
 	rts
 	.globl	acid_small_at
 acid_small_at:
-	cmpi.l	#168, %d0
-	bne.s	1f
+	cmpi.l	#{28 * first}, %d0
+	bne.s	2f
 	move.l	#{addr['small']:#x}, %d0
 	rts
-1:	add.l	0x40fe37f0, %d0
+2:
+{sampler}1:	add.l	0x40fe37f0, %d0
 	rts
 """
 
@@ -322,12 +327,14 @@ def compile_machine(tmp, pay):
     return blob, syms, (bss[0] + bss[1] + 3) & ~3
 
 
-def build_tweak(img):
-    """Tweak de la machine Acid, 7e machine (comme gm.build_tweak sans Model-TG)."""
-    pay = gs.PAY_ALONE
+def build_tweak(img, tg=None):
+    """Tweak de la machine Acid (comme gm.build_tweak). tg : Model-TG (gs.tg_context) pour la version combinée."""
+    pay = gs.PAY_TG if tg else gs.PAY_ALONE
     gs.set_base(pay)
-    first, nm, top, n = 6, 7, 6, 1               # 6 machines d'origine, puis Acid
-    cur = img
+    first = gm.TG_FIRST if tg else 6             # 6 machines d'origine, le Sampler avec Model-TG, puis Acid
+    nm, n = first + 1, 1
+    top = nm - 1
+    cur = tg["img"] if tg else img
     u32 = lambda va: struct.unpack_from(">I", cur, va - BASE)[0]
     m = MACHINE
     with tempfile.TemporaryDirectory() as d:
@@ -337,8 +344,8 @@ def build_tweak(img):
         if art_end > pay + BSS_OFF:
             raise SystemExit("!! images")
         names_at, upd_at, rnd_at, map_at = gs.DATA, gs.DATA + 4 * nm, gs.DATA + 8 * nm, gs.DATA + 16 * nm
-        stubs, ssyms = gm.assemble(tmp, "det", gs.detours_asm(n, [m["image"]], [76], None) + art_asm(art_addr),
-                                   gs.STUBS)
+        stubs, ssyms = gm.assemble(tmp, "det", gs.detours_asm(n, [m["image"]], [76], tg) + art_asm(art_addr, first, tg)
+                                   + (gm.dispatch_tg_asm(syms, rnd_at, tg) if tg else ""), gs.STUBS)
         if gs.STUBS + len(stubs) > gs.DATA:
             raise SystemExit("!! détours trop grands")
 
@@ -349,9 +356,14 @@ def build_tweak(img):
             if s_ not in addr:
                 addr[s_] = at
                 at += len(s_) + 1
-        names = [u32(g7.NAMES + 4 * i) for i in range(6)] + [addr[m["name"]]]
-        upd = [u32(g7.UPDATE_TAB + 4 * i) for i in range(6)] + [syms["acid_update"]]
-        rnd = [u32(g7.RENDER_TAB + 4 * i) for i in range(6)] + [syms["acid_render"]]
+        if tg:                                  # noms : ceux de Model-TG
+            blob_u32 = lambda va: struct.unpack_from(">I", tg["blob"], va - tg["blob_at"])[0]
+            names = [blob_u32(tg["sampler_name_table"] + 4 * i) for i in range(7)] + [addr[m["name"]]]
+        else:
+            names = [u32(g7.NAMES + 4 * i) for i in range(6)] + [addr[m["name"]]]
+        pad = [u32(g7.UPDATE_TAB)] * (first - 6), [u32(g7.RENDER_TAB)] * (first - 6)   # entrée du Sampler : jamais lue
+        upd = [u32(g7.UPDATE_TAB + 4 * i) for i in range(6)] + pad[0] + [syms["acid_update"]]
+        rnd = [u32(g7.RENDER_TAB + 4 * i) for i in range(6)] + pad[1] + [syms["acid_render"]]
         data = bytearray()
         for t in (names, upd, rnd, range(1, nm + 1)):
             data += b"".join(g7.be32(x) for x in t)
@@ -395,17 +407,23 @@ def build_tweak(img):
         writes.append(None)                     # crochet de démarrage : écrit plus bas (il porte la liste des morceaux)
         red = sprites.redirect_write(gx.CAVE)
         w(BASE + red["off"], bytes.fromhex(red["old"]), bytes.fromhex(red["new"]))
-        w(gx.HOOK, bytes.fromhex(gx.HOOK_OLD), jmp(gx.CAVE) + bytes.fromhex("4e71"))
+        if tg:                                  # notre crochet, puis le sien
+            w(gs.BOOT_CALL + 2, g7.be32(tg["boot_extra_hook"]), g7.be32(gx.CAVE))
+        else:
+            w(gx.HOOK, bytes.fromhex(gx.HOOK_OLD), jmp(gx.CAVE) + bytes.fromhex("4e71"))
         moved = {g7.DESC: gs.DESCN, g7.DESC + 8: gs.DESCN + 8, g7.DESC + 0x20: gs.DESCN + 0x20, g7.ROWS: gs.ROWSN,
-                 g7.CCROWS: gs.CCROWSN, g7.NAMES: names_at, g7.UPDATE_TAB: upd_at, g7.RENDER_TAB: rnd_at,
-                 gs.MAP: map_at}
-        want = {g7.DESC: 34, g7.DESC + 8: 1, g7.DESC + 0x20: 2, g7.ROWS: 5, g7.CCROWS: 2, gs.MAP: 1, g7.RENDER_TAB: 1}
+                 g7.CCROWS: gs.CCROWSN, tg["sampler_name_table"] if tg else g7.NAMES: names_at,
+                 g7.UPDATE_TAB: upd_at, g7.RENDER_TAB: rnd_at, gs.MAP: map_at}
+        want = {g7.DESC: 34, g7.DESC + 8: 1, g7.DESC + 0x20: 2, g7.ROWS: 4 if tg else 5, g7.CCROWS: 2, gs.MAP: 1,
+                g7.RENDER_TAB: 0 if tg else 1}
         for old, new_ in moved.items():
             rs = g7.refs32(cur, old)
             if len(rs) != want.get(old, 1):
                 raise SystemExit(f"!! références à {old:#x} : {len(rs)}")
             for va in rs:
                 w(va, g7.be32(old), g7.be32(new_))
+        if tg:
+            w(gs.DISPATCH[0], cur[gs.DISPATCH[0] - BASE:gs.DISPATCH[0] - BASE + 6], jmp(ssyms["dispatch"]))
         jumps = g7.JUMPS + g8.JUMPS8
         for va in g7.BOUNDS:
             if va in {j[0] for j in jumps}:
@@ -416,6 +434,8 @@ def build_tweak(img):
             moveq(va, b1, b1 + 5 * n, b0)
         for va, reg in ((0x400a7dba, 0x72), (0x400a7df4, 0x70), (0x4005a6a6, 0x72), (0x400147a4, 0x70),
                         (0x400148aa, 0x72), (0x400148b2, 0x70), (0x400a25e0, 0x70)):
+            if tg and va == 0x4005a6a6:
+                continue                        # détour sampler_lfo_gate de Model-TG : chaîné plus bas
             if cur[va - BASE] != reg or cur[va - BASE + 1] not in (5, 6):
                 raise SystemExit(f"!! borne {va:#x}")
             moveq(va, cur[va - BASE + 1], top, reg)
@@ -425,12 +445,22 @@ def build_tweak(img):
             w(0x400a26a2, bytes.fromhex("7850428545f9"), jmp(ssyms["marks"]))
         else:
             moveq(0x400a26e8, cur[0x400a26e8 - BASE + 1], nm, 0x70)
-        for va in (0x4001b69c, 0x400a40a6, 0x400a4fb0):         # repli des machines > 5 : 6, nos images
-            moveq(va, 5, 6, 0x70)
+        if tg:                                  # borne 5 -> 7 : le Sampler et Acid passent, le reste replié sur 5
+            for va in (0x4001b696, 0x400a4096, 0x400a4f9e):
+                moveq(va, 5, 7, 0x72)
+        else:                                   # repli des machines > 5 : 6
+            for va in (0x4001b69c, 0x400a40a6, 0x400a4fb0):
+                moveq(va, 5, 6, 0x70)
         for va, old, sym in ART_SITES:
             w(va, bytes.fromhex(old), bytes.fromhex("4eb9") + g7.be32(ssyms[sym]))
+        chained = {0x4004df5c: "descr_hook", 0x4004df76: "descr_b_hook"}
         for va, old, sym in jumps:
-            w(va, bytes.fromhex(old), jmp(ssyms[ART_JUMPS.get(sym, sym)]))
+            old = jmp(tg[chained[va]]) if tg and va in chained else bytes.fromhex(old)
+            w(va, old, jmp(ssyms[ART_JUMPS.get(sym, sym)]))
+        if tg:
+            w(gs.AMP_ROW, bytes.fromhex("20065286eb88"), jmp(ssyms["amp_row"]))
+            w(0x4005a6a6, jmp(tg["sampler_lfo_gate"]), jmp(ssyms["lfo_gate"]))
+            w(0x4005a6b6, jmp(tg["sampler_amp_gate"]), jmp(ssyms["amp_gate"]))
         for va, old, sym in g7.CALLS:
             w(va, bytes.fromhex(old), bytes.fromhex("4eb9") + g7.be32(ssyms[sym]) + bytes.fromhex("4e71"))
 
@@ -452,12 +482,13 @@ def build_tweak(img):
                  for k in range(0, len(final), 4) if final[k:k + 4] != orig[k:k + 4]] + art_reloc
         size = bss_end - pay
         segs = gs.segments(parts, size)
-        at = BASE + gx.IMAGE_LEN
+        at = tg["at"] if tg else BASE + gx.IMAGE_LEN
         if at + sum(n_ for _, n_ in segs) > gs.END_LIMIT:
             raise SystemExit(f"!! ajout de {sum(n_ for _, n_ in segs)} o : l'image dépasserait {gs.END_LIMIT:#x}")
         (tmp / "segs.inc").write_text("".join(f"\t.long\t{a:#x}, {n_ // 4}\n" for a, n_ in segs))
         stub, _ = gm.assemble(tmp, "stub", gx.SRC / "stub.S", gx.CAVE, [
-            f"-DPAYLOAD_SRC={at:#x}", f"-DPAYLOAD_DST={pay:#x}", f"-DPAYLOAD_LONGS={size // 4}", "-DPACK", f"-I{tmp}"])
+            f"-DPAYLOAD_SRC={at:#x}", f"-DPAYLOAD_DST={pay:#x}", f"-DPAYLOAD_LONGS={size // 4}", "-DPACK", f"-I{tmp}",
+            *([f"-DCHAIN_TO={tg['boot_extra_hook']:#x}"] if tg else [])])
     if len(stub) > sprites.zone(gx.CAVE)[1]:
         raise SystemExit("!! crochet de démarrage trop grand pour sa place")
     writes[0] = {"off": gx.CAVE - BASE, "old": "ff" * len(stub), "new": stub.hex()}
@@ -468,13 +499,19 @@ def build_tweak(img):
         if a_["off"] + len(a_["new"]) // 2 > b_["off"]:
             raise SystemExit(f"!! écritures qui se chevauchent en {BASE + b_['off']:#x}")
 
-    ids = gm.other_ids() | {"macro", "macro-tg", "model-tg", "model-tg-st"}
+    tid = "acid-tg" if tg else "acid"
+    ids = gm.other_ids() | {"macro", "macro-tg", "model-tg"} | ({"acid"} if tg else {"model-tg-st"})
     out = {
-        "id": "acid",
-        "order": 26,
-        "name": "Machine Acid : une basse façon 303 (scie -> carré, filtre en échelle passe-bas / passe-haut)",
-        "description": [
+        "id": tid,
+        "order": 33 if tg else 26,
+        "name": ("Model-TG + " if tg else "")
+        + "Machine Acid : une basse façon 303 (scie -> carré, filtre en échelle passe-bas / passe-haut)",
+        "description": ([
+            "Version combinée avec Model-TG (notes/31, notes/44) : s'ajoute après model-tg-st, Acid est la 8e machine,",
+            "après le Sampler ; sa sortie passe par l'étage d'amplitude de Model-TG (Attack, filtre).",
+        ] if tg else [
             "Machine Acid en 7e machine, après les 6 d'origine (notes/44).",
+        ]) + [
             "COLOR = filtre façon DJ (passe-bas 20 Hz -> 20 kHz, ouvert à 64, passe-haut 10 Hz -> 20 kHz), SHAPE = scie",
             "-> carré, SWEEP = résonance (auto-oscillation en haut), CONTOUR = enveloppe du filtre (bipolaire, 64 : rien),",
             "DECAY = durée de l'enveloppe du filtre et chaîne d'ampli d'origine réglée comme TONE, PUNCH = accent.",
@@ -484,6 +521,10 @@ def build_tweak(img):
         "device": "Model:Cycles",
         "os": "1.13",
         "section": 3,
+    }
+    if tg:
+        out["requires"] = [tg["id"]]
+    out.update({
         "conflicts": sorted(ids),
         "writes": writes,
         "append": {"at": f"{at:#x}", "dest": f"{pay:#x}", "size": size, "parts": parts, "reloc": reloc,
@@ -491,9 +532,10 @@ def build_tweak(img):
         # pour la preuve (tools/emu/test_acid.py) : les entrées du moteur
         "symbols": dict({k: f"{syms[k]:#x}" for k in ("acid_update", "acid_render")},
                         **{f"art_{k}": f"{v:#x}" for k, v in art_addr.items()}),
-    }
-    out = usb_steady.add_to(out)          # comme MACRO seule : envoi à l'USB à heure fixe (notes/35), boucle des
-    out = voice_loop.add_to(out)          # voix (notes/36)
+    })
+    if not tg:                            # comme MACRO seule : envoi à l'USB à heure fixe (notes/35), boucle des voix
+        out = usb_steady.add_to(out)      # (notes/36) ; la version combinée les a par model-tg-st
+        out = voice_loop.add_to(out)
     return out, dict(code=len(blob), bss=bss_end - pay - BSS_OFF, image=sum(n_ for _, n_ in segs), syms=syms)
 
 
@@ -505,11 +547,14 @@ def main():
     img = g7.cycles_main(args.cycles)
     if len(img) != gx.IMAGE_LEN:
         raise SystemExit("!! ce n'est pas le MAIN OS 1.13 officiel")
-    tweak, info = build_tweak(img)
-    text = json.dumps(tweak, indent=1) + "\n"
-    print(f"  {tweak['id']} : {len(tweak['writes'])} écritures, code et tables {info['code']} o, variables "
-          f"{info['bss']} o, ajout à l'image {info['image']} o")
-    if gm.emit(OUT, text, args.check):
+    bad = 0
+    for path, tg in ((OUT, None), (OUT_TG, gs.tg_context(img))):
+        tweak, info = build_tweak(img, tg)
+        text = json.dumps(tweak, indent=1) + "\n"
+        print(f"  {tweak['id']} : {len(tweak['writes'])} écritures, code et tables {info['code']} o, variables "
+              f"{info['bss']} o, ajout à l'image {info['image']} o")
+        bad += gm.emit(path, text, args.check)
+    if bad:
         raise SystemExit(1)
 
 

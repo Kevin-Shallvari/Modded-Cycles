@@ -286,16 +286,18 @@ reconstituée au démarrage à `0x43000000`, avec la mécanique des machines ajo
 compile aussi le moteur pour l'ordinateur avec `gcc`, la référence :
 ```sh
 python3 tools/gen_acid.py --cycles model-cycles_OS1.13.syx [--check]
-python3 tools/emu/test_acid.py --cycles model-cycles_OS1.13.syx [--with 6ch-usbup,trig-hold,arp,tempo-max,boot-anim]
+python3 tools/emu/test_acid.py --cycles model-cycles_OS1.13.syx [--with 6ch-usbup,model-tg-st,trig-hold,arp,tempo-max,boot-anim]
 ```
-Incompatible avec MACRO, les moteurs du Syntakt et SD VINTAGE (même mécanique, même place), et avec Model-TG (pas de
-version combinée pour l'instant).
+Avec Model-TG, `33-acid-tg.json` (même générateur) s'ajoute après `model-tg-st` : Acid est la 8e machine. Incompatible
+avec MACRO, les moteurs du Syntakt et SD VINTAGE (même mécanique, même place).
 
 | `-t` | MAIN OS patché (SHA-256) |
 |---|---|
 | `acid` | `bb28ccac59411120b4791a83e15bc7337a04ed6b092d35de0047e4c78cf3efcf` |
 | `6ch-usbup,acid` | `28841d83214df58e19ebdfe137ccb32d86f0d82ddc1a3d6582a1b149d7d18575` |
 | `6ch-usbup,acid,trig-hold,arp,tempo-max,boot-anim` | `1cdf8ad7e99ee83ac80ee9495d2751f337cf3f1e0710820c8f8626b206336329` |
+| `model-tg-st,acid-tg` | `dcdae167f8901c40fc50fc89ca2430ea73e8fc3ced72a170f75b390a4bd9660e` |
+| `6ch-usbup,model-tg-st,acid-tg,trig-hold,arp,tempo-max,boot-anim` | `59054578152858cc509e853287b94902587c4f4f6995d1fc4f8997fc7e39c2ba` |
 
 ### Écoute d'un pas en pause
 
