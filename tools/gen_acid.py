@@ -295,12 +295,12 @@ LINK = """SECTIONS
 BSS_OFF = gm.BSS_OFF
 
 
-def compile_machine(tmp, pay):
+def compile_machine(tmp, pay, defs=()):
     """Le moteur, lié à pay (code, tables) et pay + BSS_OFF (états des 6 pistes). Renvoie (octets, symboles, fin du
     BSS)."""
     (tmp / "acid_tables.h").write_text(tables_h())
     o, ld, elf, out = tmp / "acid.o", tmp / "link.ld", tmp / "acid.elf", tmp / "acid.bin"
-    gx.run([gx.CROSS + "gcc", *CFLAGS, f"-I{tmp}", "-c", str(SRC / "acid.c"), "-o", str(o)])
+    gx.run([gx.CROSS + "gcc", *CFLAGS, *defs, f"-I{tmp}", "-c", str(SRC / "acid.c"), "-o", str(o)])
     ld.write_text(LINK.format(code=pay, bss=pay + BSS_OFF))
     gx.run([gx.CROSS + "ld", "-T", str(ld), "--gc-sections", "--no-warn-rwx-segments", "-e", "acid_update",
             "-u", "acid_render", "-o", str(elf), str(o)])
@@ -339,7 +339,8 @@ def build_tweak(img, tg=None):
     m = MACHINE
     with tempfile.TemporaryDirectory() as d:
         tmp = pathlib.Path(d)
-        blob, syms, bss_end = compile_machine(tmp, pay)
+        blob, syms, bss_end = compile_machine(tmp, pay, [f"-DSLD_BASE={tg['SLD_BASE']:#x}",   # slide 303 (§10.5)
+                                                         f"-DSLD_INIT={tg['sld_init']:#x}"] if tg else [])
         art_parts, art_reloc, art_addr, art_end = art(img, pay)
         if art_end > pay + BSS_OFF:
             raise SystemExit("!! images")
@@ -533,6 +534,8 @@ def build_tweak(img, tg=None):
         "symbols": dict({k: f"{syms[k]:#x}" for k in ("acid_update", "acid_render")},
                         **{f"art_{k}": f"{v:#x}" for k, v in art_addr.items()}),
     })
+    if tg:                                # pour la preuve du slide : les états des pistes
+        out["symbols"]["acid_tracks"] = f"{syms['tracks']:#x}"
     if not tg:                            # comme MACRO seule : envoi à l'USB à heure fixe (notes/35), boucle des voix
         out = usb_steady.add_to(out)      # (notes/36) ; la version combinée les a par model-tg-st
         out = voice_loop.add_to(out)

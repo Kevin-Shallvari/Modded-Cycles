@@ -566,6 +566,75 @@ def behaviour(fw):
           f"{last / 2 ** 31:.2f} à la fin, sur 2^31), sans saturation")
 
 
+# --- 3 bis. slide 303 sur les slide trigs de Model-TG (notes/44 §10.5) ------------------------------------------
+SL = dict(PND=0, PDUR=24, PMSK=48, PCLK=72, PFRE=216, PST=256, PEN=640)
+
+
+def slide_run(fw, tg, machine, armed, gap=100, blocks=700):
+    """Trig P au bloc 1 (note 36), slide trig S au bloc 1 + gap (note 43, PITCH 76, COLOR 20), glissement armé comme
+    sld_seq sur PITCH et COLOR (mots 10 et 11). Rend la sortie, le niveau d'ampli, PITCH lu par la machine et fenv."""
+    e = fw.engine(solo=0)
+    kw = dict(BASE_KW, machine=machine, color=64, contour=100, decay=90, gate=0)
+    e.set(0, **kw)
+    w32 = lambda a, v: e.uc.mem_write(a, struct.pack(">I", v & 0xffffffff))
+    r32 = lambda a: struct.unpack(">i", e.uc.mem_read(a, 4))[0]
+    sb, S = tg["SLD_BASE"], 1 + gap
+    trk = fw.tweaks[-1]["symbols"].get("acid_tracks")
+    out, env, pw, fenv, clk = [], [], [], [], 5000
+    for b in range(blocks):
+        w32(tg["blk_clk"], clk + b)                                 # rs_out de Model-TG, pas émulé
+        if b == 1 and armed:
+            w32(tg["sld_init"], 1)
+            for f, v in (("PND", 1), ("PDUR", gap), ("PCLK", clk + b), ("PFRE", 0), ("PMSK", 0xc00)):
+                w32(sb + SL[f], v)
+            e.uc.mem_write(sb + SL["PST"] + 20, struct.pack(">hh", 64 << 8, 64 << 8))
+            e.uc.mem_write(sb + SL["PEN"] + 20, struct.pack(">hh", 76 << 8, 20 << 8))
+        if b == S:
+            e.set(0, note=43, pitch=76, color=20)
+        out.append(e.block(1 if b in (1, S) else 0)[0])
+        env.append(r32(E.VOICE0 + 0x230))
+        pw.append(struct.unpack(">h", e.uc.mem_read(E.PARAMS + 0xe + 20, 2))[0])
+        fenv.append(r32(int(trk, 16) + 20) if trk else 0)
+    return np.stack(out), np.array(env), np.array(pw), np.array(fenv), S, e.unmapped
+
+
+def periods(x):
+    """Périodes d'une scie sans filtre (COLOR 64) : écarts entre ses retombées (seuil : la moitié de la plus forte
+    par tranche de 1 024 échantillons, plus longue qu'une période)."""
+    d = np.diff(x.astype(float))
+    n = len(d) // 1024 * 1024
+    th = np.repeat(d[:n].reshape(-1, 1024).min(axis=1), 1024) * 0.5
+    drops = np.where(d[:n] < th)[0]
+    drops = drops[np.r_[True, np.diff(drops) > 8]]                 # une retombée sur 2 échantillons (polyBLEP)
+    return drops[1:], np.diff(drops)
+
+
+def slide303(fw, ref_tg, tg):
+    full = -2 ** 31
+    x, env, pw, fenv, S, unm = slide_run(fw, tg, fw.index, True)
+    at, per = periods(x.reshape(-1))
+    blk = at // 32
+    hold = per[(blk > 10) & (blk < S)]
+    swept = pw[S - 5] > 74 << 8                                   # Model-TG a bien balayé le mot PITCH
+    after = per[(blk >= S + 400)]
+    glide = per[(blk >= S) & (blk < S + 400)]
+    f = lambda p_: 48000 / np.median(p_)
+    t95 = next((int(at[i] // 32) - S for i in np.where(blk >= S)[0] if per[i] <= 1.05 * np.median(after)), None)
+    ok_pitch = swept and np.ptp(hold) <= 2 and abs(f(hold) - 65.41) < 0.5 and abs(f(after) - 196.0) < 1 \
+        and np.all(np.diff(glide) <= 2) and t95 is not None and 60 < t95 < 130
+    ok_env = (env[3:S + 1] == full).all() and env[S + 1] < full * 0.98 and full < env[S + 250] < 0 \
+        and fenv[S + 2] < fenv[S - 1]                             # plein jusqu'à S, sans creux ; fenv non relancée
+    y, envn, _, fenvn, _, unm2 = slide_run(fw, tg, fw.index, False)
+    ctrl = envn[S - 1] > full and envn[S] == 0 and fenvn[S + 2] > fenvn[S - 1]   # sans slide : creux, fenv relancée
+    a, *_ = slide_run(fw, tg, TONE, True)
+    b, *_ = slide_run(ref_tg, tg, TONE, True)
+    check(ok_pitch and ok_env and ctrl and np.array_equal(a, b) and not unm and not unm2,
+          f"slide 303 sur un slide trig de Model-TG : note tenue {f(hold):.2f} Hz pendant que Model-TG balaie PITCH "
+          f"({swept}), enveloppe pleine sans creux au slide trig, enveloppe du filtre non relancée ; hauteur qui monte "
+          f"sans retour jusqu'à {f(after):.1f} Hz (196), à 5 % en {t95 * 2 / 3 if t95 else None:.0f} ms ; GATE à 0 : "
+          f"décroît ensuite ; sans slide : creux au trig ({ctrl}) ; TONE identique à Model-TG seul")
+
+
 # --- 4. coût ---------------------------------------------------------------------------------------------------
 def cost(fw, label):
     """Instructions par bloc d'une voix (boucle des voix entière, moins la même boucle sans voix), pile."""
@@ -685,6 +754,7 @@ def main():
         locks(fw, "Acid avec Model-TG")
         six_tracks(fw, "Acid avec Model-TG")
         mixed(fw, ref_tg, "Acid avec Model-TG", sampler=True)
+        slide303(fw, ref_tg, tg)
         print("coût")
         cost(fw, "Acid avec Model-TG")
         if args.others:

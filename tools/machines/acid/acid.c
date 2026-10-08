@@ -95,6 +95,15 @@ void host_amp(s32 *out, char *v);                 /* la reference : rien (sortie
 #define PUNCH(o, v)  ((void (*)(s32 *, char *))0x400a967a)(o, v)
 #define AMP_DECAY(d) (((const s32 *)0x4011d84c)[d])   /* DECAY -> multiplicateur par bloc (celui de TONE) */
 #endif
+#ifdef SLD_BASE
+/* slide trigs de Model-TG, joues en slide 303 (notes/44 §10.5) ; SLD_BASE, SLD_INIT : symboles de model-tg-st */
+#define SL_ON      (*(volatile s32 *)SLD_INIT)
+#define SL(f, t)   (*(volatile s32 *)(SLD_BASE + (f) + 4 * (t)))
+#define SL_W(t, k) (*(volatile s16 *)(SLD_BASE + 1024 + 64 * (t) + 2 * (k)))   /* SL_AST : valeurs de depart */
+#define SL_ACT     96
+#define SL_MSK     168
+#define GLIDE      1074                             /* 1 - exp(-1/30) par bloc, Q15 : 20 ms, 95 % en ~60 ms */
+#endif
 #define MARK_OFF   0x2c
 #define MARK       0x41434431                       /* 'ACD1' */
 #define IDLE_LEVEL (1 << 14)                        /* enveloppe d'ampli sous -102 dB : voix muette */
@@ -116,6 +125,9 @@ struct acid {
 	s32 m, xg, fenv;
 	s32 s0, s1, s2, s3;                             /* etats du filtre, Q27 */
 	s32 mode, G, c1, c2, c3, c4, P1, D1, Ps, Ds, Qs, kq8, og;
+#ifdef SLD_BASE
+	s32 ncur, was, in, glide;                       /* hauteur courante, glissait, blocs sans trig, slide en cours */
+#endif
 };
 
 #ifdef HOST
@@ -170,6 +182,17 @@ static inline s32 saw(u32 ph, u32 dt, u32 invdt)
 void acid_update(s32 pmod, char *v, const char *p)
 {
 	struct acid *a = track_of(v);
+#ifdef SLD_BASE
+	s16 pw[19];
+	int t = ((u32)v - CYC_VOICE0) / CYC_VSTRIDE, sliding = SL_ON && SL(SL_ACT, t);
+
+	if (sliding) {                                  /* la note glissee reste fixe : valeurs de depart */
+		u32 m = SL(SL_MSK, t);
+		for (int k = 0; k < 19; k++)
+			pw[k] = m >> k & 1 ? SL_W(t, k) : P16(2 * k);
+		p = (const char *)pw;
+	}
+#endif
 	s32 acc = P16(0x1e) != 0, dec = knob(P16(0x24));
 	s32 col8 = P16(0x16), sweep = knob(P16(0x1a)), cont = knob(P16(0x1c));
 	s32 n, oct, r, i, fr, idx, amt, mod, top = 0;
@@ -181,6 +204,19 @@ void acid_update(s32 pmod, char *v, const char *p)
 			z[k] = 0;
 		V32(MARK_OFF) = MARK;
 	}
+#ifdef SLD_BASE
+	if (V32(0x34) && a->was) {                      /* slide trig : pas de nouvelle attaque */
+		a->in = 2;
+		a->glide = 1;
+		if (!P16(0x20))
+			V32(0x244) = 1;                 /* GATE a 0 : la note glissee decroit ensuite */
+	}
+	a->was = sliding;
+	if (sliding) {                                  /* tenue au plein jusqu'au slide trig */
+		V32(0x24c) = 1;
+		V32(0x3c) = 0;
+	}
+#endif
 	/* chaine d'ampli d'origine, reglee comme TONE (0x400aa7b8), comme MACRO */
 	V32(0x250) = AMP_DECAY(dec);
 	if (V32(0x38)) {
@@ -196,12 +232,25 @@ void acid_update(s32 pmod, char *v, const char *p)
 			V32(0x29c) = 0x7fffffff; V32(0x2a0) = 0x20000000; V32(0x2a4) = 0x20000000;
 			V32(0x48) = 0;
 		}
+#ifdef SLD_BASE
+		if (!a->in)
+#endif
 		a->fenv = Q31MAX;
 	}
 
 	/* note = PITCH - 64 + note du trig + FINE (+-2 demi-tons), comme toutes les machines ; 440 Hz a 69 */
 	n = ((s32)P16(0x14) << 8) + (((s32)P16(0x22) - 0x4000) << 3) - (64 << 16) + pmod;
 	n = n < 0 ? 0 : n > (127 << 16) ? (127 << 16) : n;
+#ifdef SLD_BASE
+	if (a->glide) {                                 /* vers la nouvelle note, exponentiel */
+		s32 d = n - a->ncur;
+		if (d > -64 && d < 64)
+			a->glide = 0;
+		else
+			n = a->ncur += ((d >> 3) * GLIDE) >> 12;
+	}
+	a->ncur = n;
+#endif
 	oct = n / (12 << 16);
 	r = n - oct * (12 << 16);
 	i = r >> 12;
@@ -313,6 +362,19 @@ void acid_render(s32 *out, char *v)
 #ifdef HOST
 	host_amp(out, v);
 #else
+#ifdef SLD_BASE
+	if (a->in) {                                    /* slide trig : la chaine d'ampli ne voit pas le trig */
+		s32 t34 = V32(0x34), t38 = V32(0x38);
+		V32(0x34) = V32(0x38) = 0;
+		AMP_ENV(v);
+		VCA(out, v);
+		PUNCH(out, v);
+		V32(0x34) = t34;
+		V32(0x38) = t38;
+		a->in--;
+		return;
+	}
+#endif
 	AMP_ENV(v);
 	VCA(out, v);
 	PUNCH(out, v);

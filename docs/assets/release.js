@@ -3,6 +3,12 @@
  *   { version: "1.1", date: "2026-10-15", changes: [{ en: "…", fr: "…" }] }
  */
 window.MC_RELEASES = [
+  { version: "1.34", date: "2026-10-08", changes: [
+    { en: "Acid with Model-TG: Model-TG's slide trigs now play as 303 slides on Acid tracks. The note before the slide trig holds at full volume, then bends into the new note in about 60 ms, without a new attack or a filter sweep restart. Other machines keep Model-TG's own slide",
+      fr: "Acid avec Model-TG : les slide trigs de Model-TG jouent maintenant en slide 303 sur les pistes Acid. La note d'avant le slide trig tient au plein, puis rejoint la nouvelle note en 60 ms environ, sans nouvelle attaque ni enveloppe de filtre relancée. Les autres machines gardent le slide de Model-TG" },
+    { en: "Experimental: checked in the emulator on the OS's and Model-TG's own code; not yet tested on a Model:Cycles. Slides come from the sequencer only, as with Model-TG",
+      fr: "Expérimental : vérifié en émulation sur le code même de l'OS et de Model-TG ; pas encore essayé sur un Model:Cycles. Les slides viennent du séquenceur seulement, comme avec Model-TG" },
+  ] },
   { version: "1.33", date: "2026-10-08", changes: [
     { en: "Acid machine with Model-TG (experimental): tick both and Acid becomes the 8th machine, after the Sampler, with Model-TG's Attack and filter on top. The sound is the same as Acid alone",
       fr: "Machine Acid avec Model-TG (expérimental) : cochez les deux et Acid devient la 8e machine, après le Sampler, avec l'Attack et le filtre de Model-TG en plus. Le son est le même qu'Acid seule" },

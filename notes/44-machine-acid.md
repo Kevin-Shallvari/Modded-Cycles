@@ -350,7 +350,7 @@ Conséquences :
 - À vérifier avant d'écrire : tous les endroits qui lisent ou bornent la longueur (écran NOTE/VEL/LEN `0x40029ac0`,
   trig-preview, copier/coller, p-locks de longueur s'il y en a), et les écritures des autres tweaks à ces adresses.
 
-### 10.5 Choix retenu : le slide trig de Model-TG, joué en slide 303 par Acid `[À FAIRE]`
+### 10.5 Choix retenu : le slide trig de Model-TG, joué en slide 303 par Acid `[FAIT en émulation]`
 
 Kevin (08/10/2026) : avec Model-TG, garder son slide trig (SETTINGS + touche de pas) pour marquer les pas, mais
 qu'Acid le joue en slide 303. SLD (§10.4) en attente : il prendrait le même bit 12 que Model-TG.
@@ -362,5 +362,25 @@ qu'Acid le joue en slide 303. SLD (§10.4) en attente : il prendrait le même bi
   de creux, §10.1). Les autres machines gardent le slide de Model-TG.
 - **Volume (choix c)** : une note marquée pour glisser est **tenue au plein** jusqu'au slide trig (GATE forcé à 1 par
   Acid, `voix + 0x24c`), comme une note liée de la 303 ; repli si l'OS s'y prête mal : relancer au plein sans creux.
-- À lire avant d'écrire : `src/model_tg.s` (v1.1.0, MIT) pour la disposition de l'état des glissements et la façon de
-  couper `sld_apply` sur une piste.
+- Model-TG (lu dans `src/model_tg.s`, v1.1.0, commit `70b39dd`) `[FAIT : lecture]` :
+  - `sld_seq` (détour des 2 appels du constructeur de trigs) : quand un trig P part et que le trig suivant S de la
+    piste est un slide trig, il arme le glissement : `SL_PND`, durée `SL_PDUR` (l'écart en blocs), mots qui bougent
+    `SL_PMSK`, valeurs de P (`SL_PST`) et de S (`SL_PEN`), 26 mots par piste.
+  - `sld_apply`, en tête de `sampler_pre` (avant notre `update`) : au front du trig de P, le glissement part
+    (`SL_ACT`, `SL_T0`, `SL_DUR`, `SL_MSK`, `SL_AST`, `SL_AEN`) et réécrit chaque bloc les mots lissés que lit la
+    machine (`params + 14 + 2 k`) ; le front de S l'arrête.
+  - Champs : un mot long par piste à `SLD_BASE + 4 t + champ`, tampons de 64 o à `SLD_BASE + 64 t + tampon` ; valables
+    seulement quand `sld_init` ≠ 0 (avant, la zone n'est pas remise à zéro).
+  - Séquenceur seulement : un glissement armé à l'arrêt attend Play ; une note jouée aux touches ne glisse pas.
+- Acid (version `acid-tg` seulement ; `26-acid.json` inchangé) :
+  - glissement en cours sur sa piste (`SL_ACT`) : les mots de `SL_MSK` lus dans `SL_AST` (la note P reste fixe), GATE
+    forcé à 1 et fin de note ignorée (`voix + 0x3c` effacé avant la chaîne d'ampli) ;
+  - au trig suivant, s'il glissait au bloc d'avant : hauteur qui rejoint la note de S (lissage ~60 ms), enveloppe du
+    filtre non relancée, chaîne d'ampli appelée `+0x34` / `+0x38` masqués deux blocs (pas de creux, pas d'attaque) ;
+    GATE de S à 0 : fin de note posée (`voix + 0x244`), S décroît comme une note normale.
+  - Lissage de la hauteur : constante de 20 ms (`GLIDE`), 95 % en ~60 ms ; une première version à 60 ms arrivait à
+    5 % en 185 ms, trop lente.
+- Preuve (`slide303` de `test_acid.py`, glissement armé comme `sld_seq`, `blk_clk` avancé à la main comme dans
+  `test_model_tg_syntakt.py`) : note tenue à 65,40 Hz pendant que Model-TG balaie PITCH ; enveloppe pleine jusqu'au
+  slide trig, sans creux ; enveloppe du filtre non relancée ; hauteur qui monte sans retour jusqu'à 195,9 Hz (196),
+  à 5 % en 65 ms ; sans slide : creux et enveloppe du filtre relancée ; TONE identique à Model-TG seul.
