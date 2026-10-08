@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400..700&family=Tiny5&display=swap">
-<link rel="stylesheet" href="../assets/site.css?v=2026-10-07-09">
-<link rel="stylesheet" href="../assets/guide.css?v=2026-10-07-09">
+<link rel="stylesheet" href="../assets/site.css?v=2026-10-08-01">
+<link rel="stylesheet" href="../assets/guide.css?v=2026-10-08-01">
 <script>try{var l=localStorage.getItem("mc-lang"),t=localStorage.getItem("mc-theme")}catch(e){}document.documentElement.lang=l||(/^fr\b/i.test(navigator.language||"")?"fr":"en");if(t)document.documentElement.setAttribute("data-theme",t)</script>
 </head>
 <body data-page="guide">
@@ -52,6 +52,7 @@
         <li><a href="#tempo"><span data-l="en">Tempo up to 546 BPM</span><span data-l="fr">Tempo jusqu'à 546 BPM</span></a></li>
         <li><a href="#boot-anim"><span data-l="en">Startup animation</span><span data-l="fr">Animation de démarrage</span></a></li>
         <li><a href="#macro"><span data-l="en">MACRO machine</span><span data-l="fr">Machine MACRO</span></a></li>
+        <li><a href="#acid"><span data-l="en">Acid machine</span><span data-l="fr">Machine Acid</span></a></li>
         <li><a href="#samples"><span data-l="en">Samples OS</span><span data-l="fr">OS Samples</span></a></li>
         <li><a href="#stock"><span data-l="en">Back to stock</span><span data-l="fr">Revenir à l'origine</span></a></li>
         <li><a href="#recovery"><span data-l="en">Recovery</span><span data-l="fr">Secours</span></a></li>
@@ -520,8 +521,27 @@
         <p class="note"><span data-l="en"><b>Before flashing another choice or the official firmware,</b> set your MACRO tracks back to an original machine (Kick to Chord): MACRO is the 7th machine alone and the 8th with Model-TG, and the official OS doesn't have it.</span><span data-l="fr"><b>Avant de flasher un autre choix ou le firmware officiel,</b> remettez vos pistes MACRO sur une machine d'origine (de Kick à Chord) : MACRO est la 7<sup>e</sup> machine seule et la 8<sup>e</sup> avec Model-TG, et l'OS officiel ne l'a pas.</span></p>
       </section>
 
+      <section id="acid">
+        <h2><span class="n">14</span><span data-l="en">Acid machine</span><span data-l="fr">Machine Acid</span></h2>
+        <p class="lede"><span data-l="en">One extra machine, Acid: a 303-style bass. A saw that blends into a square, a squelchy resonant filter that works as low-pass or high-pass on one knob, a filter envelope and an accent.</span><span data-l="fr">Une machine ajoutée, Acid : une basse façon 303. Une scie qui se fond en carré, un filtre résonant qui couine, passe-bas ou passe-haut sur un seul potard, une enveloppe de filtre et un accent.</span></p>
+        <ol>
+          <li><span data-l="en">Press <b>MACHINES</b> and pick <b>Acid</b>, after Chord (the 7th machine). Its icon is a smiley.</span><span data-l="fr">Appuyez sur <b>MACHINES</b> et choisissez <b>Acid</b>, après Chord (la 7<sup>e</sup> machine). Son icône est un smiley.</span></li>
+          <li><span data-l="en"><b>COLOR</b> (Cutoff) is a DJ-style filter: below 64 a low-pass that opens as you turn up, at 64 no filter, above 64 a high-pass that thins the sound as you keep turning. The volume stays the same as you cross the middle.</span><span data-l="fr"><b>COLOR</b> (Cutoff) est un filtre façon DJ : sous 64 un passe-bas qui s'ouvre quand vous montez, à 64 pas de filtre, au-dessus de 64 un passe-haut qui amincit le son quand vous continuez. Le volume reste le même en passant le milieu.</span></li>
+          <li><span data-l="en"><b>SWEEP</b> (Reso) is the resonance: it squelches more and more, and near the top it whistles on its own. <b>SHAPE</b> (Wave) blends the saw (0) into a square (127).</span><span data-l="fr"><b>SWEEP</b> (Reso) est la résonance : elle couine de plus en plus et, vers le haut, siffle toute seule. <b>SHAPE</b> (Wave) fond la scie (0) en carré (127).</span></li>
+          <li><span data-l="en"><b>CONTOUR</b> (Env Mod) sends the filter envelope up (above 64) or down (below 64); at 64, none. <b>DECAY</b> sets how long the envelope and the note last.</span><span data-l="fr"><b>CONTOUR</b> (Env Mod) envoie l'enveloppe du filtre vers le haut (au-dessus de 64) ou vers le bas (en dessous) ; à 64, rien. <b>DECAY</b> règle la durée de l'enveloppe et de la note.</span></li>
+          <li><span data-l="en"><b>PUNCH</b> is the accent: lock it on a step for a louder note with a harder, shorter filter sweep. <b>PITCH</b>, FINE, the keys and <b>GATE</b> work as on the original machines.</span><span data-l="fr"><b>PUNCH</b> est l'accent : verrouillez-le sur un pas pour une note plus forte, au filtre plus attaqué et plus court. <b>PITCH</b>, FINE, les touches et <b>GATE</b> marchent comme sur les machines d'origine.</span></li>
+        </ol>
+        <dl class="facts">
+          <div><dt><span data-l="en">Processor</span><span data-l="fr">Processeur</span></dt><dd><span data-l="en">about as light as Tone and lighter than the other original machines: six Acid tracks at once stay under the load of the six original machines. A silent Acid track is not computed.</span><span data-l="fr">à peu près aussi légère que Tone et plus légère que les autres machines d'origine : six pistes Acid ensemble restent sous la charge des six machines d'origine. Une piste Acid muette n'est pas calculée.</span></dd></div>
+          <div><dt><span data-l="en">Limits</span><span data-l="fr">Limites</span></dt><dd><span data-l="en">no slide yet. No drive knob: the four knobs are taken. On very low notes, an accented square can clip on the first high-pass steps above 64.</span><span data-l="fr">pas encore de slide. Pas de potard de saturation : les quatre potards sont pris. Sur les notes très graves, un carré accentué peut saturer sur les premiers crans du passe-haut au-dessus de 64.</span></dd></div>
+          <div><dt><span data-l="en">Other mods</span><span data-l="fr">Autres mods</span></dt><dd><span data-l="en">goes with every mod except Model-TG, MACRO and the Syntakt engines (not together, for now).</span><span data-l="fr">se combine avec tous les mods sauf Model-TG, MACRO et les moteurs du Syntakt (pas ensemble, pour l'instant).</span></dd></div>
+          <div><dt><span data-l="en">Experimental</span><span data-l="fr">Expérimental</span></dt><dd><span data-l="en">checked in the emulator on the OS's own code: the sound matches the same code on a computer, sample for sample; menus, knobs and machine locks work, and the original machines are unchanged. Not yet tested on a Model:Cycles.</span><span data-l="fr">vérifiée en émulation sur le code même de l'OS : le son correspond au même code sur ordinateur, échantillon par échantillon ; menus, potards et machine locks marchent, et les machines d'origine ne changent pas. Pas encore essayée sur un Model:Cycles.</span></dd></div>
+        </dl>
+        <p class="note"><span data-l="en"><b>Before flashing another choice or the official firmware,</b> set your Acid tracks back to an original machine (Kick to Chord): the official OS doesn't have Acid.</span><span data-l="fr"><b>Avant de flasher un autre choix ou le firmware officiel,</b> remettez vos pistes Acid sur une machine d'origine (de Kick à Chord) : l'OS officiel n'a pas Acid.</span></p>
+      </section>
+
       <section id="samples">
-        <h2><span class="n">14</span><span data-l="en">Samples OS</span><span data-l="fr">OS Samples</span></h2>
+        <h2><span class="n">15</span><span data-l="en">Samples OS</span><span data-l="fr">OS Samples</span></h2>
         <p class="lede"><span data-l="en">The Model:Cycles starts as a Model:Samples: you load and play your own samples, managed with Elektron Transfer.</span><span data-l="fr">Le Model:Cycles démarre en Model:Samples : vous chargez et jouez vos propres samples, gérés avec Elektron Transfer.</span></p>
         <p><span data-l="en">The flasher puts the official Model:Samples OS inside your Model:Cycles firmware file:</span><span data-l="fr">Le flasher place l'OS officiel du Model:Samples dans le fichier firmware de votre Model:Cycles :</span></p>
         <dl class="layers fig">
@@ -555,13 +575,13 @@
       </section>
 
       <section id="stock">
-        <h2><span class="n">15</span><span data-l="en">Back to stock</span><span data-l="fr">Revenir à l'origine</span></h2>
+        <h2><span class="n">16</span><span data-l="en">Back to stock</span><span data-l="fr">Revenir à l'origine</span></h2>
         <p><span data-l="en">The <b>Official firmware</b> tab of the flasher sends your OS file unchanged, over USB, like a normal update. It is also a good rehearsal before a first mod: it checks the cable and the setup without changing anything.</span><span data-l="fr">L'onglet <b>Firmware officiel</b> du flasher renvoie votre fichier d'OS sans le modifier, par USB, comme une mise à jour normale. C'est aussi une bonne répétition avant un premier mod : elle vérifie le câble et l'installation sans rien changer.</span></p>
         <p><span data-l="en">With Syntakt engines, the MACRO machine or Model-TG's Sampler, first set your tracks back to an original machine.</span><span data-l="fr">Avec des moteurs du Syntakt, la machine MACRO ou le Sampler de Model-TG, remettez d'abord vos pistes sur une machine d'origine.</span></p>
       </section>
 
       <section id="recovery">
-        <h2><span class="n">16</span><span data-l="en">Recovery</span><span data-l="fr">Secours</span></h2>
+        <h2><span class="n">17</span><span data-l="en">Recovery</span><span data-l="fr">Secours</span></h2>
         <p class="lede"><span data-l="en">If the Model:Cycles no longer starts, its startup menu can always reinstall the OS: it lives in an area that updates never write.</span><span data-l="fr">Si le Model:Cycles ne démarre plus, son menu de démarrage peut toujours réinstaller l'OS : il vit dans une zone que les mises à jour n'écrivent jamais.</span></p>
         <figure class="fig">
           <div data-device data-scenes="func @logo | func,mainvol | s4 @READY TO/>RECEIVE" data-ms="1300"></div>
@@ -575,7 +595,7 @@
       </section>
 
       <section id="trouble">
-        <h2><span class="n">17</span><span data-l="en">Troubleshooting</span><span data-l="fr">Dépannage</span></h2>
+        <h2><span class="n">18</span><span data-l="en">Troubleshooting</span><span data-l="fr">Dépannage</span></h2>
         <div class="faq">
           <details>
             <summary><span data-l="en">Nothing happens on the Model:Cycles screen</span><span data-l="fr">Rien ne se passe sur l'écran du Model:Cycles</span></summary>
@@ -639,8 +659,8 @@
   </div>
 </footer>
 
-<script src="../assets/release.js?v=2026-10-07-09"></script>
-<script src="../assets/cycles.js?v=2026-10-07-09"></script>
-<script src="../assets/site.js?v=2026-10-07-09"></script>
+<script src="../assets/release.js?v=2026-10-08-01"></script>
+<script src="../assets/cycles.js?v=2026-10-08-01"></script>
+<script src="../assets/site.js?v=2026-10-08-01"></script>
 </body>
 </html>

@@ -176,6 +176,21 @@ FEATURES = [
         "with": {"model-tg": "32-macro-tg"},
     },
     {
+        "id": "acid",
+        "cat": "sound",
+        "label": "Machine Acid",
+        "desc": "Une machine ajoutee apres Chord : une basse facon 303. COLOR = filtre facon DJ (passe-bas, ouvert a "
+                "64, passe-haut), SHAPE = scie vers carre, SWEEP = resonance, CONTOUR = enveloppe du filtre, "
+                "PUNCH = accent.",
+        "status": "experimental",
+        "credit": None,
+        # meme place que MACRO et les moteurs du Syntakt ; pas de version Model-TG (notes/44 §6)
+        "excludes": ["syntakt", "macro", "model-tg"],
+        "variants": [
+            {"file": "26-acid", "label": None},
+        ],
+    },
+    {
         "id": "syntakt",
         "cat": "sound",
         "label": "Vrais moteurs du Syntakt",

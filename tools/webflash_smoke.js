@@ -167,9 +167,9 @@ async function main() {
     check(typeof w.MCBuilder === "object" && typeof w.MCFlasher === "object", "MCBuilder + MCFlasher present");
     const ids = w.MC_TWEAKS.tweaks.map((x) => x.id);
     const nEng = w.MC_TWEAKS.features.find((f) => f.engines).engines.length;
-    check(ids.slice(0, 14).join() === "6ch-usbup,model-tg,model-tg-st,latching-mute,trig-preview,browser-scroll,trig-hold,arp,tempo-max,boot-anim,macro,macro-tg,syntakt-sd,syntakt-tg-sd"
-      && ids.length === 12 + 2 * ((1 << nEng) - 1) && ids.includes("syntakt-sd-cp") && ids.includes("syntakt-tg-sd-cp-toy-bits")
-      && ids.includes("arp") && !ids.some((x) => /exact|snare|multiout/.test(x)) && w.MC_TWEAKS.features.length === 11,
+    check(ids.slice(0, 15).join() === "6ch-usbup,model-tg,model-tg-st,latching-mute,trig-preview,browser-scroll,trig-hold,arp,tempo-max,boot-anim,macro,macro-tg,acid,syntakt-sd,syntakt-tg-sd"
+      && ids.length === 13 + 2 * ((1 << nEng) - 1) && ids.includes("syntakt-sd-cp") && ids.includes("syntakt-tg-sd-cp-toy-bits")
+      && ids.includes("arp") && !ids.some((x) => /exact|snare|multiout/.test(x)) && w.MC_TWEAKS.features.length === 12,
       `MC_TWEAKS: only USB-friendly tweaks, one tweak per choice of the ${nEng} Syntakt engines (no SNARE replacement), alone and with Model-TG: ${ids.length} tweaks`);
     check(/build \d{4}-/.test(text(doc, "build-stamp")), "version stamp shown");
     const srcs = [...doc.querySelectorAll("script[src]")].map((x) => x.getAttribute("src"));
@@ -179,8 +179,8 @@ async function main() {
     // display order: by section (Packs, Sounds & machines, Sequencer, Live playing, Screen & browsing, USB & MIDI),
     // FEATURES order inside a section; the build keeps FEATURES order (checked in 1b)
     const feats = [...doc.querySelectorAll("#features input[type=checkbox]")].map((c) => c.id);
-    check(feats.join() === "feat-model-tg,feat-macro,feat-syntakt,feat-trig-preview,feat-trig-hold,feat-arp,feat-tempo-max,feat-latching-mute,feat-browser-scroll,feat-boot-anim,feat-usb6",
-      "11 feature rows, by section: " + JSON.stringify(feats));
+    check(feats.join() === "feat-model-tg,feat-macro,feat-acid,feat-syntakt,feat-trig-preview,feat-trig-hold,feat-arp,feat-tempo-max,feat-latching-mute,feat-browser-scroll,feat-boot-anim,feat-usb6",
+      "12 feature rows, by section: " + JSON.stringify(feats));
     check(w.MC_TWEAKS.features.every((f) => doc.querySelector(`#cat-${f.cat || "other"} #mod-${f.id} #feat-${f.id}`)),
       "every feature has a row in its section (cat)");
     const tagOfFeat = (f) => (f.status === "tested" ? "Tested" : "Experimental");
@@ -237,6 +237,21 @@ async function main() {
     check(macroAlone === "macro" && macroTg === "model-tg-st,macro-tg" && macroNote && swapped && back
       && !w.MCFlasherApp.chosenTweaks().length && doc.querySelector('#features a[href$="#macro"]'),
       `MACRO: alone ${macroAlone}, with Model-TG ${macroTg}, its note shown, and never with the Syntakt engines`);
+    // Acid (notes/44): alone only, never with Model-TG, MACRO or the Syntakt engines
+    box("feat-acid").click(); await wait(5);
+    const acidAlone = w.MCFlasherApp.chosenTweaks().map((x) => x.id).join();
+    const acidNote = /needs a firmware with Acid as the 7th machine/.test(text(doc, "features"));
+    const acidOff = [];
+    for (const other of ["feat-model-tg", "feat-macro", "feat-syntakt"]) {
+      box(other).click(); await wait(5);
+      acidOff.push(!box("feat-acid").checked && box(other).checked);
+      box("feat-acid").click(); await wait(5);
+      acidOff.push(box("feat-acid").checked && !box(other).checked);
+    }
+    box("feat-acid").click(); await wait(5);
+    check(acidAlone === "acid" && acidNote && acidOff.every(Boolean) && !w.MCFlasherApp.chosenTweaks().length
+      && doc.querySelector('#features a[href$="#acid"]') && /Experimental/.test(doc.querySelector("label[for=feat-acid] .tag").textContent),
+      `Acid: alone ${acidAlone}, its note shown, experimental, never with Model-TG, MACRO or the Syntakt engines ${acidOff}`);
     // Model-TG holds drumkilla's tweaks: ticked, it shows them ticked and locked, "(included with Model-TG)", and
     // builds without them; unticked, they are free again. With the Syntakt engines it makes the combined version
     // (notes/31): its base, then the engines' tweak built on top of it
@@ -303,6 +318,8 @@ async function main() {
       "FR: startup animation card translated, with its guide link");
     check(/Machine MACRO/.test(text(doc, "features")) && /tirés du code libre de Braids/.test(text(doc, "features")) && /d'après eurorack d'Émilie Gillet/.test(text(doc, "features"))
       && doc.querySelector('#features a[href$="#macro"]'), "FR: MACRO card translated, with its credit and guide link");
+    check(/Machine Acid/.test(text(doc, "features")) && /une basse façon 303/.test(text(doc, "features"))
+      && doc.querySelector('#features a[href$="#acid"]'), "FR: Acid card translated, with its guide link");
     doc.getElementById("feat-model-tg").click(); await wait(5);
     check(/\(inclus avec Model-TG\)/.test(doc.querySelector("label[for=feat-browser-scroll] .ttl").textContent),
       "FR: the tweaks Model-TG holds say « (inclus avec Model-TG) »");

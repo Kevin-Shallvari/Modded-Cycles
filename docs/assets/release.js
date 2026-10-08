@@ -3,6 +3,12 @@
  *   { version: "1.1", date: "2026-10-15", changes: [{ en: "…", fr: "…" }] }
  */
 window.MC_RELEASES = [
+  { version: "1.32", date: "2026-10-08", changes: [
+    { en: "New mod, Acid machine (experimental): one extra machine after Chord, a 303-style bass. SHAPE blends saw into square, COLOR is a DJ-style filter (low-pass below 64, none at 64, high-pass above, same volume across the middle), SWEEP is the resonance, CONTOUR sends the filter envelope up or down, PUNCH is the accent",
+      fr: "Nouveau mod, Machine Acid (expérimental) : une machine ajoutée après Chord, une basse façon 303. SHAPE fond la scie en carré, COLOR est un filtre façon DJ (passe-bas sous 64, rien à 64, passe-haut au-dessus, même volume de part et d'autre du milieu), SWEEP est la résonance, CONTOUR envoie l'enveloppe du filtre vers le haut ou vers le bas, PUNCH est l'accent" },
+    { en: "About as light on the processor as Tone. Checked in the emulator on the OS's own code; not yet tested on a Model:Cycles. No slide yet, and not with Model-TG, MACRO or the Syntakt engines for now",
+      fr: "À peu près aussi légère en calcul que Tone. Vérifiée en émulation sur le code même de l'OS ; pas encore essayée sur un Model:Cycles. Pas encore de slide, et pas avec Model-TG, MACRO ni les moteurs du Syntakt pour l'instant" },
+  ] },
   { version: "1.31", date: "2026-10-07", changes: [
     { en: "New mod, MACRO machine: one extra machine with the 47 synthesis models of Braids, Émilie Gillet's open-source macro-oscillator, compiled from her own code (MIT license). SHAPE picks the model (0 to 46), COLOR and SWEEP shape it, CONTOUR lets the amp envelope open the timbre; DECAY, GATE and PUNCH work as on Tone",
       fr: "Nouveau mod, Machine MACRO : une machine ajoutée avec les 47 modèles de synthèse de Braids, le macro-oscillateur libre d'Émilie Gillet, compilés depuis son propre code (licence MIT). SHAPE choisit le modèle (0 à 46), COLOR et SWEEP le façonnent, CONTOUR laisse l'enveloppe d'ampli ouvrir le timbre ; DECAY, GATE et PUNCH marchent comme sur Tone" },
