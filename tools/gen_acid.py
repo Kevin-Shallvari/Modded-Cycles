@@ -197,11 +197,13 @@ def art(img, pay):
     return parts, reloc, addr, at
 
 
-def art_asm(addr, first, tg):
+def art_asm(addr, first, tg, others=False):
     """Détours des images d'Acid (machine first), à la suite de gs.detours_asm : drum_icons et small_icon avec nos
     objets ; aux 3 autres sites, jsr à la place de « add.l tableau, %d0 » (d0 = 28 x machine). Avec Model-TG, son
     Sampler (6) garde l'image de CHORD."""
     sampler = "\tcmpi.l\t#168, %d0\n\tbne.s\t1f\n\tmove.l\t#140, %d0\n" if tg else ""          # Sampler -> CHORD
+    if others:                                                  # avec les moteurs du Syntakt : toute machine > 5
+        sampler = "\tcmpi.l\t#168, %d0\n\tbcs.s\t1f\n\tmove.l\t#140, %d0\n"
     return f"""
 	.globl	acid_drum_icons
 acid_drum_icons:
@@ -295,14 +297,15 @@ LINK = """SECTIONS
 BSS_OFF = gm.BSS_OFF
 
 
-def compile_machine(tmp, pay, defs=()):
+def compile_machine(tmp, pay, defs=(), bss_off=BSS_OFF):
     """Le moteur, lié à pay (code, tables) et pay + BSS_OFF (états des 6 pistes). Renvoie (octets, symboles, fin du
     BSS)."""
     (tmp / "acid_tables.h").write_text(tables_h())
     o, ld, elf, out = tmp / "acid.o", tmp / "link.ld", tmp / "acid.elf", tmp / "acid.bin"
     gx.run([gx.CROSS + "gcc", *CFLAGS, *defs, f"-I{tmp}", "-c", str(SRC / "acid.c"), "-o", str(o)])
-    ld.write_text(LINK.format(code=pay, bss=pay + BSS_OFF))
-    gx.run([gx.CROSS + "ld", "-T", str(ld), "--gc-sections", "--no-warn-rwx-segments", "-e", "acid_update",
+    ld.write_text(LINK.format(code=pay, bss=pay + bss_off))
+    rwx = ["--no-warn-rwx-segments"] if "no-warn-rwx" in gx.run([gx.CROSS + "ld", "--help"]) else []   # binutils >= 2.39
+    gx.run([gx.CROSS + "ld", "-T", str(ld), "--gc-sections", *rwx, "-e", "acid_update",
             "-u", "acid_render", "-o", str(elf), str(o)])
     secs = {}
     for line in gx.run([gx.CROSS + "objdump", "-h", str(elf)]).splitlines():
@@ -321,8 +324,8 @@ def compile_machine(tmp, pay, defs=()):
             syms[p_[2]] = int(p_[0], 16)
     if len(blob) > ART_OFF:
         raise SystemExit(f"!! code et tables trop grands : {len(blob)} o (les images commencent à +{ART_OFF:#x})")
-    bss = secs.get(".bss", (pay + BSS_OFF, 0))
-    if bss[0] != pay + BSS_OFF:
+    bss = secs.get(".bss", (pay + bss_off, 0))
+    if bss[0] != pay + bss_off:
         raise SystemExit("!! BSS")
     return blob, syms, (bss[0] + bss[1] + 3) & ~3
 

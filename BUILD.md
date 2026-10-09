@@ -330,6 +330,20 @@ avec MACRO, les moteurs du Syntakt et SD VINTAGE (même mécanique, même place)
 | `model-tg-st,acid-tg` | `185f3112e950732521433e6725fbbd65756cabc3b8b39d13b70d1d9870a635f3` |
 | `6ch-usbup,model-tg-st,acid-tg,trig-hold,arp,tempo-max,boot-anim` | `a2ce3cea7480cdc1880a2c5b7a3ebf8fc031afbd0331ffe87716443e5ed2d1fa` |
 
+Avec Model-TG et les moteurs du Syntakt, les 31 `31-syntakt-tg-<moteurs>-acid.json` viennent de
+`tools/gen_syntakt_engines.py --tg --acid` ([note 51 §11](notes/51-machine-acid.md)). Comme les autres tweaks du
+Syntakt, ils se refont avec `m68k-elf-gcc` 16.2 (Homebrew) et des binutils 2.38 :
+```sh
+M68K_CROSS=… python3 tools/gen_syntakt_engines.py --cycles … --syntakt Syntakt_OS1.42.syx --all --tg --acid [--check]
+python3 tools/emu/test_acid.py --cycles … --syntakt Syntakt_OS1.42.syx
+```
+
+| `-t` (avec `--syntakt`) | MAIN OS patché (SHA-256) |
+|---|---|
+| `model-tg-st,syntakt-tg-sd-acid` | `236ebd2c3196751f84d50cedbc8fbddc0209113293bbab2d2c6cd4eecc25966f` |
+| `model-tg-st,syntakt-tg-sd-cp-toy-bits-swarm-acid` | `35db9fc978f538ffb36ffc88862ce10c0efcea7956f62ac7da0c1d050b3127b5` |
+| `6ch-usbup,model-tg-st,syntakt-tg-sd-cp-toy-bits-swarm-acid,trig-hold,arp,tempo-max,boot-anim` | `45d9cd3ad0705419304df1c497d5e85b47534fbff15966cc1860f31753e9e43b` |
+
 ### Écoute d'un pas en pause
 
 `trig-preview` (et sa copie dans Model-TG) accepte le séquenceur en pause, où le met un Stop MIDI reçu même à l'arrêt : 3 octets

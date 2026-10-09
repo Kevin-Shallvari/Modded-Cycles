@@ -3,6 +3,12 @@
  *   { version: "1.1", date: "2026-10-15", changes: [{ en: "…", fr: "…" }] }
  */
 window.MC_RELEASES = [
+  { version: "1.36", date: "2026-10-09", changes: [
+    { en: "Acid with the Syntakt engines (experimental): with Model-TG ticked, Acid and the Syntakt engines now go together. Acid comes after the engines you picked, with its 303 slide; without Model-TG they still exclude each other",
+      fr: "Acid avec les moteurs du Syntakt (expérimental) : avec Model-TG coché, Acid et les moteurs du Syntakt vont maintenant ensemble. Acid vient après les moteurs choisis, avec son slide 303 ; sans Model-TG, ils s'excluent toujours" },
+    { en: "The Syntakt engines sound exactly as without Acid, checked in the emulator on the OS's, Model-TG's and the Syntakt's own code; not yet tested on a Model:Cycles. The firmwares without Acid don't change",
+      fr: "Les moteurs du Syntakt sonnent exactement comme sans Acid, vérifié en émulation sur le code même de l'OS, de Model-TG et du Syntakt ; pas encore essayé sur un Model:Cycles. Les firmwares sans Acid ne changent pas" },
+  ] },
   { version: "1.35", date: "2026-10-08", changes: [
     { en: "Acid with Model-TG: Model-TG's slide trigs now play as 303 slides on Acid tracks. The note before the slide trig holds at full volume, then bends into the new note in about 60 ms, without a new attack or a filter sweep restart. Other machines keep Model-TG's own slide",
       fr: "Acid avec Model-TG : les slide trigs de Model-TG jouent maintenant en slide 303 sur les pistes Acid. La note d'avant le slide trig tient au plein, puis rejoint la nouvelle note en 60 ms environ, sans nouvelle attaque ni enveloppe de filtre relancée. Les autres machines gardent le slide de Model-TG" },

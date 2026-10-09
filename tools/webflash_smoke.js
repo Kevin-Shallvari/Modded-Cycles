@@ -167,8 +167,8 @@ async function main() {
     check(typeof w.MCBuilder === "object" && typeof w.MCFlasher === "object", "MCBuilder + MCFlasher present");
     const ids = w.MC_TWEAKS.tweaks.map((x) => x.id);
     const nEng = w.MC_TWEAKS.features.find((f) => f.engines).engines.length;
-    check(ids.slice(0, 18).join() === "6ch-usbup,model-tg,model-tg-st,sample-preview,sample-preview-st,latching-mute,trig-preview,browser-scroll,trig-hold,arp,tempo-max,boot-anim,macro,macro-tg,acid,acid-tg,syntakt-sd,syntakt-tg-sd"
-      && ids.length === 16 + 2 * ((1 << nEng) - 1) && ids.includes("syntakt-sd-cp") && ids.includes("syntakt-tg-sd-cp-toy-bits")
+    check(ids.slice(0, 19).join() === "6ch-usbup,model-tg,model-tg-st,sample-preview,sample-preview-st,latching-mute,trig-preview,browser-scroll,trig-hold,arp,tempo-max,boot-anim,macro,macro-tg,acid,acid-tg,syntakt-sd,syntakt-tg-sd,syntakt-tg-sd-acid"
+      && ids.length === 16 + 3 * ((1 << nEng) - 1) && ids.includes("syntakt-sd-cp") && ids.includes("syntakt-tg-sd-cp-toy-bits")
       && ids.includes("arp") && !ids.some((x) => /exact|snare|multiout/.test(x)) && w.MC_TWEAKS.features.length === 13,
       `MC_TWEAKS: only USB-friendly tweaks, one tweak per choice of the ${nEng} Syntakt engines (no SNARE replacement), alone and with Model-TG: ${ids.length} tweaks`);
     check(/build \d{4}-/.test(text(doc, "build-stamp")), "version stamp shown");
@@ -259,6 +259,18 @@ async function main() {
     check(acidAlone === "acid" && acidTg === "model-tg-st,acid-tg" && acidSp === "model-tg-st,sample-preview-st,acid-tg" && acidNote && acidOff.every(Boolean) && !w.MCFlasherApp.chosenTweaks().length
       && doc.querySelector('#features a[href$="#acid"]') && /Experimental/.test(doc.querySelector("label[for=feat-acid] .tag").textContent),
       `Acid: alone ${acidAlone}, with Model-TG ${acidTg}, with sample preview ${acidSp}, its note shown, experimental, never with MACRO or the Syntakt engines ${acidOff}`);
+    // with Model-TG, Acid and the Syntakt engines go together (notes/51 §11): the engines' card builds its version
+    // with Acid; unticking Model-TG unticks Acid
+    box("feat-model-tg").click(); await wait(5);
+    box("feat-syntakt").click(); await wait(5);
+    box("feat-acid").click(); await wait(5);
+    const acidSt = w.MCFlasherApp.chosenTweaks().map((x) => x.id).join();
+    const bothOn = box("feat-acid").checked && box("feat-syntakt").checked;
+    box("feat-model-tg").click(); await wait(5);
+    const dropped = !box("feat-acid").checked && box("feat-syntakt").checked;
+    box("feat-syntakt").click(); await wait(5);
+    check(acidSt === "model-tg-st,syntakt-tg-sd-acid" && bothOn && dropped && !w.MCFlasherApp.chosenTweaks().length,
+      `Acid with Model-TG and the Syntakt engines: ${acidSt}; unticking Model-TG unticks Acid (${dropped})`);
     // Model-TG holds drumkilla's tweaks: ticked, it shows them ticked and locked, "(included with Model-TG)", and
     // builds without them; unticked, they are free again. With the Syntakt engines it makes the combined version
     // (notes/31): its base, then the engines' tweak built on top of it

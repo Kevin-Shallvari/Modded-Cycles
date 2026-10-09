@@ -202,8 +202,10 @@ FEATURES = [
                 "PUNCH = accent.",
         "status": "experimental",
         "credit": None,
-        # meme place que MACRO et les moteurs du Syntakt (notes/51 §6)
+        # meme place que MACRO et les moteurs du Syntakt (notes/51 §6) ; avec Model-TG, Acid et les moteurs vont
+        # ensemble : la carte des moteurs prend alors leur version avec Acid (« merges », notes/51 §11)
         "excludes": ["syntakt", "macro"],
+        "merges": "syntakt",
         "variants": [
             {"file": "26-acid", "label": None},
         ],
@@ -234,6 +236,7 @@ def engine_feature(f, load):
         combos.append({"id": t["id"], "engines": codes, "tested": tuple(codes) in gs.HW_TESTED,
                        "label": ", ".join(gs.CATALOG[c]["name"] for c in codes),
                        "tg": load(gs.tweak_id(codes, tg=True))["id"],      # avec Model-TG (notes/31)
+                       "tg_acid": load(gs.tweak_id(codes, tg=True) + "-acid")["id"],   # et Acid (notes/51 §11)
                        "tg_tested": tuple(codes) in gs.HW_TESTED_TG})
     return engines, combos
 
@@ -308,6 +311,8 @@ def render():
             feat["needs"] = f["needs"]
         if f.get("excludes"):
             feat["excludes"] = f["excludes"]
+        if f.get("merges"):                     # avec Model-TG : dans la version de cette carte (combo « tg_<id> »)
+            feat["merges"] = f["merges"]
         if f.get("includes"):
             feat["includes"] = f["includes"]
         if f.get("with"):                       # autre tweak quand une autre carte est cochee aussi

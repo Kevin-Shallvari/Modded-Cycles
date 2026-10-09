@@ -384,3 +384,43 @@ qu'Acid le joue en slide 303. SLD (§10.4) en attente : il prendrait le même bi
   `test_model_tg_syntakt.py`) : note tenue à 65,40 Hz pendant que Model-TG balaie PITCH ; enveloppe pleine jusqu'au
   slide trig, sans creux ; enveloppe du filtre non relancée ; hauteur qui monte sans retour jusqu'à 195,9 Hz (196),
   à 5 % en 65 ms ; sans slide : creux et enveloppe du filtre relancée ; TONE identique à Model-TG seul.
+
+## 11. Acid avec les moteurs du Syntakt, sous Model-TG `[EN COURS : preuve partielle]`
+
+Demande de Kevin (09/10/2026) : Acid en même temps que les moteurs du Syntakt. Choix : seulement avec Model-TG, une
+variante par choix de moteurs (`31-syntakt-tg-<moteurs>-acid.json`, 31 tweaks) ; les `syntakt-tg-…` existants ne
+changent pas (la combinaison des 5 moteurs reste « testée »). Sans Model-TG, Acid et les moteurs restent incompatibles.
+
+- Pourquoi une variante : `acid-tg` et `syntakt-tg-…` prennent la même place (charge utile à `0x46700000`) et
+  remplacent les mêmes tables (noms, update/render, descripteurs, rangées) : un seul générateur doit les réunir.
+- `gen_syntakt_engines.py --tg --acid` : Acid est la dernière machine ajoutée (après les moteurs). Ses pointeurs
+  `acid_update` / `acid_render` vont dans les tables lues par le détour des voix : `voice_gate` (le régulateur) et
+  `voice_after` passent par Acid comme par les moteurs, sans changement de la passerelle (`voice_gate` ne distingue que
+  le Sampler).
+- Code, tables et images d'Acid compilés à la suite de la charge utile du Syntakt (`lay["end"]` aligné), états à la
+  suite ; slide 303 (§10.5) compris (`-DSLD_BASE`).
+- Images : bornes des 3 sites de la lettre de 5 à la machine d'Acid ; notre détour rend le smiley pour Acid et l'image
+  de CHORD pour toute autre machine au-delà de 5 (Sampler, moteurs), comme sans Acid.
+- **Compilateur** `[FAIT]` : les tweaks du Syntakt versionnés ne se refont pas avec `m68k-linux-gnu-gcc` 13.3 (passerelle
+  différente) ; ils se refont **octet pour octet** (les 62, seuls et avec Model-TG) avec `m68k-elf-gcc` **16.2.0** de
+  Homebrew **et** des binutils 2.38 (ceux d'Ubuntu 22.04) : les binutils plus récents de Homebrew changent 3 écritures
+  de l'envoi à l'USB à heure fixe (`lea` absolu → relatif au PC). Reproduit dans un conteneur podman
+  (`homebrew/brew`, `brew install m68k-elf-gcc`, `apt install binutils-m68k-linux-gnu`, `M68K_CROSS` vers un `gcc` qui
+  prend l'assembleur 2.38 par `-B`). Les 31 variantes avec Acid sont faites ainsi : la passerelle est celle des tweaks
+  essayés ; le code d'Acid y vient de GCC 16.2 (13.3 pour `26-acid` et `35-acid-tg`).
+- `--all --tg` dans un seul processus échouait dès la 2e combinaison (« zones de SRAM ») : une 2e copie du module,
+  importée en route, remettait la base sans Model-TG. Corrigé : la base est remise à chaque combinaison.
+- **Crochet de démarrage** : il porte la liste des morceaux de la charge utile (8 o chacun) et partage son masque avec
+  l'arpégiateur, qui commence 192 o plus loin (`0x4016cba8`). La 1re version (Acid aligné sur 256, images à +`0x1800`)
+  ajoutait 2 morceaux : 196 à 204 o, sur l'arpégiateur (vu par `ref_mainos.py`). Acid est maintenant collé à la fin du
+  Syntakt, ses images à son code, et les morceaux à moins de 256 o se rejoignent : 164 à 172 o ; le générateur refuse
+  un crochet qui atteindrait l'arpégiateur.
+- **Place** : avec les 5 moteurs et Acid, l'image décompressée finit à `0x401fc8f4`, 14 Ko sous la limite `0x40200000`.
+- **Taille du flasher** : 31 tweaks de 45 à 60 Ko (chacun reprend son jumeau sans Acid) : `tweaks.js` passe de 3,6 à
+  5,5 Mo (0,82 → 1,26 Mo compressé).
+- Preuve (`test_acid.py --syntakt`, les 5 moteurs + Acid), **faite en partie** (09/10/2026) : démarrage,
+  vérifications de l'interface de Model-TG avec 13 machines (noms SDVtg, CPVtg, SYToy, SYBit, SYSwm, Acid ; défauts
+  d'Acid), images aux 5 sites (machines 0..11 comme sans Acid), **les 5 moteurs identiques à la même version sans
+  Acid** : tout OK. **Pas encore lancé jusqu'au bout** : son d'Acid exact, machines d'origine, Acid = Acid avec
+  Model-TG seul, machine locks, 6 pistes, Sampler mêlé, slide 303, coût, `--with` [À FAIRE].
+- `ref_mainos.py --check` : 12 863 combinaisons ; `webflash_smoke.sh` (rapide) : ALL OK.

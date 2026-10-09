@@ -67,6 +67,8 @@ def block(cycles, syntakt):
     # Syntakt ou MACRO : sa base model-tg-st ; MACRO avec Model-TG : macro-tg ; l'écoute des samples suit Model-TG),
     # comme chosenTweaks() de app.js ; et les moteurs du Syntakt, avec Model-TG, le leur (tg)
     tg_of = {c["id"]: c["tg"] for c in extra[0]["combos"]} if extra else {}
+    # carte « merges » (Acid) : avec Model-TG et les moteurs, dans leur version (combo « tg_<id> »), notes/51 §11
+    combo_of = {c["id"]: c for c in extra[0]["combos"]} if extra else {}
 
     def payload(apps):
         """Charges utiles des tweaks « append » choisis, l'une après l'autre (comme tools/build.py)."""
@@ -82,10 +84,11 @@ def block(cycles, syntakt):
             lines.append(f"  // + real Syntakt engines {names} (tweak {last}), with the official Syntakt OS 1.42 or 1.41")
         for sub in subsets:
             on = {f["id"] for f in sub} | ({extra[0]["id"]} if last else set())
+            merge = [f for f in sub if last and f.get("merges") == extra[0]["id"] and "model-tg" in on]
             ids = [next((a for g, a in reversed(list(f.get("with", {}).items())) if g in on), options(f)[0])
-                   for f in sub]
+                   for f in sub if f not in merge]
             if last:                                      # avec Model-TG : la version combinée (notes/31)
-                ids.append(tg_of[last] if "model-tg" in on else last)
+                ids.append(combo_of[last]["tg_" + merge[0]["id"]] if merge else tg_of[last] if "model-tg" in on else last)
             chosen = [by_id[i] for i in ids]
             if not ids or any(o in ids for t in chosen for o in t.get("conflicts", [])):
                 continue                                  # cases incompatibles : la page ne les propose pas

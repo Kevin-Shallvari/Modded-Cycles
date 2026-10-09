@@ -70,6 +70,31 @@ def load(name):
     return json.loads((DEV / name).read_text(encoding="utf-8"))
 
 
+class FwSt:
+    """Version Syntakt + Model-TG (notes/51 §11) : charge utile faite depuis TON fichier Syntakt ; Acid, s'il y est,
+    est la dernière machine (symboles du tweak)."""
+
+    def __init__(self, stock, tweaks, st_img, syntakt_path, n_eng):
+        p, _ = build.apply_writes(stock, tweaks)
+        pl, _ = build.build_payload(tweaks, stock, syntakt_path)
+        self.img, self.tweaks = bytes(p) + pl, tweaks
+        self.blob_end = BASE + len(stock) + tweaks[0]["append"]["size"]
+        ours = tweaks[-1]
+        ap_ = ours["append"]
+        self.pay = int(ap_["dest"], 16)
+        self.runtime = build.payload_runtime(ours, stock, st_img)
+        self.payload = (self.pay, self.runtime)
+        sym = ours.get("symbols")
+        self.nm = gs.TG_FIRST + n_eng + (1 if sym else 0)
+        self.index = self.nm - 1
+        self.upd = self.rnd = None
+        if sym:
+            self.upd, self.rnd = int(sym["acid_update"], 16), int(sym["acid_render"], 16)
+            self.acid_lo = self.upd
+            self.code_end = self.upd + next(len(p_["hex"]) // 2 for p_ in ap_["parts"] if int(p_["dest"], 16) == self.upd)
+
+
+
 class Fw:
     """Un firmware : MAIN OS (avec ce qui est ajouté après), et la charge utile d'Acid telle qu'en mémoire."""
 
@@ -87,6 +112,7 @@ class Fw:
         self.pay = int(ap_["dest"], 16)
         self.runtime = build.payload_runtime(ours[0], stock, None)
         self.payload = (self.pay, self.runtime)
+        self.acid_lo = self.pay
         self.code_end = self.pay + len(ap_["parts"][0]["hex"]) // 2          # code et tables d'Acid
         self.nm = gs.TG_FIRST + 1 if tg else 7
         self.index = self.nm - 1
@@ -107,6 +133,9 @@ class Fw:
                 if t != solo:
                     e.uc.mem_write(E.VOICE0 + t * E.VSTRIDE, struct.pack(">II", OFF, OFF))
         return e
+
+
+FwSt.engine = Fw.engine
 
 
 # --- 1. démarrage ----------------------------------------------------------------------------------------------
@@ -185,13 +214,13 @@ def interface_alone(stock, fw):
     pictures(stock, fw)
 
 
-def pictures(stock, fw, ref=None):
+def pictures(stock, fw, ref=None, ref_label="à Model-TG seul"):
     """Les images d'Acid (notes/51 §3.4) : objets Bitmap tels que les construirait l'OS, pixels voulus, et les 5 sites
     qui dessinent une image de machine : nos objets pour Acid, ceux de ref (l'OS d'origine, ou Model-TG seul) pour
     les autres machines."""
     ref_img = ref.img if ref else stock
     ui = lambda f: tms.UI(f) if f.blob_end else t7.UI(f.img, f.runtime)       # avec Model-TG : sa mémoire
-    sym = next(t for t in fw.tweaks if t["id"].startswith("acid"))["symbols"]
+    sym = next(t for t in fw.tweaks if "art_card" in t.get("symbols", {}))["symbols"]
     obj = {k: int(sym[f"art_{k}"], 16) for k in ("card", "mid", "small")}
     rt = lambda a, n: fw.runtime[a - fw.pay:a - fw.pay + n]
     # 1. les objets : octet pour octet ce que fait le constructeur de l'OS (0x40070172) avec nos images et ses masques
@@ -224,7 +253,7 @@ def pictures(stock, fw, ref=None):
             _, is_, _, _ = t7.drum_select(ref_img, b"", m)
             _, ip, _, bp = t7.drum_select(fw.img, fw.runtime, m)
         ok &= not bp and (ip == [obj["card"], obj["mid"]] if m == A else ip == is_)
-    check(ok, f"écran MACHINES : machines 0..{A - 1} identiques {'à Model-TG seul' if ref else 'au stock'} ; Acid -> sa "
+    check(ok, f"écran MACHINES : machines 0..{A - 1} identiques {ref_label if ref else 'au stock'} ; Acid -> sa "
               "fiche et son smiley")
     # 4. petite lettre (0x400a4dc4) et les 3 autres sites : l'image passée à la fonction de dessin 0x40071da4
     sites = (("petite lettre", 0x400a4dc4, 0, 0x40fe37f0, "small"),       # (nom, départ, d0 = m << .., tableau, objet)
@@ -257,7 +286,7 @@ def pictures(stock, fw, ref=None):
         res.append((label, ok, got["modifié", A + 1]))
     check(all(ok for _, ok, _ in res),
           f"images aux 4 autres sites ({', '.join(l for l, _, _ in res)}) : machines 0..{A - 1} identiques "
-          f"{'à Model-TG seul' if ref else 'au stock'}, Acid -> son smiley (sans Acid : CHORD) ; machine hors limites "
+          f"{ref_label if ref else 'au stock'}, Acid -> son smiley (sans Acid : CHORD) ; machine hors limites "
           f"{A + 1} -> {['smiley' if g == [obj['small']] or g == [obj['mid']] else g for _, _, g in res]}")
 
 
@@ -307,7 +336,7 @@ class Probe:
                                                      or abs(v32(0x234)) >= IDLE_LEVEL))
 
         def amp(uc_, a, s, u):
-            if fw.pay <= arg(0) < fw.code_end and arg(1) == self.v:
+            if fw.acid_lo <= arg(0) < fw.code_end and arg(1) == self.v:
                 self.recs[-1]["render"] = 1
                 self.recs[-1]["out"] = np.frombuffer(bytes(uc.mem_read(self.out_at, 128)), ">i4").astype(np.int64)
         uc.hook_add(UC_HOOK_CODE, upd, begin=fw.upd, end=fw.upd)
@@ -326,7 +355,7 @@ def play(fw, idx, kw, blocks, trigs=(1,), changes=None, track=0, reads=False):
     """Une piste sur la machine idx, les autres éteintes. changes : {bloc : réglages} (p-locks, potards)."""
     e = fw.engine(solo=track)
     e.set(track, machine=idx, **kw)
-    pr = Probe(fw, e, track, reads) if fw.payload and idx == fw.index else None
+    pr = Probe(fw, e, track, reads) if fw.payload and getattr(fw, "upd", None) and idx == fw.index else None
     out = []
     for b in range(blocks):
         for k, v in (changes or {}).get(b, {}).items():
@@ -447,7 +476,7 @@ def stock_unchanged(ref_fw, fw, label):
             e.set(t, **dict(BASE_KW, machine=t, note=60, color=64, shape=64, contour=64, decay=60))
         ran = []
         if hook:
-            e.uc.hook_add(UC_HOOK_CODE, lambda uc, a, s, u: ran.append(a), begin=f.pay, end=f.code_end - 1)
+            e.uc.hook_add(UC_HOOK_CODE, lambda uc, a, s, u: ran.append(a), begin=f.acid_lo, end=f.code_end - 1)
         x = np.stack([e.block(0x3f if b in (1, 150) else 0) for b in range(300)])
         return x, ran, e.unmapped
     r, _, _ = run(ref_fw, False)
@@ -566,6 +595,20 @@ def behaviour(fw):
           f"{last / 2 ** 31:.2f} à la fin, sur 2^31), sans saturation")
 
 
+def engines_same(fw, ref, codes, label):
+    """Chaque moteur du Syntakt, sur une piste : identique à la même version sans Acid."""
+    bad = []
+    for i, c in enumerate(codes):
+        m = gs.CATALOG[c]
+        kw = dict(BASE_KW, color=m["knobs"][0][2], shape=m["knobs"][1][2], sweep=m["knobs"][2][2],
+                  contour=m["knobs"][3][2], decay=m["decay"])
+        a, _, ua = play(fw, gs.TG_FIRST + i, kw, 160, (1, 100))
+        b, _, ub = play(ref, gs.TG_FIRST + i, kw, 160, (1, 100))
+        if not np.array_equal(a, b) or not a.any() or ua or ub:
+            bad.append(c)
+    check(not bad, f"{label} : les {len(codes)} moteurs du Syntakt identiques à la même version sans Acid {bad}")
+
+
 # --- 3 bis. slide 303 sur les slide trigs de Model-TG (notes/51 §10.5) ------------------------------------------
 SL = dict(PND=0, PDUR=24, PMSK=48, PCLK=72, PFRE=216, PST=256, PEN=640)
 
@@ -647,7 +690,7 @@ def cost(fw, label):
 
         def hk(uc, a, s, u):
             n["i"] += 1
-            if fw.pay <= a < fw.code_end:
+            if fw.acid_lo <= a < fw.code_end:
                 n["sp"] = min(n["sp"], uc.reg_read(mk.UC_M68K_REG_A7))
         e.uc.hook_add(UC_HOOK_CODE, hk)
         per = []
@@ -709,6 +752,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cycles", required=True, help="model-cycles_OS1.13.syx officiel")
     ap.add_argument("--with", dest="others", default="", help="ids d'autres tweaks : Acid avec eux (section 5)")
+    ap.add_argument("--syntakt", help="Syntakt_OS1.42.syx : Acid avec Model-TG et les 5 moteurs (notes/51 §11)")
     args = ap.parse_args()
     stock = T.main_os_from_syx(args.cycles)
     acid = load("26-acid.json")
@@ -757,6 +801,34 @@ def main():
         slide303(fw, ref_tg, tg)
         print("coût")
         cost(fw, "Acid avec Model-TG")
+        if args.syntakt:                        # Acid avec les moteurs du Syntakt (notes/51 §11)
+            import syntakt
+            st_img = syntakt.dsp_image(args.syntakt)
+            codes = list(gs.CATALOG)
+            base = f"31-{gs.tweak_id(codes, tg=True)}"
+            tw = load(base + "-acid.json")
+            fs = FwSt(stock, [tg_tw, tw], st_img, args.syntakt, len(codes))
+            rs = FwSt(stock, [tg_tw, load(base + ".json")], st_img, args.syntakt, len(codes))
+            tg["knob_vec"] = tms.knob_vec_at(tw)
+            label = "Acid avec Model-TG et les moteurs"
+            print(f"\n== {tw['id']} : Acid en machine {fs.index + 1}")
+            print("démarrage")
+            tms.boot(fs, tg)
+            print("interface")
+            tms.interface(ref_tg, fs, codes + ["acid"], tg)
+            pictures(stock, fs, rs, "à la même version sans Acid")
+            print("son")
+            exact(fs, ref, [c for c in cases() if c[0].startswith(("réglages", "passe-haut (COLOR 80", "accent", "DECAY 10"))],
+                  label)
+            stock_unchanged(rs, fs, "la même version sans Acid")
+            engines_same(fs, rs, codes, label)
+            like(fw, fs, f"{label} = Acid avec Model-TG seul")
+            locks(fs, label)
+            six_tracks(fs, label)
+            mixed(fs, rs, label, sampler=True)
+            slide303(fs, rs, tg)
+            print("coût")
+            cost(fs, label)
         if args.others:
             with_others(stock, args.cycles, args.others.split(","), alone, fw, tg)
     fail = t7.FAIL + tms.FAIL + getattr(tsm, "FAIL", [])

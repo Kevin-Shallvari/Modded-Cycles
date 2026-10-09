@@ -401,6 +401,8 @@ MAP = g7.ENGINE_MAP          # table machine -> entrée des tables update/render
 DISPATCH = (0x400a7dfe, 0x400a7e24)
 TG_AFTER = (0x400a7e24, 0x400a7e2a)    # avec Model-TG : fin commune de la piste (3 instructions, 6 o)
 TG_FIRST = 7                 # avec Model-TG : index de la 1re machine ajoutée (6 est son Sampler)
+ACID_BSS, ACID_SPAN = 0x2000, 0x2400   # Acid à la suite (notes/51 §11) : états à +ACID_BSS, fin à +ACID_SPAN
+ARP_AT = 0x4016cba8          # 1er octet de l'arpégiateur (40-arp.json), dans le même masque que le crochet
 AMP_ROW = 0x4005a31a         # avec Model-TG : rangée d'un Amp Decay propre à une machine (constructeur 0x4005a274)
 AUDIO_CALL = 0x40059382      # jsr 0x4005979e : fonction audio, appelée par l'interruption à chaque bloc
 IDLE_BLOCKS = 64             # 43 ms
@@ -813,7 +815,7 @@ tg_after:
 """
 
 
-def segments(parts, size):
+def segments(parts, size, gap=64):
     """Morceaux de la charge utile à ranger dans l'image (pack) : réunion des parts (adresses d'exécution), à 64 o
     près, alignée sur 4. Le reste est à zéro : le crochet de démarrage met tout à zéro puis recopie les morceaux."""
     rs = []
@@ -823,7 +825,7 @@ def segments(parts, size):
         rs.append((a & ~3, (a + n + 3) & ~3))
     out = []
     for lo, hi in sorted(rs):
-        if out and lo <= out[-1][1] + 64:
+        if out and lo <= out[-1][1] + gap:
             out[-1][1] = max(out[-1][1], hi)
         else:
             out.append([lo, hi])
@@ -855,7 +857,8 @@ def sram_sections(elf, tails):
     return [tuple(o) for o in out if o[2]]
 
 
-def compile_code(tmp, machines, payload_longs, meter=None, rnd_at=None, nm=0, run=None, lay=None, tg=None, segs=None):
+def compile_code(tmp, machines, payload_longs, meter=None, rnd_at=None, nm=0, run=None, lay=None, tg=None, segs=None,
+                 extra=None):
     """run : adresse d'exécution d'une fonction du Syntakt ; lay : disposition (layout()) : zones de SRAM que le
     crochet de démarrage remplit (stub.S), adresses des états de voix."""
     defs = [f"-DST_VINIT_AT={run(0x40002544):#x}", f"-DST_RESET_AT={run(0x40003ee0):#x}",
@@ -917,8 +920,9 @@ def compile_code(tmp, machines, payload_longs, meter=None, rnd_at=None, nm=0, ru
         if len(f) > 2 and f[1].startswith(".data") and int(f[2], 16):
             raise SystemExit(f"!! passerelle : données initialisées ({f[1]}), non recopiées dans la charge utile")
     src, o, e, b = tmp / "det.S", tmp / "det.o", tmp / "det.elf", tmp / "det.bin"
-    src.write_text(detours_asm(len(machines), [m["image"] for m in machines], [76 + 5 * i for i in range(len(machines))], tg)
-                   + probe_asm(syms, prof_sites(tg) if PROFILE and tg and meter else None)
+    det = machines + (extra["machines"] if extra else [])     # extra : Acid (notes/51 §11)
+    src.write_text(detours_asm(len(det), [m["image"] for m in det], [76 + 5 * i for i in range(len(det))], tg)
+                   + (extra["asm"] if extra else "") + probe_asm(syms, prof_sites(tg) if PROFILE and tg and meter else None)
                    + (dispatch_tg_asm(syms, rnd_at, tg) if tg else dispatch_asm(syms, rnd_at)))
     gx.run([gx.CROSS + "gcc", "-mcpu=54418", "-c", str(src), "-o", str(o)])
     gx.run([gx.CROSS + "ld", "-Ttext", f"{STUBS:#x}", "-o", str(e), str(o)])
@@ -997,11 +1001,18 @@ def tweak_id(codes, generic=False, meter=False, tg=False):
     return "syntakt-meter" if meter else subset_id(codes, generic)
 
 
-def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
-    """Tweak pour ces moteurs. tg : Model-TG (tg_context) pour la version combinée, à construire avec set_base(PAY_TG)."""
+def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None, acid=False):
+    """Tweak pour ces moteurs. tg : Model-TG (tg_context) pour la version combinée, à construire avec set_base(PAY_TG).
+    acid : avec Model-TG, la machine Acid en plus, après les moteurs (notes/51 §11)."""
     first = TG_FIRST if tg else 6
     machines = [dict(CATALOG[c], code=c, index=first + i) for i, c in enumerate(codes)]
     n = len(machines)
+    if acid and not tg:
+        raise SystemExit("!! Acid avec les moteurs : seulement avec Model-TG")
+    import gen_acid as ga                       # ici : gen_acid importe ce module
+    set_base(PAY)                               # ...qui, importé à nouveau, remet la base sans Model-TG
+    extra = [dict(ga.MACHINE, code="acid", label="Acid", index=first + n)] if acid else []
+    n_all = n + len(extra)
     if not 1 <= n <= MAX_EXTRA:
         raise SystemExit("!! nombre de moteurs")
     cur = tg["img"] if tg else img              # l'image telle que nos écritures la trouvent
@@ -1009,11 +1020,13 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
     check_sram_map(img, st_img)
     an = analyse(st_img, generation(codes))
     lay = an["lay"]
-    size = lay["end"] - gx.DST_CODE
-    nm = first + n                              # machines : 6 d'origine, le Sampler avec Model-TG, puis les nôtres
+    acid_at = (lay["end"] + 3) & ~3              # Acid à la suite, sans trou (un morceau de plus déborderait le crochet
+                                                # de démarrage sur l'arpégiateur) : code, images, états à +ACID_BSS
+    size = (acid_at + ACID_SPAN if acid else lay["end"]) - gx.DST_CODE
+    nm = first + n_all                          # machines : 6 d'origine, le Sampler avec Model-TG, puis les nôtres
     top = nm - 1                                # plus grand index de machine
     names_at, upd_at, rnd_at, vec_at, map_at = DATA, DATA + 4 * nm, DATA + 8 * nm, DATA + 12 * nm, DATA + 16 * nm
-    strings = [m["name"] for m in machines] + [k[i] for m in machines for k in m["knobs"] for i in (0, 1)]
+    strings = [m["name"] for m in machines + extra] + [k[i] for m in machines + extra for k in m["knobs"] for i in (0, 1)]
     at, addr = map_at + ((nm + 3) & ~3), {}
     for s_ in strings:
         if s_ not in addr:
@@ -1023,15 +1036,25 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
     if meter:
         at += 8 * nm
 
+    ex = None
+    if acid:
+        with tempfile.TemporaryDirectory() as d:
+            ablob, asyms, abss_end = ga.compile_machine(pathlib.Path(d), acid_at, [f"-DSLD_BASE={tg['SLD_BASE']:#x}",
+                                                        f"-DSLD_INIT={tg['sld_init']:#x}"], ACID_BSS)
+        art_parts, art_reloc, art_addr, art_end = ga.art(img, ((acid_at + len(ablob) + 3) & ~3) - ga.ART_OFF)
+        if art_end > acid_at + ACID_BSS or abss_end > acid_at + ACID_SPAN:
+            raise SystemExit("!! Acid : images ou états hors de leur place")
+        ex = dict(machines=extra, asm=ga.art_asm(art_addr, first + n, tg, others=True))
+
     def compile_(d, segs=None):
         return compile_code(pathlib.Path(d), machines, size // 4, meter_at if meter else None, rnd_at, nm, gx.move,
-                            lay, tg, segs)
+                            lay, tg, segs, ex)
     with tempfile.TemporaryDirectory() as d:
         blobs, syms, stubs, ssyms = compile_(d)
 
     if tg:                                      # noms : ceux de Model-TG (le Sampler montre son échantillon)
         blob_u32 = lambda va: struct.unpack_from(">I", tg["blob"], va - tg["blob_at"])[0]
-        names = [blob_u32(tg["sampler_name_table"] + 4 * i) for i in range(7)] + [addr[m["name"]] for m in machines]
+        names = [blob_u32(tg["sampler_name_table"] + 4 * i) for i in range(7)] + [addr[m["name"]] for m in machines + extra]
     else:
         names = [u32(g7.NAMES + 4 * i) for i in range(6)] + [addr[m["name"]] for m in machines]
     if meter:
@@ -1039,6 +1062,8 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
     pad = [u32(g7.UPDATE_TAB)] * (first - 6), [u32(g7.RENDER_TAB)] * (first - 6)   # entrée 6 du Sampler : jamais lue
     upd = [u32(g7.UPDATE_TAB + 4 * i) for i in range(6)] + pad[0] + [syms[f"bridge_update_{m['engine']}"] for m in machines]
     rnd = [u32(g7.RENDER_TAB + 4 * i) for i in range(6)] + pad[1] + [syms[f"bridge_render_{m['engine']}"] for m in machines]
+    if acid:
+        upd, rnd = upd + [asyms["acid_update"]], rnd + [asyms["acid_render"]]
     data = bytearray()
     for t in (names, upd, rnd, range(1, nm + 1)):
         data += b"".join(g7.be32(x) for x in t)
@@ -1051,7 +1076,7 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
         raise SystemExit("!! données")
 
     new = bytearray()
-    for m in machines:
+    for m in machines + extra:
         for k, (long_, short, default, *rng) in enumerate(m["knobs"]):
             e = bytearray(img[g7.DESC + (g7.SNARE_DESC + k) * g7.DSTRIDE - BASE:][:g7.DSTRIDE])
             e[0x00:0x04] = g7.be32(6)                 # « propre à une machine » ; rattaché à la sienne par les détours
@@ -1064,7 +1089,7 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
         e = bytearray(img[g7.DESC + (g7.SNARE_DESC + 4) * g7.DSTRIDE - BASE:][:g7.DSTRIDE])
         e[0x10:0x14] = g7.be32(m["decay"] << 8)
         new += e
-    ndesc = g7.NDESC + 5 * n
+    ndesc = g7.NDESC + 5 * n_all
 
     writes = []
 
@@ -1112,7 +1137,7 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
         b0, b1 = cur[va - BASE], cur[va - BASE + 1]
         if b0 & 0xf1 != 0x70 or b1 not in (75, 76):
             raise SystemExit(f"!! {va:#x}")
-        moveq(va, b1, b1 + 5 * n, b0)
+        moveq(va, b1, b1 + 5 * n_all, b0)
     # bornes « machine <= 5 » (Model-TG en a déjà mis certaines à 6)
     for va, reg in ((0x400a7dba, 0x72), (0x400a7df4, 0x70), (0x4005a6a6, 0x72), (0x400147a4, 0x70),
                     (0x400148aa, 0x72), (0x400148b2, 0x70), (0x400a25e0, 0x70)):
@@ -1130,12 +1155,17 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
     if not tg:                                  # icônes bornées : SNARE au-delà de 5 (avec Model-TG, CHORD, comme lui)
         for va in (0x4001b69c, 0x400a40a6, 0x400a4fb0):
             moveq(va, 5, 1, 0x70)
+    if acid:                                    # images d'Acid : bornes 5 -> Acid, puis nos jsr (gen_acid.py)
+        for va in (0x4001b696, 0x400a4096, 0x400a4f9e):
+            moveq(va, 5, first + n, 0x72)
+        for va, old, sym in ga.ART_SITES:
+            w(va, bytes.fromhex(old), bytes.fromhex("4eb9") + g7.be32(ssyms[sym]))
     chained = {0x4004df5c: "descr_hook", 0x4004df76: "descr_b_hook"}
     for va, old, sym in jumps:
         old = bytes.fromhex(old)
         if tg and va in chained:                # ses détours, appelés par les nôtres
             old = jmp(tg[chained[va]])
-        w(va, old, jmp(ssyms[sym]))
+        w(va, old, jmp(ssyms[ga.ART_JUMPS.get(sym, sym) if acid else sym]))
     if tg:
         w(AMP_ROW, bytes.fromhex("20065286eb88"), jmp(ssyms["amp_row"]))     # move.l d6,d0 ; addq #1,d6 ; lsl #5,d0
         w(0x4005a6a6, jmp(tg["sampler_lfo_gate"]), jmp(ssyms["lfo_gate"]))
@@ -1159,6 +1189,8 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
         src = next(s_ + lo - d_ for s_, e_, d_ in CY_SRAM_INIT if d_ <= lo and hi <= d_ + e_ - s_)
         parts.append({"dest": f"{chord_moved(lo, lay):#x}", "cycles": [f"{src:#x}", f"{src + hi - lo:#x}"]})
     parts += [{"dest": f"{stage:#x}", "hex": code.hex()} for stage, code, _ in blobs["hot"]]   # avec Model-TG
+    if acid:
+        parts += [{"dest": f"{acid_at:#x}", "hex": ablob.hex()}] + art_parts
     parts += [
         {"dest": f"{DST_BRIDGE:#x}", "hex": blobs[".bridge"].hex()},
         {"dest": f"{STUBS:#x}", "hex": stubs.hex()},
@@ -1166,7 +1198,7 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
         {"dest": f"{DESCN:#x}", "cycles": [f"{g7.DESC:#x}", f"{g7.DESC + g7.NDESC * g7.DSTRIDE:#x}"]},
         {"dest": f"{DESCN + g7.NDESC * g7.DSTRIDE:#x}", "hex": bytes(new).hex()},
     ]
-    reloc = [[f"{at_:#x}", old.hex(), new_.hex()] for at_, old, new_ in an["patches"]]
+    reloc = [[f"{at_:#x}", old.hex(), new_.hex()] for at_, old, new_ in an["patches"]] + (art_reloc if acid else [])
     # descripteurs : copie de ceux de TON MAIN OS, puis ce qui change (mots de 4 o) : le max d'Algorithm (choix de la
     # machine) et, avec Model-TG, ses retouches (Attack, Filtre, Résonance sur toutes les machines)
     lo_, hi_ = g7.DESC - BASE, g7.DESC - BASE + g7.NDESC * g7.DSTRIDE
@@ -1186,7 +1218,7 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
         "reloc": reloc,
     }
     if tg:                                      # rangé en morceaux (stub.S, PACK) : recompilé avec leur liste
-        segs = segments(parts, size)
+        segs = segments(parts, size, 256 if acid else 64)     # Acid : un trou de 136 o après le Syntakt, recopié
         append["pack"] = [[f"{a_:#x}", n_] for a_, n_ in segs]
         if tg["at"] + sum(n_ for _, n_ in segs) > END_LIMIT:
             raise SystemExit(f"!! ajout de {sum(n_ for _, n_ in segs)} o : l'image dépasserait {END_LIMIT:#x}")
@@ -1198,23 +1230,29 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
         writes[0] = {"off": gx.CAVE - BASE, "old": (b"\xff" * len(stub)).hex(), "new": stub.hex()}
     if len(stub) > sprites.zone(gx.CAVE)[1]:
         raise SystemExit("!! crochet de démarrage trop grand pour sa place")
+    if acid and gx.CAVE + len(stub) > ARP_AT:
+        raise SystemExit(f"!! crochet de démarrage de {len(stub)} o : il déborderait sur l'arpégiateur ({ARP_AT:#x})")
     writes.sort(key=lambda x: x["off"])
     for a_, b_ in zip(writes, writes[1:]):
         if a_["off"] + len(a_["new"]) // 2 > b_["off"]:
             raise SystemExit(f"!! écritures qui se chevauchent en {BASE + b_['off']:#x}")
 
-    tid = tweak_id(codes, generic, meter, bool(tg))
+    tid = tweak_id(codes, generic, meter, bool(tg)) + ("-acid" if acid else "")
     ids = ({"sdvintage-snare", "sdvintage-exact", "sdvintage-7th", "syntakt-vintage", "syntakt-meter", "model-tg"}
            | {subset_id(c) for c in subsets()})
     if tg:
         ids |= {"syntakt-tg-meter"} | {tweak_id(c, tg=True) for c in subsets()}
+    if acid:
+        ids |= ({"acid", "acid-tg", "macro", "macro-tg", "syntakt-tg-profile"}
+                | {tweak_id(c, tg=True) + "-acid" for c in subsets()})
     which = ", ".join(f"{m['name']} = {m['label']} (machine {m['index'] + 1})" for m in machines)
     out = {
         "id": tid,
         "order": ((92 if PROFILE else 91) if meter else 31) if tg else (90 if meter else 24),
         "name": (("DIAGNOSTIC, profil de l'interruption audio. " if PROFILE and tg else "DIAGNOSTIC, compteur de charge. ")
                  if meter else "") + ("Model-TG + " if tg else "") +
-                "Vrais moteurs du Syntakt en machines ajoutées : " + ", ".join(f"{m['name']} ({m['label']})" for m in machines),
+                "Vrais moteurs du Syntakt en machines ajoutées : " + ", ".join(f"{m['name']} ({m['label']})" for m in machines)
+                + (", et la machine Acid" if acid else ""),
         "description": ([
             "FIRMWARE DE PROFILAGE (notes/31 §7) : l'écran MACHINES affiche « pic/moyenne », en % de la durée d'un",
             "bloc, mis à jour toutes les 0,5 s : machine 1 tout (comme la page System de Model-TG), 2 début de",
@@ -1228,7 +1266,8 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
         ] if meter else []) + ([
             "Version combinée avec Model-TG (notes/31) : s'ajoute après model-tg-st, le Sampler reste la 7e machine,",
             "les moteurs du Syntakt suivent : " + which + ".",
-        ] if tg else [
+        ] + ([f"Puis la machine Acid (machine {first + n + 1}), compilée depuis tools/machines/acid/acid.c (notes/51 §11)."]
+             if acid else []) if tg else [
             "Moteurs du Syntakt (OS 1.42 ou 1.41) extraits AU BUILD de TON Syntakt_OS1.42.syx, en machines ajoutées après",
             "les 6 d'origine (notes/20) : " + which + ".",
         ]) + [
@@ -1243,6 +1282,9 @@ def build_tweak(img, st_img, codes, generic=False, meter=False, tg=None):
     if tg:
         out["requires"] = [tg["id"]]
     out.update({"conflicts": sorted(ids - {tid}), "writes": writes, "append": append})
+    if acid:                      # pour la preuve (tools/emu/test_acid.py)
+        out["symbols"] = dict({k: f"{asyms[k]:#x}" for k in ("acid_update", "acid_render")}, acid_tracks=f"{asyms['tracks']:#x}",
+                              **{f"art_{k}": f"{v:#x}" for k, v in art_addr.items()})
     if not tg:                    # envoi à l'USB à heure fixe (notes/35), boucle des voix (notes/36) ; la version
         out = usb_steady.add_to(out)          # combinée les a par model-tg-st
         out = voice_loop.add_to(out)
@@ -1263,6 +1305,7 @@ def main():
     ap.add_argument("--meter", action="store_true", help="firmware de diagnostic : compteur de charge (notes/23)")
     ap.add_argument("--tg", action="store_true", help="version combinée avec Model-TG (notes/31) : 31-syntakt-tg-….json")
     ap.add_argument("--profile", action="store_true", help="avec --tg --meter : profil de l'interruption audio (notes/31 §7)")
+    ap.add_argument("--acid", action="store_true", help="avec --tg : la machine Acid en plus (notes/51 §11)")
     args = ap.parse_args()
     global PROFILE
     PROFILE = args.profile
@@ -1283,6 +1326,8 @@ def main():
         set_base(PAY_TG)
     bad = 0
     for codes in todo:
+        if tg:                                  # une autre copie de ce module, importée en route, remet la base
+            set_base(PAY_TG)
         if tuple(codes) in LEGACY and not args.generic and not args.meter:
             raise SystemExit(f"!! {codes} : tweak d'origine {LEGACY[tuple(codes)]} (ou --generic)")
         gen = generation(codes)
@@ -1290,7 +1335,7 @@ def main():
             an = analyse(st_img, gen)
             print(f"  Syntakt jusqu'à {CATALOG[gen[-1]]['label']} : {an['funcs']} fonctions, {an['code_bytes']} o de code,"
                   f" {len(an['blocks'])} blocs, {an['relocs']} relocalisations, {an['moved']} sauts recalculés")
-        tweak, ndesc = build_tweak(img, st_img, codes, args.generic, args.meter, tg)
+        tweak, ndesc = build_tweak(img, st_img, codes, args.generic, args.meter, tg, args.acid)
         path = pathlib.Path(args.out) if args.out else DEV / f"{tweak['order']}-{tweak['id']}.json"
         text = json.dumps(tweak, indent=1) + "\n"
         packed = f", rangée en {sum(n for _, n in tweak['append']['pack'])} o" if "pack" in tweak["append"] else ""
