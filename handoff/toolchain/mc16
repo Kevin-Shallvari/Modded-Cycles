@@ -1,0 +1,5 @@
+#!/bin/sh
+# Run a command inside the toolchain image, from the repo root: toolchain/mc16 python3 tools/gen_wavetable.py --cycles firmware/model-cycles_OS1.13.syx --check
+exec podman run --rm --userns=keep-id -v "$PWD:$PWD" -v /tmp:/tmp -w "$PWD" \
+  -e M68K_CROSS=/opt/mc/bin/mc- -e PATH=/opt/mc/bin:/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin \
+  mc-m68k-elf:16.2 "$@"

@@ -1,0 +1,15 @@
+# m68k toolchain that reproduces the committed outputs (Syntakt tweaks, SD VINTAGE v2, 36-wavetable-tg.json):
+# m68k-elf-gcc 16.2 (Homebrew) driving Ubuntu 22.04's m68k binutils 2.38, plus Python for the generators.
+# Build: podman build -t mc-m68k-elf:16.2 -f Containerfile .   (docker works too)
+# Note: Homebrew may have moved past 16.2 by the time you build; check `m68k-elf-gcc --version`.
+FROM docker.io/homebrew/brew:latest
+RUN brew install -q m68k-elf-gcc
+USER root
+RUN apt-get update -qq && apt-get install -y -qq binutils-m68k-linux-gnu python3 python3-pip \
+ && rm -rf /var/lib/apt/lists/* \
+ && mkdir -p /opt/mc/bin /opt/mc/as \
+ && ln -s /usr/bin/m68k-linux-gnu-as /opt/mc/as/as \
+ && for t in as ld nm objcopy objdump readelf; do ln -s /usr/bin/m68k-linux-gnu-$t /opt/mc/bin/mc-$t; done \
+ && printf '#!/bin/sh\nexec /home/linuxbrew/.linuxbrew/bin/m68k-elf-gcc -B/opt/mc/as/ "$@"\n' > /opt/mc/bin/mc-gcc \
+ && chmod +x /opt/mc/bin/mc-gcc
+USER linuxbrew
