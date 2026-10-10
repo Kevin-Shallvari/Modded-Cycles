@@ -329,6 +329,25 @@ avec MACRO, les moteurs du Syntakt et SD VINTAGE (même mécanique, même place)
 | `model-tg-st,acid-tg` | `dcdae167f8901c40fc50fc89ca2430ea73e8fc3ced72a170f75b390a4bd9660e` |
 | `6ch-usbup,model-tg-st,acid-tg,trig-hold,arp,tempo-max,boot-anim` | `59054578152858cc509e853287b94902587c4f4f6995d1fc4f8997fc7e39c2ba` |
 
+### Machine Wave (tables d'ondes de l'utilisateur, avec Model-TG)
+
+`tweaks/model-cycles_OS1.13/36-wavetable-tg.json` est produit par `tools/gen_wavetable.py` : notre moteur en entiers
+(`tools/machines/wavetable/wt.c`), avec la mécanique d'Acid avec Model-TG ; exige `model-tg-st`, Wave est la 8e machine
+([note 52](notes/52-etude-tables-d-ondes.md)). Expérimentale, pas encore dans le flasher.
+
+Le JSON versionné vient de `m68k-elf-gcc` 16.2 (Homebrew) avec les binutils 2.38 d'Ubuntu 22.04 (`M68K_CROSS` vers un
+`gcc` qui appelle cet assembleur par `-B`) ; le GCC 13.3 d'Ubuntu 24.04 donne un code plus long de 0x160 o, et
+`--check` échoue alors sur 7 sauts, tous les octets « old » restant justes. La preuve a besoin d'`unicorn` et `numpy` :
+```sh
+python3 tools/gen_wavetable.py --cycles model-cycles_OS1.13.syx [--check]
+python3 tools/emu/test_wavetable.py --cycles model-cycles_OS1.13.syx
+```
+
+| `-t` | MAIN OS patché (SHA-256) |
+|---|---|
+| `model-tg-st,wavetable-tg` | `152847e674c1a23d76aa902f8cc865e2e46931dd46d8fe9bd9e1354031df95d4` |
+| `6ch-usbup,model-tg-st,wavetable-tg,trig-hold,arp,tempo-max,boot-anim` | `9a1a1e7db5871410034799e0b2a067cbb1d0fea0b7d8aad2b4668b661c32f9a7` |
+
 ### Écoute d'un pas en pause
 
 `trig-preview` (et sa copie dans Model-TG) accepte le séquenceur en pause, où le met un Stop MIDI reçu même à l'arrêt : 3 octets

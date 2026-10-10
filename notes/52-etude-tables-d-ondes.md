@@ -2,8 +2,9 @@
 
 Demande de Kevin (09/10/2026) : une machine à tables d'ondes ; d'abord chercher ce qui pourrait l'empêcher. Puis
 précision : les tables sont **celles de l'utilisateur**, rangées sur la mémoire de 1 Go et chargées par le système
-d'échantillons de Model-TG ([31](31-model-tg.md)), pas des tables que nous fabriquons. Étude seulement : aucun code,
-aucun tweak.
+d'échantillons de Model-TG ([31](31-model-tg.md)), pas des tables que nous fabriquons. §1 à §8 : l'étude (09/10/2026,
+avant le code). §9 à §12 : la machine construite (`36-wavetable-tg.json`, « Wave »), ses essais sur la machine et sa
+charge ; là où l'étude et la réalisation diffèrent, la réalisation fait foi.
 
 ## Réponse courte
 
@@ -14,6 +15,9 @@ aucun tweak.
   sans repliement quand on joue haut (§4).
 - Décidé par Kevin : **16 bits propres**, pas de réduction de bits (§5) ; **copies adoucies par octave, préparées au
   chargement de la table** (§4).
+- **Construite** (§9) : 8e machine avec Model-TG, essayée sur la machine le 09/10/2026 (§10). Le son « glitché » venait
+  d'Elektron Transfer, qui rééchantillonne les fichiers 44,1 kHz en 48 kHz (§10) ; pas du moteur. Expérimentale, pas
+  encore dans le flasher.
 
 ## 1. Points ouverts
 
@@ -181,6 +185,8 @@ C'est le remède des tables de Serum / Vital `[HYP]`.
 | 100 grandes tables au démarrage | 25–30 s |
 | Mémoire | ~2× la table |
 
+Mesures de la machine construite (copies par demi-octave, 8 points par harmonique) : §12.
+
 **Copies : choix** (Kevin, 09/10/2026, sans écoute) : **une copie par demi-octave**. Proposé avec : fondu entre les
 deux copies voisines selon la note (pas de saut de brillance), coupure franche, et chaque copie garde les harmoniques
 dont le repli tombe au-dessus de 20 kHz (inaudible). Perte de brillance au pire ~17–20 kHz.
@@ -216,16 +222,23 @@ Comme Acid avec Model-TG ([51 §6](51-machine-acid.md)) : **deux filtres**, pour
 Chaîne : table → copies → oscillateur (COLOR + SHAPE × enveloppe) → passe-bas d'Acid → amplitude d'origine (DECAY,
 GATE, PUNCH) → Model-TG (Attack, filtre, rééchantillonnage) → mixeur.
 
-## 4ter. Potards (décidés avec Kevin, 09/10/2026)
+## 4ter. Potards (Kevin, 09/10/2026 ; état final)
 
-| Potard | Rôle |
-|---|---|
-| COLOR | position dans la table |
-| SHAPE | enveloppe → position, bipolaire (64 : rien), durée suivant DECAY |
-| SWEEP | coupure du passe-bas d'Acid |
-| CONTOUR | résonance |
-| MACHINE tenue + DECAY / SWEEP / CONTOUR | Attack, filtre et résonance de Model-TG |
-| DECAY, GATE, PUNCH | chaîne d'ampli d'origine |
+Premier choix : SHAPE = enveloppe → position. Remplacé le soir même (Kevin) : l'enveloppe de position passe sur
+MACHINE tenue + COLOR, un paramètre ajouté, et SHAPE devient une enveloppe de coupure.
+
+| Potard | Rôle | MACHINE tenue + |
+|---|---|---|
+| COLOR | position dans la table (« Position ») | **Env Pos** : 0 = rien ; plus haut, chaque note part plus loin dans la table et revient vers COLOR |
+| SHAPE | enveloppe → coupure, bipolaire, ±6 octaves (« Flt Env », 64 : rien) | — |
+| SWEEP | coupure du passe-bas d'Acid, 20 Hz → 20 kHz (« Cutoff », défaut 127) | filtre de Model-TG |
+| CONTOUR | résonance (« Reso », défaut 0) | résonance de Model-TG |
+| DECAY | chaîne d'ampli d'origine et durée des deux enveloppes (défaut 60) | Attack de Model-TG |
+| GATE, PUNCH | chaîne d'ampli d'origine ; PUNCH = accent | — |
+
+Env Pos : paramètre commun (groupe 7) à la place libre `0x0a`, `k` = 27, comme Attack / Filtre / Résonance de
+Model-TG ; sa valeur vit dans un mot que Model-TG sauve déjà `[FAIT : lecture du code]`. Unipolaire : COLOR tenu n'a
+pas de valeur par défaut au milieu.
 
 
 ## 4quater. Prototype (09/10/2026)
@@ -245,15 +258,134 @@ meilleures fonctions.
 
 Lecture int16 de deux trames (fondu de position) : ~6 lignes de 16 o par bloc à 65 Hz, ~46 à 1 kHz, contre 94 à 214
 pour une voix du Syntakt ([23 §3](23-optimisation-charge.md)). Coût réel à mesurer sur la machine
-([23 §5](23-optimisation-charge.md)).
+([23 §5](23-optimisation-charge.md)). Le moteur construit lit **quatre** trames (deux copies × deux trames, §9) :
+estimation à doubler, toujours pas mesurée.
 
 ## 7. Cohabitation
 
 Machine ajoutée liée à Model-TG : version combinée `…-tg`, comme `35-acid-tg` ([51](51-machine-acid.md)), avec le
 coût en taille du flasher que cela entraîne.
 
-## 8. Prochaines étapes
+## 8. Prochaines étapes (mises à jour le 10/10/2026)
 
-1. Points ouverts §1 (Smooth ; lecture d'un échantillon de Model-TG ; carte de la SDRAM libre).
-2. Prototype Python des copies adoucies sur une table KRC, à écouter (Kevin).
-3. Choix des potards (coupure du passe-bas comprise, §4bis).
+Les étapes de l'étude (points ouverts §1, prototype, potards) sont faites. Restent :
+
+1. **Charge** : optimiser le rendu (§12), mesurer d'abord, à la manière de [51 §8](51-machine-acid.md), puis sur la
+   machine avec le firmware de profilage de Model-TG ([31 §7](31-model-tg.md)).
+2. **Correctif A** (§10) : reconnaître une table rééchantillonnée par Transfer (longueur multiple de ~2 229,1 points)
+   et ramener chaque trame à 2 048 points en préparant les copies, pour que les fichiers Serum / Vital marchent tels
+   quels.
+3. Points non vérifiés (§10) : le chemin du potard MACHINE tenue + COLOR sur la machine ; Env Pos après sauvegarde et
+   rechargement du projet ; un LFO vers Env Pos après rechargement (Model-TG ne sauve les destinations de LFO que pour
+   ses trois paramètres : probablement perdu).
+4. Flasher et documentation (AGENTS.md) : `FEATURES` en `experimental`, `tweaks.js`, `REF_MAINOS`, textes en + fr,
+   guide (prévenir de la conversion de Transfer tant que le correctif A manque), notes de version, README,
+   PROVENANCE ; puis PR en brouillon (dépend d'`acid-tg`, #66).
+
+## 9. Réalisation `[FAIT]`
+
+Branche `wavetable-machine` (sur `acid-tg`). `tools/gen_wavetable.py` écrit `36-wavetable-tg.json` (127 écritures,
+exige `model-tg-st`) ; moteur `tools/machines/wavetable/wt.c` ; preuve `tools/emu/test_wavetable.py` (+ `wt_host.c`,
+le même moteur compilé pour l'ordinateur). Compilateur : `m68k-elf-gcc` 16.2 avec les binutils 2.38 d'Ubuntu 22.04
+([BUILD.md](../BUILD.md)) ; le GCC 13.3 d'Ubuntu 24.04 donne un code plus long de 0x160 o, donc d'autres octets.
+
+**Mécanique** : celle d'Acid avec Model-TG ([51 §6](51-machine-acid.md)) ; Wave est la machine 7 (8e, après le
+Sampler). Le tweak de Model-TG ne change pas : son bloc est retouché **en mémoire au démarrage**, aux sites trouvés
+par motifs uniques (`gen_wavetable.py`, `find_tg`) :
+- `preset_fail_hook` → `wt_or_any` et `name_probe` accepte la machine 7 (§3ter) ;
+- `led_hook` (tâche des LED, une fois par bloc audio, côté interface) appelle `wt_tick`, qui prépare les copies.
+
+**Navigateur** : les 5 accroches de §3quater, plus une sixième, `wt_cursor` (`0x400a640a`), qui note le fichier sous le
+curseur pour le chargement d'avance.
+
+**Rendu** (`wt_update` puis `wt_render`, une fois par bloc de 32 trames) :
+- `wt_update` : potards, prise du sample en attente de Model-TG (`track_pend`, à la note ou voix muette), hauteur
+  (`PITCH_TAB`), indice de copie (2 par octave au-dessus de `COPY_N0`), position visée (COLOR + Env Pos ×
+  enveloppe), coefficients du passe-bas d'Acid (G, G², G³, G⁴, deux divisions `recip_q28`), enveloppe.
+- `wt_render`, par échantillon : position glissée échantillon par échantillon (`ps += dp`, correctif des marches
+  audibles à fort Env Pos) ; pour les **deux copies** voisines (fondu `cw`) × les **deux trames** voisines (fondu `pw`),
+  `at()` = 2 lectures int16 + interpolation linéaire, soit **jusqu'à 8 lectures par échantillon** dans 4 trames ;
+  coupe-continu (~10 Hz, `DC_R`) ; échelle 4 pôles d'Acid avec son coude ; puis chaîne d'ampli d'origine (`AMP_ENV`,
+  `VCA`, `PUNCH`) et étage de Model-TG. Voix muette : bloc mis à zéro, sortie immédiate. Multiplications par l'EMAC.
+- Copie pas prête : la table brute à sa place.
+
+**Copies** (`wt_tick` → `step`, hors de l'audio) :
+- 21 copies par demi-octave (`NCOPY`, 1 024 / 2^(c/2) harmoniques), le repli au-dessus de 20 kHz toléré
+  (`FOLD_OK` 28 kHz) ; copies rangées à mi-niveau.
+- Réserve **partagée** de 22,5 Mo à `0x46800000` (`POOL_BYTES`), plus 64 Ko de calcul jusqu'à `0x47E90000` ; une
+  allocation par table, partagée par les pistes sur la même table (`al[]`, compteur) ; `plan()` essaie 8, puis 4, puis
+  2 points par harmonique jusqu'à trouver la place ; sinon la table brute.
+- FFT entière, sans EMAC (`m15`), deux trames par FFT (l'une réelle, l'autre imaginaire), étapes de ~`BUDGET` = 3 072
+  papillons ; deux passes : d'abord les copies de 512 points au plus (`CHEAP_LG` 9, les aigus, où le repli s'entend),
+  puis les grandes ; chaque passe sert dès le bloc suivant (`publish`).
+- Copies rendues quand la piste n'est plus Wave depuis ~5 s.
+- **Chargement d'avance** : curseur immobile 300 ms (`DEBOUNCE` 450 blocs) sur un fichier de moins de 4 Mo (`PF_MAX`)
+  → chargement poli par Model-TG (`pd_mode` 1 : ne chasse que l'inutile) et copies sur une pseudo-piste (`PF` = 6) ;
+  le curseur bouge : arrêt ; YES : la piste reprend le travail (`adopt`). Bogue corrigé : revenir sur le fichier en
+  moins de 300 ms ne relançait rien.
+
+**Preuves** (09/10/2026) :
+- ordinateur : copies à −78 dB de la référence exacte ; repli −53 à −56 dB du Do 4 au Do 7 ; chargement d'avance
+  (attente, abandon, retour, reprise sur YES) ;
+- émulation, vrai firmware : démarrage (Model-TG retouché en 3 endroits exactement), lecture, copies **identiques à
+  l'octet** à celles de l'ordinateur ; le firmware lit la table brute avant les copies, puis seulement les copies
+  (`build/wt-proof/dbg_fw.py`) ; COLOR, Env Pos et l'enveloppe de coupure mesurés sur la table Pulsar (§10).
+- Firmware essayé par Kevin : `model-tg-st,wavetable-tg`, MAIN OS `152847e6…` (BUILD.md), le même que le JSON versionné.
+
+## 10. Essais sur la machine (Kevin, 09/10/2026)
+
+- `/Wavetables` créé sur la mémoire par notre code `[FAIT, machine]`.
+- **Son « glitché », dégradé par cycles, plus vite quand Env Pos monte** : cause trouvée. **Elektron Transfer
+  rééchantillonne en 48 kHz les WAV à 44,1 kHz** : une table de 256 trames fait 1,088 Mio sur la mémoire au lieu de
+  1,0 Mio (48 000 / 44 100 = 1,088, plus un en-tête de 80 o) ; chaque trame de 2 048 points en fait ~2 229 ; Wave
+  découpe tous les 2 048 points, donc deux « trames » voisines sont décalées et s'annulent en partie au milieu du
+  fondu. Copies des fichiers étiquetées 48 kHz, mêmes échantillons : envoyées sans conversion (1 Mio tout rond) ;
+  **plus de défaut** sur la machine `[FAIT, machine]`. Le mode Wave de Model-TG à 2 048 aurait le même défaut.
+  Remède prévu : correctif A (§8) ; en attendant, réétiqueter les fichiers avant l'envoi.
+- « La table bouge pendant la note » : un LFO vers Env Pos, pas un défaut.
+- Charge : aucun craquement ni dépassement signalé.
+- Mesuré en émulation (table Pulsar), pas encore confirmé à l'oreille : COLOR 10 / 110 → brillance 261 / 481 Hz ;
+  Env Pos 100 contre 0, écart de spectre 6,7 à 10 ms, 3,8 à 400 ms, 0,3 à 900 ms (retour à COLOR, DECAY 60) ;
+  SHAPE 64 : brillance plate (380 → 383 Hz), SHAPE 120 : 4 234 → 879 Hz. Valeur d'Env Pos posée en mémoire : le
+  potard lui-même n'est vérifié qu'à la lecture du code.
+- Accès à la mémoire depuis l'ordinateur : mode Transfer de Model-TG (**Device Config › Transfer › SMP**), le Cycles
+  se présente en Model:Samples ; `elektroid-cli` liste, crée un dossier et envoie (`elektron:sample:ls`, `mkdir`, `ul`) ;
+  l'effacement est refusé par la machine. Fermer le flasher avant (Web MIDI tient le port).
+
+## 11. Tables Echo Sound Works (Kevin, 09/10/2026)
+
+Différences avec les tables KRC, utiles pour juger le son :
+- beaucoup sont des **suites de formes très différentes** (« Arp Pattern », « Thick Jumps », « Chimes ») : un balayage
+  rapide change de timbre par à-coups, par construction ;
+- certaines formes sont très décentrées (jusqu'à 65 % de la pleine échelle) : d'où le coupe-continu (§9) ;
+- fichiers à 44,1 kHz, flottants 32 bits : voir §10.
+
+## 12. Charge et temps de préparation
+
+Modèle du dépôt ([31 §7](31-model-tg.md)) : 1,54 cycle par instruction, 166 667 cycles par bloc à 250 MHz ; mixage
+et effets ≈ 30 % du bloc ([23](23-optimisation-charge.md)) ; six pistes peuvent être Wave.
+
+| Mesure | Valeur | Comment |
+|---|---|---|
+| Boucle des voix, une piste Wave | **9 799 instructions par bloc** `[FAIT, émulation]` | `build/wt-proof/cost_fw.py` : vrai firmware, Model-TG + Wave, table de test de 64 trames, note 48, SHAPE 120, SWEEP 80, CONTOUR 60, DECAY 60, moyenne de 10 blocs après 6 ; sans copies (`wt_tick` non lancé), les 4 lectures sur la table brute |
+| Même banc, TONE | 7 183 `[FAIT, émulation]` | idem |
+| Une voix Wave seule | ≈ 8 300, **≈ 1,46 TONE** `[HYP : calcul]` | boucle sans voix ≈ 7 183 − 5 669 (TONE avec Model-TG, [51 §8](51-machine-acid.md)) |
+| En % d'un bloc | ≈ 7,6 % par voix ; six voix ≈ 45 % `[HYP : calcul]` | × 1,54 / 166 667 |
+| Acid, pour comparer | 0,43 à 0,91 TONE avec Model-TG ; filtre ouvert 0,45 TONE seul | [51 §8](51-machine-acid.md) |
+| Étape de préparation (côté interface) | 3,2 ms au premier jet ; maintenant **271 148 instructions au pire, ~1,1 ms** `[FAIT, émulation]` | `test_wavetable.py` (10/10/2026 : TOUT OK) |
+| Copies prêtes, table de 256 trames | toutes ~2,9 s ; **aigus propres après ~0,66 s** (64 trames : ~0,17 s) `[FAIT, ordinateur]` | `build/wt-proof/esw_host.py`, `timing_host.py` |
+| Place des copies, 256 trames | ~7,4 Mo à pleine qualité : ~3 tables de ce genre à la fois dans la réserve `[FAIT, ordinateur]` | `esw_host.py` |
+
+Ce sont des instructions, pas des cycles : défauts de cache (4 trames lues par échantillon, §6) et attentes de
+l'EMAC non comptés. Aucun profil sur la machine encore. Le « 46 % » donné le 09/10 correspond sans doute à ce calcul
+pour six voix : une estimation, pas une mesure de la machine.
+
+**Déjà fait** : préparation par paires de trames, étapes courtes, aigus d'abord, réserve partagée, copies partagées
+entre pistes, chargement d'avance, voix muette à zéro, coefficients par bloc.
+
+**Pistes non essayées, non mesurées** : sauter la 2e copie quand `cw` = 0 ou que les deux pointent la même table ;
+sauter le fondu de trames quand `pw` = 0 ou que la position ne bouge pas ; contourner l'échelle filtre grand ouvert
+sans résonance ni enveloppe (comme Model-TG) ; garder les deux divisions de `wt_update` quand coupure et résonance
+n'ont pas changé ; copies plus légères pour les grandes tables (4 points par harmonique : ~2,1 s au lieu de ~2,9 s
+`[HYP]`) ; copies préparées sur l'ordinateur avant Transfer (plus d'attente, fichiers ~15× plus gros, un outil web
+de plus).
