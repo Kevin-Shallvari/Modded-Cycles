@@ -389,3 +389,30 @@ sans résonance ni enveloppe (comme Model-TG) ; garder les deux divisions de `wt
 n'ont pas changé ; copies plus légères pour les grandes tables (4 points par harmonique : ~2,1 s au lieu de ~2,9 s
 `[HYP]`) ; copies préparées sur l'ordinateur avant Transfer (plus d'attente, fichiers ~15× plus gros, un outil web
 de plus).
+
+## 13. Table pré-travaillée par l'outil web (10/10/2026)
+
+Décision de Kevin : sortir la préparation des copies de la machine. Un **outil web** (nouvelle rubrique du site,
+`docs/convert/`, référence `tools/wt_convert.py`) convertit la table de l'utilisateur en un WAV 48 kHz que Wave lit
+directement ; la machine ne calcule plus rien. Le système de copies embarqué (FFT entière, réserve de 22,5 Mo,
+préparation d'avance, `wt_tick`) est **retiré**.
+
+**Disposition du fichier** (règle fixe, partagée par l'outil et le moteur) : trames de 2048 points ; la table entière
+d'abord, puis les copies **une par octave** et **plus courtes que la table** (`NCOPY` 11, 4 points par harmonique),
+dans l'ordre des copies. `LGC[c]` = lg2 de la longueur de la copie c, `OFF[c]` = son décalage en points par trame (0
+pour les copies pleines : elles sont la table), `S_TOTAL` = 2048 + somme des copies courtes (= 4288). Le moteur trouve
+`F = slot_count / S_TOTAL` ; un fichier non converti (longueur non multiple) **ne joue rien** (plus de repli sur la
+table brute).
+
+**Ce que ça change** : `wt.c` lit `base + OFF[c] * F` et `LGC[c]`, sans `wt_tick`, sans réserve, sans repli ;
+`gen_wavetable.py` n'embarque plus de FFT (ni `HMAX`/`COS_TAB`/`SIN_TAB`), ni le crochet de la tâche des LED, ni le
+curseur d'avance. Le tweak passe de 127 à 126 écritures, le code de ~14 288 à 5 418 o, le BSS de 1 912 à 648 o,
+l'ajout à l'image de 21 128 à 12 792 o.
+
+**Preuves** (10/10/2026) : `tools/emu/test_wavetable.py` (TOUT OK : convertisseur bien formé et borné en bande,
+démarrage, grave et aigu jouent sans lecture hors mémoire, fichier non converti muet) ; `tools/webwt_check.sh`
+(`docs/convert/convert.js` == référence Python à 1 LSB près) ; `gen_wavetable --check`, `gen_flasher_tweaks --check`,
+`ref_mainos --check`, `webbuild_check.sh` et `webflash_smoke.sh` verts.
+
+**À faire** : le guide (rubrique de la machine Wave et étape de conversion) et le flasher, quand Wave y entrera ;
+les §4–§12 décrivent la préparation embarquée, désormais remplacée par cette section.

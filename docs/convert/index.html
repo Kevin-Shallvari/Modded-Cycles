@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wavetable converter — Modded Cycles</title>
+<meta name="description" content="Convert a wavetable into a file the Wave machine reads on the Model:Cycles. Runs in your browser; your files never leave it.">
+<meta name="theme-color" content="#e3e2de" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b1b1b" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400..700&family=Tiny5&display=swap">
+<link rel="stylesheet" href="../assets/site.css?v=2026-10-10-01">
+<script>try{var l=localStorage.getItem("mc-lang"),t=localStorage.getItem("mc-theme")}catch(e){}document.documentElement.lang=l||(/^fr\b/i.test(navigator.language||"")?"fr":"en");if(t)document.documentElement.setAttribute("data-theme",t)</script>
+<style>
+  .wt{max-width:640px;margin:0 auto}
+  .wt h1{margin:0 0 10px}
+  .wt p.lede{font-size:19px;line-height:1.45;color:var(--ink-2)}
+  .drop{margin:28px 0;border:2px dashed var(--line);border-radius:14px;padding:34px 20px;text-align:center}
+  .drop.over{border-color:var(--red)}
+  .drop input{display:none}
+  .drop label{display:inline-block;cursor:pointer;font-weight:600;text-decoration:underline;text-decoration-color:var(--red);text-underline-offset:.18em}
+  .drop .sep{margin:0 10px;color:var(--ink-2)}
+  .status{margin-top:14px;min-height:1.4em;color:var(--ink-2)}
+  .status.err{color:var(--red)}
+  .dl{display:none;margin-top:18px}
+  .actions{display:none;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px}
+  .actions.on{display:flex}
+  .xrow{display:none;align-items:center;gap:8px;justify-content:center;margin-top:12px;color:var(--ink-2);font-size:15px}
+  .xrow.on{display:flex}
+  .xrow select{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:inherit}
+  .xrow .btn{padding:8px 16px;font-size:15px}
+  .bar{display:none;height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:14px auto 0;max-width:420px}
+  .bar.on{display:block}
+  .bar i{display:block;height:100%;width:0;background:var(--red);transition:width .1s linear}
+  .facts{margin-top:34px;border-top:1px solid var(--line)}
+  .facts dt{font-weight:600;margin-top:14px}
+  .facts dd{margin:2px 0 0;color:var(--ink-2)}
+</style>
+</head>
+<body data-page="convert">
+
+<header class="wrap top">
+  <a class="brand" href="../">Modded Cycles</a>
+  <nav aria-label="Site">
+    <a href="../flasher/">Flasher</a>
+    <a href="../guide/">Guide</a>
+    <a href="../convert/">Convert</a>
+    <a href="https://github.com/18nelli18/Modded-Cycles" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://discord.gg/hWegtJZcmm" target="_blank" rel="noopener">Discord</a>
+    <a href="https://ko-fi.com/18nelli" target="_blank" rel="noopener">Ko-fi</a>
+  </nav>
+  <div class="lang" role="group" aria-label="Language"><button type="button" data-lang="en" aria-pressed="true">EN</button>/<button type="button" data-lang="fr" aria-pressed="false">FR</button></div>
+  <button type="button" class="theme-btn" aria-label="Dark mode"><svg class="moon" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M16.5 12.2A7 7 0 0 1 7.8 3.5a7 7 0 1 0 8.7 8.7z"/></svg><svg class="sun" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.8v2M10 16.2v2M1.8 10h2M16.2 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4"/></svg></button>
+</header>
+
+<main class="wrap">
+  <section class="wt">
+    <h1><span data-l="en">Wavetable converter</span><span data-l="fr">Convertisseur de tables d'ondes</span></h1>
+    <p class="lede"><span data-l="en">Turn a wavetable into a file the <b>Wave</b> machine plays on your Model:Cycles. Drop your WAV — or a whole folder, whose subfolders are kept — then download the result or send it straight to the machine.</span><span data-l="fr">Transformez une table d'ondes en un fichier que la machine <b>Wave</b> joue sur votre Model:Cycles. Déposez votre WAV — ou tout un dossier, dont les sous-dossiers sont gardés — puis téléchargez le résultat ou envoyez-le directement à la machine.</span></p>
+
+    <div class="drop" id="drop">
+      <input type="file" id="file" accept=".wav,audio/wav,audio/x-wav" multiple>
+      <input type="file" id="dir" webkitdirectory directory multiple>
+      <label for="file"><span data-l="en">Choose WAV files…</span><span data-l="fr">Choisir des WAV…</span></label>
+      <span class="sep" aria-hidden="true">·</span>
+      <label for="dir"><span data-l="en">Choose a folder…</span><span data-l="fr">Choisir un dossier…</span></label>
+      <div class="status" id="status"><span data-l="en">Mono, 2048 points per frame, one cycle per frame. Drop one file, several files or a whole folder: you get a ZIP that keeps the subfolders.</span><span data-l="fr">Mono, 2048 points par trame, un cycle par trame. Déposez un fichier, plusieurs fichiers ou tout un dossier : vous recevez un ZIP qui garde les sous-dossiers.</span></div>
+      <div class="actions" id="actions">
+        <a class="btn" id="dl" download><span data-l="en">Download the converted file(s)</span><span data-l="fr">Télécharger le(s) fichier(s) converti(s)</span></a>
+        <button type="button" class="btn" id="send"><span data-l="en">Send to the machine</span><span data-l="fr">Envoyer à la machine</span></button>
+      </div>
+      <div class="xrow" id="xrow">
+        <label for="pace"><span data-l="en">Pace</span><span data-l="fr">Cadence</span></label>
+        <select id="pace">
+          <option value="0">Turbo — 0 ms</option>
+          <option value="10">10 ms</option>
+          <option value="25">25 ms</option>
+          <option value="50">Safe — 50 ms</option>
+        </select>
+        <button type="button" class="btn" id="stop" hidden><span data-l="en">Stop</span><span data-l="fr">Arrêter</span></button>
+      </div>
+      <div class="status" id="xstatus"></div>
+      <div class="bar" id="bar"><i id="barfill"></i></div>
+    </div>
+
+    <dl class="facts">
+      <dt><span data-l="en">What it does</span><span data-l="fr">Ce qu'il fait</span></dt>
+      <dd><span data-l="en">It removes the fold-back on high notes by baking in quieter, shorter copies of your table, and labels the file 48 kHz so Transfer leaves it untouched. Nothing is computed on the machine.</span><span data-l="fr">Il supprime le repliement dans les aigus en gravant dans le fichier des copies plus douces et plus courtes de votre table, et l'étiquette 48 kHz pour que Transfer n'y touche pas. Rien n'est calculé sur la machine.</span></dd>
+      <dt><span data-l="en">Requirements</span><span data-l="fr">Prérequis</span></dt>
+      <dd><span data-l="en">A mono WAV whose length is a whole number of 2048-point frames (Serum, Vital, most wavetable packs). Files from Elektron Transfer are fine if they were already 48 kHz.</span><span data-l="fr">Un WAV mono dont la longueur est un nombre entier de trames de 2048 points (Serum, Vital, la plupart des packs). Les fichiers venant d'Elektron Transfer conviennent s'ils étaient déjà en 48 kHz.</span></dd>
+      <dt><span data-l="en">Your files stay on your computer</span><span data-l="fr">Vos fichiers restent sur votre ordinateur</span></dt>
+      <dd><span data-l="en">Everything runs in the browser; nothing is uploaded.</span><span data-l="fr">Tout se passe dans le navigateur ; rien n'est envoyé.</span></dd>
+    </dl>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>
+      <span data-l="en">Independent project, not affiliated with Elektron. Questions and feedback: join the <a href="https://discord.gg/hWegtJZcmm" target="_blank" rel="noopener">Discord</a>.</span>
+      <span data-l="fr">Projet indépendant, non affilié à Elektron. Questions et retours : rejoignez le <a href="https://discord.gg/hWegtJZcmm" target="_blank" rel="noopener">Discord</a>.</span>
+    </p>
+  </div>
+</footer>
+
+<script src="../assets/site.js?v=2026-10-10-01"></script>
+<script src="../flasher/flasher.js?v=2026-10-11-01"></script>
+<script src="convert.js?v=2026-10-10-01"></script>
+<script>
+(function(){
+  var file = document.getElementById("file"), dir = document.getElementById("dir"),
+      drop = document.getElementById("drop"), actions = document.getElementById("actions"), xrow = document.getElementById("xrow"),
+      status = document.getElementById("status"), xstatus = document.getElementById("xstatus"),
+      dl = document.getElementById("dl"), send = document.getElementById("send"),
+      pace = document.getElementById("pace"), stop = document.getElementById("stop"),
+      bar = document.getElementById("bar"), barfill = document.getElementById("barfill");
+  var en = document.documentElement.lang !== "fr";
+  function say(msg, err) { status.textContent = msg; status.className = "status" + (err ? " err" : ""); }
+  function xsay(msg, err) { xstatus.textContent = msg; xstatus.className = "status" + (err ? " err" : ""); }
+  function base(n) { return n.replace(/^.*\//, ""); }
+  function relPath(f) {
+    var p = (f.webkitRelativePath && f.webkitRelativePath.length) ? f.webkitRelativePath : f.name;
+    p = p.replace(/\\/g, "/").split("/").filter(function (s) { return s && s !== "." && s !== ".."; });
+    return p.join("/");
+  }
+  function outName(p) { return p.replace(/\.wav$/i, "") + "-wt.wav"; }
+  function offer(data, name) {
+    var blob = new Blob([data], { type: "application/octet-stream" });
+    dl.href = URL.createObjectURL(blob); dl.download = name;
+  }
+  var results = null;
+  function run(list) {
+    var files = Array.prototype.filter.call(list, function (f) { return /\.wav$/i.test(f.name); });
+    actions.className = "actions"; xrow.className = "xrow"; results = null; xsay("");
+    bar.className = "bar"; barfill.style.width = "0%";
+    if (!files.length) { say(en ? "No .wav file." : "Aucun fichier .wav.", true); return; }
+    say((en ? "Converting " : "Conversion de ") + files.length + "…");
+    var out = [], skipped = 0, done = 0;
+    files.forEach(function (f) {
+      var r = new FileReader();
+      r.onload = function () {
+        try {
+          var x = WTConvert.fromWav(r.result);
+          if (x.length % WTConvert.N) skipped++;
+          else { var d = WTConvert.bake(x); out.push({ name: outName(relPath(f)), samples: d, data: WTConvert.toWav(d) }); }
+        } catch (e) { skipped++; }
+        if (++done === files.length) finish();
+      };
+      r.readAsArrayBuffer(f);
+    });
+    function finish() {
+      if (!out.length) { say(en ? "Nothing to convert: needs whole 2048-point frames." : "Rien à convertir : il faut des trames entières de 2048 points.", true); return; }
+      results = out;
+      if (out.length === 1) offer(out[0].data, base(out[0].name));
+      else offer(WTConvert.zipStore(out), "wavetables-wt.zip");
+      actions.className = "actions on"; xrow.className = "xrow on";
+      say((en ? "Done: " : "Terminé : ") + out.length + (en ? " file(s)" : " fichier(s)") + (skipped ? (en ? ", " + skipped + " skipped" : ", " + skipped + " ignoré(s)") : "") + ".");
+    }
+  }
+  function pickPorts(access) {
+    var ins = [...access.inputs.values()], outs = [...access.outputs.values()];
+    for (var i = 0; i < outs.length; i++)
+      for (var k = 0; k < ins.length; k++)
+        if (outs[i].name === ins[k].name) return { input: ins[k], output: outs[i] };
+    return (ins.length && outs.length) ? { input: ins[0], output: outs[0] } : null;
+  }
+  var stopFlag = false;
+  function speedText(name, s) {
+    var mbps = s.seconds > 0 ? s.sent / 1048576 / s.seconds : 0;
+    return (en ? "Sending " : "Envoi de ") + name + " — " + Math.round(s.sent / s.total * 100) + "% · "
+      + mbps.toFixed(1) + " MB/s · " + Math.round(s.blockMs) + " ms/block"
+      + (s.rest > 0 ? " · pause " + s.rest + " ms" : "");
+  }
+  async function transfer(list) {
+    if (!window.MCFlasher) { xsay(en ? "Transfer unavailable (flasher.js not loaded)." : "Envoi indisponible (flasher.js non chargé).", true); return; }
+    if ((typeof window.isSecureContext !== "undefined" && !window.isSecureContext) || !navigator.requestMIDIAccess) {
+      xsay(en ? "This needs Web MIDI on a secure page: open it in Chrome, Edge or Opera, served over http (not by double-clicking the file)."
+              : "Il faut le Web MIDI sur une page sécurisée : ouvrez-la dans Chrome, Edge ou Opera, servie en http (pas par double-clic sur le fichier).", true);
+      return;
+    }
+    var F = window.MCFlasher, paceMs = Number(pace.value) || 0;
+    stopFlag = false;
+    send.disabled = true; stop.hidden = false;
+    try {
+      xsay(en ? "Asking for MIDI access…" : "Demande d'accès MIDI…");
+      var granted = false;
+      var hint = setTimeout(function () {
+        if (!granted) xsay(en
+          ? "Waiting for your permission: the browser shows a prompt near the address bar — click “Allow”. If you blocked it before, click the icon left of the address and allow MIDI."
+          : "En attente de votre autorisation : le navigateur affiche une demande près de la barre d'adresse — cliquez sur « Autoriser ». Si vous l'avez bloquée, cliquez sur l'icône à gauche de l'adresse et autorisez le MIDI.");
+      }, 2500);
+      var access;
+      try { access = await navigator.requestMIDIAccess({ sysex: true }); }
+      catch (e) {
+        granted = true; clearTimeout(hint);
+        throw new Error(en ? "MIDI access was refused. Click the icon left of the address, allow MIDI, reload the page and try again."
+                           : "Accès MIDI refusé. Cliquez sur l'icône à gauche de l'adresse, autorisez le MIDI, rechargez la page et réessayez.");
+      }
+      granted = true; clearTimeout(hint);
+      xsay(en ? "MIDI access granted — looking for the machine…" : "Accès MIDI accordé — recherche de la machine…");
+      var pair = pickPorts(access);
+      if (!pair) throw new Error(en ? "No MIDI port found: plug the Model:Cycles over USB." : "Aucun port MIDI : branchez le Model:Cycles en USB.");
+      var session = await F.xferOpen(pair.input, pair.output);
+      try {
+        var p0 = performance.now();
+        await session.request([0x01]);                       // raw ping: the round-trip with no writing
+        var pingMs = Math.round(performance.now() - p0);
+        var who = await F.xferIdentify(session);
+        if (who.id !== 25) throw new Error(en
+          ? "The machine must be in SMP mode (Device Config › Transfer › SMP). It answered “" + (who.device || who.id) + "”."
+          : "La machine doit être en mode SMP (Device Config › Transfer › SMP). Elle a répondu « " + (who.device || who.id) + " ».");
+        xsay((en ? "Connected: " : "Connecté : ") + (who.device || who.id) + (en ? " — sending " : " — envoi de ") + list.length + (en ? " file(s)…" : " fichier(s)…"));
+        var grand = 0, before = [];
+        for (var i = 0; i < list.length; i++) { before.push(grand); grand += list[i].samples.length * 2 + 64; }
+        bar.className = "bar on"; barfill.style.width = "0%";
+        var done = 0;
+        for (var i = 0; i < list.length; i++) {
+          if (stopFlag) break;                               // graceful stop: after the current table
+          var res = list[i], parts = res.name.split("/"), fname = parts.pop().replace(/\.wav$/i, "");
+          var d = "/Wavetables";
+          await F.sampleMakeDir(session, d);
+          for (var k = 0; k < parts.length; k++) { d += "/" + parts[k]; await F.sampleMakeDir(session, d); }
+          var name = res.name, base = before[i], idx = i;
+          xsay((en ? "File " : "Fichier ") + (idx + 1) + "/" + list.length + ": " + name + "…");
+          await F.uploadSample(session, d + "/" + fname, res.samples, {
+            restMs: paceMs,
+            onSpeed: function (s) {
+              var overall = (base + 64 + s.sent) / grand;
+              barfill.style.width = (overall * 100).toFixed(1) + "%";
+              xsay(speedText(name, s) + " · ping " + pingMs + " ms · " + Math.round(overall * 100) + "% (" + (idx + 1) + "/" + list.length + ")");
+            },
+            onRetry: function (s) {
+              xsay((en ? "Slow block on " : "Bloc lent sur ") + name + (en ? " — backing off to " : " — pause portée à ") + s.rest + " ms… (" + (idx + 1) + "/" + list.length + ")");
+            }
+          });
+          done++;
+        }
+        barfill.style.width = "100%";
+        xsay((stopFlag ? (en ? "Stopped. Sent " : "Arrêté. Envoyé ") : (en ? "Sent " : "Envoyé ")) + done
+          + (en ? " file(s) to /Wavetables." : " fichier(s) dans /Wavetables."));
+      } finally { session.close(); }
+    } catch (e) {
+      xsay(e && e.message ? e.message : String(e), true);
+    } finally { send.disabled = false; stop.hidden = true; }
+  }
+  file.addEventListener("change", function () { if (file.files.length) run(file.files); });
+  dir.addEventListener("change", function () { if (dir.files.length) run(dir.files); });
+  send.addEventListener("click", function () { if (results) transfer(results); });
+  stop.addEventListener("click", function () { stopFlag = true; xsay(en ? "Stopping after the current table…" : "Arrêt après la table en cours…"); });
+  try { var sp = localStorage.getItem("mc-pace"); if (sp !== null) pace.value = sp; } catch (e) {}
+  pace.addEventListener("change", function () { try { localStorage.setItem("mc-pace", pace.value); } catch (e) {} });
+  ["dragover", "dragenter"].forEach(function (e) { drop.addEventListener(e, function (ev) { ev.preventDefault(); drop.classList.add("over"); }); });
+  ["dragleave", "drop"].forEach(function (e) { drop.addEventListener(e, function (ev) { ev.preventDefault(); drop.classList.remove("over"); }); });
+  drop.addEventListener("drop", function (ev) { if (ev.dataTransfer.files.length) run(ev.dataTransfer.files); });
+})();
+</script>
+</body>
+</html>

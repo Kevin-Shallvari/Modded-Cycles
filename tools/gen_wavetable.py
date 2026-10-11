@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Génère tweaks/model-cycles_OS1.13/36-wavetable-tg.json : la machine Wave, qui joue une table d'ondes de
-l'utilisateur, avec Model-TG (après model-tg-st), en 8e machine (notes/52).
+"""Génère tweaks/model-cycles_OS1.13/36-wavetable-tg.json : la machine Wave, qui joue une table d'ondes
+pré-travaillée, avec Model-TG (après model-tg-st), en 8e machine (notes/52).
 
-  - moteur : tools/machines/wavetable/wt.c (oscillateur sur les copies par demi-octave, passe-bas d'Acid, chaîne
-    d'ampli d'origine), ses tables écrites ici dans wt_tables.h ;
+  - moteur : tools/machines/wavetable/wt.c (oscillateur sur les copies par octave gravées dans le fichier,
+    passe-bas d'Acid, chaîne d'ampli d'origine), ses tables écrites ici dans wt_tables.h ;
+  - la table est convertie par l'outil web (docs/convert/, référence tools/wt_convert.py) : la machine ne calcule
+    aucune copie, elle lit la disposition fixe (LGC, OFF, S_TOTAL) ;
   - mécanique des machines ajoutées : celle d'Acid avec Model-TG (gen_acid.py, notes/51 §6) ;
   - navigateur bloqué dans /Wavetables sur la piste de la machine (5 accroches dans l'OS, notes/52 §3quater) ;
   - Model-TG retouché au démarrage, en mémoire (son tweak ne change pas) : le navigateur charge un fichier sur notre
-    piste, name_probe protège sa table (notes/52 §3ter), et sa tâche des LED prépare les copies (wt_tick). Les
-    adresses sont cherchées dans son bloc par motifs, chacun unique.
+    piste et name_probe protège sa table (notes/52 §3ter). Les adresses sont cherchées dans son bloc par motifs,
+    chacun unique.
 
     python3 tools/gen_wavetable.py --cycles model-cycles_OS1.13.syx [--check]
 """
@@ -43,11 +45,8 @@ MACHINE = dict(name="Wave", image=4, decay=60,
 EPOS_ID, EPOS_K = 0x0a, 27        # MACHINE tenue + COLOR : enveloppe -> position (place libre ; mot sauvé par Model-TG)
 EPOS_NAMES = ("Env Pos", "EPOS")
 WT_MACH = 7                       # après les 6 d'origine et le Sampler
-NCOPY = 21                        # copies par demi-octave : 1024 / 2^(c/2) harmoniques
+NCOPY = 11                        # copies, une par octave : 1024 / 2^c harmoniques
 FOLD_OK = 28000.0                 # repli au-dessus de 20 kHz : inaudible
-COPIES_AT = 0x46800000            # SDRAM libre au-dessus de Model-TG (notes/52 §4)
-POOL_BYTES = 0x1680000            # réserve des copies, partagée entre les pistes (22,5 Mo)
-SCRATCH_AT = COPIES_AT + POOL_BYTES  # 64 Ko de calcul, jusqu'à 0x47E90000
 ART_OFF = 0x8000                  # images, après le code
 
 # --- l'OS (navigateur, notes/52 §3quater) ---
@@ -55,21 +54,27 @@ FOLDER = 0x40148cb0
 ACTIVE = 0x40a700c4
 BROWSER = ((0x400a6c20, "4fefffe048d70c0c", "wt_open"), (0x400a40e2, "42a74eb940081bd6", "wt_close"),
            (0x4003fa52, "2f2802804eb94007cf72", "wt_yes_up"), (0x400a6f9c, "2f2a02804eb94007cf72", "wt_key_up"),
-           (0x400a70b0, "4eb94007d2f0", "wt_home"), (0x400a640a, "4eb94007e548", "wt_cursor"))
+           (0x400a70b0, "4eb94007d2f0", "wt_home"))
 
 
 def tables_h():
     n0 = 69 + 12 * math.log2(FOLD_OK / 1024 / math.sqrt(2) / 440)
-    hmax = [max(1, int(1024 * 2 ** (-c / 2))) for c in range(NCOPY)]
-    cos = [min(32767, round(32768 * math.cos(2 * math.pi * k / 2048))) for k in range(1024)]
-    sin = [min(32767, round(32768 * math.sin(2 * math.pi * k / 2048))) for k in range(1024)]
+    lg, off, s = [], [], 2048
+    for c in range(NCOPY):
+        l = 6
+        while l < 11 and (1 << l) < 4 * max(1, int(1024 * 2 ** (-c))):
+            l += 1
+        lg.append(l)
+    for c in range(NCOPY):
+        off.append(0 if lg[c] == 11 else s)         # 0 : la copie est la table elle-meme
+        if lg[c] < 11:
+            s += 1 << lg[c]
     return ga.tables_h().replace("tools/gen_acid.py", "tools/gen_wavetable.py") + "\n".join([
         f"#define NCOPY {NCOPY}",
         f"#define COPY_N0 {round(n0 * 65536)}",
-        f"#define POOL_BYTES {POOL_BYTES:#x}",
-        "static const s16 HMAX[NCOPY] = {" + ", ".join(map(str, hmax)) + "};",
-        "static const s16 COS_TAB[1024] = {" + ", ".join(map(str, cos)) + "};",
-        "static const s16 SIN_TAB[1024] = {" + ", ".join(map(str, sin)) + "};",
+        f"#define S_TOTAL {s}",
+        "static const s16 LGC[NCOPY] = {" + ", ".join(map(str, lg)) + "};",
+        "static const s32 OFF[NCOPY] = {" + ", ".join(map(str, off)) + "};",
     ]) + "\n"
 
 
@@ -107,15 +112,10 @@ def find_tg(tg):
     r.update(np_site=va(m, 1), np_nosmp=va(m, 1) + 8 + disp, np_cont=va(m, 3), st_ok=st_ok, np_tok=va(m, 5))
     if r["np_cont"] != r["np_site"] + 10:
         raise SystemExit("!! Model-TG : name_probe")
-    # led_hook : jsr sld_tick ; lea ld_busy,a0 ; clr.l (a0)
-    m = one(r"(4eb9([0-9a-f]{8}))41fa([0-9a-f]{4})4290", "led_hook")
-    if rel(m, 3) != tg["ld_busy"]:
-        raise SystemExit("!! Model-TG : led_hook")
-    r.update(lh_site=va(m, 1), sld_tick=word(m, 2))
-    for k in ("pf_site", "np_site", "lh_site"):
+    for k in ("pf_site", "np_site"):
         if not at <= r[k] < at + len(blob):
             raise SystemExit(f"!! Model-TG : {k}")
-    r["old"] = {k: blob[r[k] - at:r[k] - at + n].hex() for k, n in (("pf_site", 6), ("np_site", 10), ("lh_site", 6))}
+    r["old"] = {k: blob[r[k] - at:r[k] - at + n].hex() for k, n in (("pf_site", 6), ("np_site", 10))}
     return r
 
 
@@ -138,11 +138,6 @@ wt_boot:
 	moveq	#4, %d0
 	bsr.s	same
 	bne.s	9f
-	lea	lh_old, %a0
-	lea	{f['lh_site']:#x}, %a1
-	moveq	#2, %d0
-	bsr.s	same
-	bne.s	9f
 	lea	{f['pf_site']:#x}, %a1		/* jsr wt_or_any */
 	move.w	#0x4eb9, (%a1)+
 	move.l	#wt_or_any, (%a1)
@@ -150,9 +145,6 @@ wt_boot:
 	move.w	#0x4ef9, (%a1)+
 	move.l	#wt_np, (%a1)+
 	move.l	#0x4e714e71, (%a1)
-	lea	{f['lh_site']:#x}, %a1		/* jsr wt_led */
-	move.w	#0x4eb9, (%a1)+
-	move.l	#wt_led, (%a1)
 	moveq	#1, %d0
 	move.l	%d0, wt_patched
 9:	jmp	{tg['boot_extra_hook']:#x}
@@ -167,7 +159,6 @@ same:
 	.align	2
 pf_old:	.word	{words(old['pf_site'])}
 np_old:	.word	{words(old['np_site'])}
-lh_old:	.word	{words(old['lh_site'])}
 	.globl	wt_patched
 wt_patched:	.long	0
 
@@ -209,12 +200,6 @@ wt_np:
 2:	moveq	#1, %d0
 	move.l	%d0, {f['st_ok']:#x}
 	jmp	{f['np_tok']:#x}
-
-| ---- led_hook : son sld_tick, puis une étape des copies (C)
-	.globl	wt_led
-wt_led:
-	jsr	{f['sld_tick']:#x}
-	jmp	{syms['wt_tick']:#x}
 
 | ---- navigateur : sur notre piste, /Wavetables (créé s'il manque), sans remonter au-dessus
 wt_ours:
@@ -300,26 +285,6 @@ wt_key_up:
 	jmp	0x400a7002
 1:	jmp	0x400a6fa6
 
-| ---- curseur du navigateur (0x400a640a, à la place de jsr 0x4007e548 : le fichier sous le curseur est-il
-| valide ?) : sur notre piste, son empreinte, sa taille et l'heure, pour la préparation d'avance (wt_tick)
-	.globl	wt_cursor
-wt_cursor:
-	move.l	4(%sp), -(%sp)
-	jsr	0x4007e548
-	addq.l	#4, %sp
-	tst.l	wt_lock
-	beq.s	1f
-	tst.l	%d0
-	beq.s	1f
-	movea.l	4(%sp), %a0
-	move.l	8(%a0), %d1
-	move.l	%d1, {syms['wt_pf_size']:#x}
-	move.l	0x8000184c, %d1
-	move.l	%d1, {syms['wt_pf_clock']:#x}
-	move.l	4(%a0), %d1
-	move.l	%d1, {syms['wt_pf_hash']:#x}
-1:	rts
-
 	.globl	wt_home
 wt_home:
 	tst.l	wt_lock
@@ -355,13 +320,12 @@ def compile_machine(tmp, pay, f):
     (tmp / "wt_tables.h").write_text(tables_h())
     o, ld, elf, out = tmp / "wt.o", tmp / "link.ld", tmp / "wt.elf", tmp / "wt.bin"
     defs = [f"-DTG_TRACK_SLOT={f['track_slot']:#x}", f"-DTG_TRACK_PEND={f['track_pend']:#x}",
-            f"-DTG_SLOT_HASH={f['slot_hash']:#x}",
-            f"-DTG_PD_MODE={f['pd_mode']:#x}", f"-DTG_ENSURE_LOADED_S=\"{f['ensure_loaded']:#x}\"", f"-DCOPIES_AT={COPIES_AT:#x}", f"-DSCRATCH_AT={SCRATCH_AT:#x}"]
+            f"-DTG_SLOT_HASH={f['slot_hash']:#x}"]
     gx.run([gx.CROSS + "gcc", *ga.CFLAGS, *defs, f"-I{tmp}", "-c", str(SRC / "wt.c"), "-o", str(o)])
     ld.write_text(LINK.format(code=pay, bss=pay + gm.BSS_OFF))
     warn = ["--no-warn-rwx-segments"] if "no-warn-rwx" in gx.run([gx.CROSS + "ld", "--help"]) else []
     gx.run([gx.CROSS + "ld", "-T", str(ld), "--gc-sections", *warn, "-e", "wt_update",
-            "-u", "wt_render", "-u", "wt_tick", "-o", str(elf), str(o)])
+            "-u", "wt_render", "-o", str(elf), str(o)])
     secs = {}
     for line in gx.run([gx.CROSS + "objdump", "-h", str(elf)]).splitlines():
         p_ = line.split()
@@ -466,7 +430,7 @@ def build_tweak(img, tg):
     u32 = lambda va: struct.unpack_from(">I", cur, va - BASE)[0]
     m = MACHINE
     f = find_tg(tg)
-    f.update(slot_hash=tg["slot_hash"], pd_mode=tg["pd_mode"], ensure_loaded=tg["ensure_loaded"])
+    f.update(slot_hash=tg["slot_hash"])
     with tempfile.TemporaryDirectory() as d:
         tmp = pathlib.Path(d)
         blob, syms, bss_end = compile_machine(tmp, pay, f)
@@ -588,7 +552,7 @@ def build_tweak(img, tg):
         # navigateur bloqué dans /Wavetables (notes/52 §3quater)
         for va, old, sym in BROWSER:
             old = bytes.fromhex(old)
-            if sym in ("wt_home", "wt_cursor"):
+            if sym == "wt_home":
                 new_ = bytes.fromhex("4eb9") + g7.be32(gsyms[sym])
             else:
                 new_ = jmp(gsyms[sym]) + bytes.fromhex("4e71") * ((len(old) - 6) // 2)
@@ -645,9 +609,9 @@ def build_tweak(img, tg):
         "description": [
             "Version avec Model-TG (notes/52) : s'ajoute après model-tg-st, Wave est la 8e machine, après le Sampler ;",
             "sa sortie passe par l'étage d'amplitude de Model-TG (Attack, filtre).",
-            "La table : un fichier de /Wavetables (créé s'il manque), ouvert dans le navigateur sur la piste de Wave,",
-            "chargé et protégé par Model-TG (retouché en mémoire au démarrage). Copies par demi-octave préparées au",
-            "chargement, dans la SDRAM libre au-dessus de Model-TG (0x46800000..0x47F00000) : pas de repliement.",
+            "La table : un fichier de /Wavetables (créé s'il manque), converti par l'outil web (table entière puis",
+            "copies adoucies par octave), ouvert dans le navigateur sur la piste de Wave, chargé et protégé par",
+            "Model-TG (retouché en mémoire au démarrage) : pas de repliement, rien de calculé sur la machine.",
             "COLOR = position dans la table, SHAPE = enveloppe -> position (64 : rien), SWEEP / CONTOUR = coupure et",
             "résonance du passe-bas d'Acid, DECAY = enveloppe et chaîne d'ampli d'origine, PUNCH = accent.",
             "Code : tools/machines/wavetable/wt.c. Généré par tools/gen_wavetable.py. Aucun octet Elektron.",
@@ -660,8 +624,8 @@ def build_tweak(img, tg):
         "writes": writes,
         "append": {"at": f"{at:#x}", "dest": f"{pay:#x}", "size": size, "parts": parts, "reloc": reloc,
                    "pack": [[f"{a_:#x}", n_] for a_, n_ in segs]},
-        "symbols": dict({k: f"{syms[k]:#x}" for k in ("wt_update", "wt_render", "wt_tick")},
-                        **{k: f"{gsyms[k]:#x}" for k in ("wt_boot", "wt_or_any", "wt_np", "wt_led", "wt_open", "wt_patched")},
+        "symbols": dict({k: f"{syms[k]:#x}" for k in ("wt_update", "wt_render")},
+                        **{k: f"{gsyms[k]:#x}" for k in ("wt_boot", "wt_or_any", "wt_np", "wt_open", "wt_patched")},
                         **{f"tg_{k}": f"{v:#x}" for k, v in f.items() if k != "old"}),
     }
     return out, dict(code=len(blob), glue=len(glue), bss=bss_end - pay - gm.BSS_OFF, image=sum(n_ for _, n_ in segs))
