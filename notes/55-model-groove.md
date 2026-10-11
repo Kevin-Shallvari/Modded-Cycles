@@ -38,9 +38,8 @@ contiendrait un mod du dépôt principal.
 ## 2. Le modèle de charge, une fois les FX gardés (le choix de Kevin)
 
 - Les 2 voix de plus coûtent **+11 112 instr/bloc** sur la boucle des voix quand elles sont TONE
-  (44 468 = 1,33 × 33 356, notes/54 §6), soit **+10,3 points** d'un bloc de 166 667 cycles.
-  La part du reste (mixeur de 6→8 appels, saisie USB) est estimée proportionnellement petite :
-  à qualifier en phase 1 par le banc de l'ISR complet (`0x4005979e`).
+  (44 468 = 1,33 × 33 356, notes/54 §6), soit **+10,3 points** d'un bloc de 166 667 cycles. Voir
+  le §2bis pour la marge réelle (l'audio complet n'est pas émulable, mais les mesures existent).
 - Arithmétique honnête : l'OS d'origine est à ~77 % du bloc à l'arrêt (notes/23). 8 pistes de
   **machines légères/passées TONE** suivent le régulateur sans toucher le plafond (~93 %) ;
   **8 pistes Syntakt (≈ 2 TONE/voix) ou Wave (≈ 1,46 TONE)** amènent la charge au-dessus du
@@ -51,13 +50,39 @@ contiendrait un mod du dépôt principal.
 - Les FX restent (choix du 11/10). Le strip FX (retiré à ~12 % du bloc, notes/31 §7 : délais +
   reverb calculés en permanence) est rangé comme **plan B** si les coupures deviennent le blocage.
 
+## 2bis. Phase 1 `[FAIT]` — la marge réelle, sans banc « ISR complet »
+
+- **Le banc de la fonction audio complète n'est pas émulable** (déjà constaté, notes/27 §3.4) :
+  `0x4005979e` tourne sans fin en émulation, faute de l'état de l'OS (l'entrée `0x40091ab2`, puis
+  la fonction de sortie et effets `0x400567ba` ne reviennent pas). La marge ne sortira donc pas
+  d'un banc d'émulation, mais du croisement des mesures machine + la boucle des voix :
+  - **OS d'origine, à l'arrêt : ~77 % du bloc** (notes/23, machine) ;
+  - **mixage + effets : ~30 % du bloc, à chaque bloc, même à l'arrêt** (notes/27 §3.4, machine ;
+    seule la fonction mixage `0x40056f58` est émulable : 6 000 instr/bloc) ;
+  - **une voix TONE soutenue : 5 291 instr/bloc = 4,9 % du bloc** (notes/43/51 §8 ; banc en
+    émulation, notes 54 §6) ;
+  - **6 → 8 voix TONE soutenues : +11 112 instr = +10,3 points** (notes/54 §6, banc en émulation).
+- **Lecture** : passer de 6 à 8 voix TONE pleines soutenues ajoute ~10 points à une charge qui,
+  pour l'audio complet avec machines d'origine, vit déjà sous le plafond du régulateur
+  (86 % de moyenne soutenue, 93 % en pic — notes/30/36). En 8 TONE soutenues, la marge devient
+  **mince [HYP — à confirmer machine avec le compteur du diagnostic]** ; en 8 machines plus
+  lourdes (Syntakt ≈ 2 TONE/voix), les coupures arrivent. C'est gelé dans les critères de la
+  phase 2 : chaque banc de celle-ci rejouera la mesure avec la boucle des voix relogée, et le
+  compteur de diagnostic (firmware de diagnostic, notes 27 §4) reste la voie machine.
+- **Identité de build de la base Groove** : le `.syx` officiel lui-même (SHA-256
+  `44fe5862…9800640c`, MAIN OS `cc99d4f0…ee98`), pas une reconstruction — la repack avec zéro
+  écriture ne dépaquette pas strictement à l'octet comme le packeur d'Elektron (654 701 o
+  contre 654 704), mais renvoie **le même MAIN OS** (vérifié, `tools/mtlib/aplib.py`). À partir
+  de la phase 2, `tools/build.py -t <id>` publiera le SHA du MAIN OS construit, comme les autres
+  mods.
+
 ## 3. Les phases (chaque jalon : preuve en émulation d'abord, essai matériel de Maxime ensuite,
     PR draft un changement visible)
 
 | Phase | Contenu | Critères d'acceptation |
 |---|---|---|
 | 0 (ce PR) | charte ; banc de mesure préservé | la réexécution du banc reproduit note 54 (TONE 5 291, 1,33 ×) |
-| 1 | base Groove = OS stock nu ; identité de build ; banc de l'ISR complet | hash MAIN OS publié ; la mesure « ISR complet » établit la marge réelle avec FX |
+| 1 | base Groove = OS stock nu ; identité de build ; marge réelle | identité publiée (§2bis) ; la marge appuyée sur les mesures machine + boucle émulée |
 | 2 | le cœur 8 pistes : RAM relogée (états de voix hors `0x42309ad0`, 2 tampons hors `0x80001b58`, 2 tableaux de gains), borne `6→8`, mixeur 6→8 appels, +10 entrées de descripteurs (560 o), 3 bornes du quick-mute, stride du pattern + conversions | pistes 7/8 jouent ; pistes 0-5 octet pour octet d'origine ; projets existants lisibles |
 | 3 | l'UI de sélection des pistes (le « plus gros inconnu », notes/54 §2.6) : touche TRK, pads, grilles, écrans | sélection/jouer la 7ᵉ et la 8ᵉ à la main, en émulation d'abord |
 | 4 | USB 8 canaux (sortir les 8 pistes), doc utilisateur (guide, version) | la machine produit 8 pistes audibles ; les mutes y répondent |
