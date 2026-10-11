@@ -72,8 +72,8 @@ FEATURES = [
         ],
         # avec les moteurs du Syntakt : la base de la version combinee (notes/31), et pour chaque combinaison de
         # moteurs son tweak syntakt-tg-<moteurs> (« tg » des combinaisons de la carte des moteurs) ; de meme avec
-        # la machine MACRO (notes/43), qui prend alors macro-tg, et Acid (notes/51), acid-tg
-        "with": {"syntakt": "30-model-tg-st", "macro": "30-model-tg-st", "acid": "30-model-tg-st"},
+        # la machine MACRO (notes/43), qui prend alors macro-tg, Acid (notes/51), acid-tg, et Wave (notes/52), wavetable-tg
+        "with": {"syntakt": "30-model-tg-st", "macro": "30-model-tg-st", "acid": "30-model-tg-st", "wave": "30-model-tg-st"},
     },
     {
         "id": "sample-preview",
@@ -89,7 +89,7 @@ FEATURES = [
             {"file": "33-sample-preview", "label": None},
         ],
         # avec les moteurs du Syntakt, Model-TG devient model-tg-st : l'ecoute prend la version faite pour lui
-        "with": {"syntakt": "33-sample-preview-st", "macro": "33-sample-preview-st", "acid": "33-sample-preview-st"},
+        "with": {"syntakt": "33-sample-preview-st", "macro": "33-sample-preview-st", "acid": "33-sample-preview-st", "wave": "33-sample-preview-st"},
     },
     {
         "id": "latching-mute",
@@ -210,6 +210,24 @@ FEATURES = [
         "with": {"model-tg": "35-acid-tg"},
     },
     {
+        "id": "wave",
+        "cat": "sound",
+        "label": "Machine Wave",
+        "desc": "Une machine ajoutee apres Chord (apres le Sampler avec Model-TG) : elle joue une de tes tables "
+                "d'ondes rangee dans /Wavetables. La table se convertit d'abord sur le site (rubrique Convert), puis "
+                "se range sur la machine (bouton « Envoyer a la machine »). COLOR = position dans la table, SHAPE = "
+                "enveloppe de coupure, SWEEP / CONTOUR = passe-bas. Demande Model-TG.",
+        "status": "experimental",
+        "credit": None,
+        # meme place que MACRO, Acid et les moteurs du Syntakt (notes/52)
+        "requires": "model-tg",
+        "excludes": ["syntakt", "macro", "acid"],
+        "variants": [
+            {"file": "36-wavetable-tg", "label": None},
+        ],
+        "with": {"syntakt": "36-wavetable-tg", "macro": "36-wavetable-tg", "acid": "36-wavetable-tg", "wave": "36-wavetable-tg"},
+    },
+    {
         "id": "syntakt",
         "cat": "sound",
         "label": "Vrais moteurs du Syntakt",
@@ -257,7 +275,8 @@ def check_requires(features, by_id):
         if f.get("engines") or need.get("engines"):
             raise SystemExit(f"!! FEATURES : requires de {f['id']} vers {rid} : seulement entre cartes a variantes, "
                              "pas avec la carte des moteurs")
-        base = [v["id"] for v in need["variants"]]
+        # la carte demandee peut aussi etre dans l'une de ses versions « with » (Model-TG passe a model-tg-st)
+        base = [v["id"] for v in need["variants"]] + list(need.get("with", {}).values())
         for v in f["variants"]:
             if not set(base) & set(by_id[v["id"]].get("requires", [])):
                 raise SystemExit(f"!! FEATURES : la carte {f['id']} demande {rid}, mais le tweak {v['id']} ne demande "

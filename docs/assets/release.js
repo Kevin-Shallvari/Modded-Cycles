@@ -3,6 +3,14 @@
  *   { version: "1.1", date: "2026-10-15", changes: [{ en: "…", fr: "…" }] }
  */
 window.MC_RELEASES = [
+  { version: "1.35", date: "2026-10-11", changes: [
+    { en: "Wave machine with Model-TG (experimental): tick both and Wave becomes the 8th machine, after the Sampler. It plays your own wavetables, kept in /Wavetables. Needs Model-TG; not with MACRO, Acid or the Syntakt engines",
+      fr: "Machine Wave avec Model-TG (expérimental) : cochez les deux et Wave devient la 8e machine, après le Sampler. Elle joue vos propres tables d'ondes, rangées dans /Wavetables. Demande Model-TG ; pas avec MACRO, Acid ni les moteurs du Syntakt" },
+    { en: "New Convert tab: drop a wavetable and get a file the machine reads directly (the anti-fold-back copies are baked in), with a “Send to the machine” button that writes it to /Wavetables over USB (SMP mode)",
+      fr: "Nouvelle rubrique Convert : déposez une table d'ondes et recevez un fichier que la machine lit directement (les copies anti-repliement sont gravées), avec un bouton « Envoyer à la machine » qui l'écrit dans /Wavetables par USB (mode SMP)" },
+    { en: "Checked in the emulator on the OS's own code; not yet tested on a Model:Cycles",
+      fr: "Vérifiée en émulation sur le code même de l'OS ; pas encore essayée sur un Model:Cycles" },
+  ] },
   { version: "1.34", date: "2026-10-08", changes: [
     { en: "Acid machine with Model-TG (experimental): tick both and Acid becomes the 8th machine, after the Sampler, with Model-TG's Attack and filter on top. The sound is the same as Acid alone",
       fr: "Machine Acid avec Model-TG (expérimental) : cochez les deux et Acid devient la 8e machine, après le Sampler, avec l'Attack et le filtre de Model-TG en plus. Le son est le même qu'Acid seule" },

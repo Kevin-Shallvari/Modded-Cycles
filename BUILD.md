@@ -325,6 +325,24 @@ avec MACRO, les moteurs du Syntakt et SD VINTAGE (même mécanique, même place)
 |---|---|
 | `acid` | `bb28ccac59411120b4791a83e15bc7337a04ed6b092d35de0047e4c78cf3efcf` |
 | `6ch-usbup,acid` | `28841d83214df58e19ebdfe137ccb32d86f0d82ddc1a3d6582a1b149d7d18575` |
+
+### Machine Wave (joue tes tables d'ondes)
+
+`tweaks/model-cycles_OS1.13/36-wavetable-tg.json` est produit par `tools/gen_wavetable.py` : notre moteur en entiers
+(`tools/machines/wavetable/wt.c`) joue la table pré-travaillée par l'outil web (`docs/convert/`, référence
+`tools/wt_convert.py`), lue telle quelle — les copies anti-repliement sont déjà gravées, rien n'est calculé sur la
+machine. Wave s'ajoute après `model-tg-st` : 8e machine, après le Sampler ; sa sortie passe par l'étage d'amplitude de
+Model-TG. Le fichier vit dans `/Wavetables` et s'y range par le protocole de Transfer
+([note 52](notes/52-etude-tables-d-ondes.md), [note 53](notes/53-envoi-des-tables-depuis-l-outil-web.md)).
+```sh
+python3 tools/gen_wavetable.py --cycles model-cycles_OS1.13.syx [--check]
+python3 tools/emu/test_wavetable.py --cycles model-cycles_OS1.13.syx
+```
+Incompatible avec MACRO, Acid, les moteurs du Syntakt et SD VINTAGE (même mécanique, même place).
+
+| `-t` | MAIN OS patché (SHA-256) |
+|---|---|
+| `model-tg-st,wavetable-tg` | `fe10d00a52a3baca1e597de7d7f2f7c86d6ce56f39dcf62001e9b1825379bd62` |
 | `6ch-usbup,acid,trig-hold,arp,tempo-max,boot-anim` | `1cdf8ad7e99ee83ac80ee9495d2751f337cf3f1e0710820c8f8626b206336329` |
 | `model-tg-st,acid-tg` | `dcdae167f8901c40fc50fc89ca2430ea73e8fc3ced72a170f75b390a4bd9660e` |
 | `6ch-usbup,model-tg-st,acid-tg,trig-hold,arp,tempo-max,boot-anim` | `59054578152858cc509e853287b94902587c4f4f6995d1fc4f8997fc7e39c2ba` |

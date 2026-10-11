@@ -416,3 +416,26 @@ démarrage, grave et aigu jouent sans lecture hors mémoire, fichier non convert
 
 **À faire** : le guide (rubrique de la machine Wave et étape de conversion) et le flasher, quand Wave y entrera ;
 les §4–§12 décrivent la préparation embarquée, désormais remplacée par cette section.
+
+## 14. Dans le flasher (11/10/2026)
+
+Wave entre dans le flasher comme les autres machines ajoutées : une carte **Machine Wave** (rubrique *Sons et
+machines*, **expérimentale**) qui **demande Model-TG** — cocher Wave coche Model-TG, et Model-TG prend alors
+`30-model-tg-st` (Wave s'ajoute après son Sampler, 8e machine). La carte est incompatible avec MACRO, Acid et les
+moteurs du Syntakt (même place en mémoire) ; l'écoute des samples prend `33-sample-preview-st` avec elle, comme avec
+MACRO et Acid.
+
+- `tools/gen_flasher_tweaks.py` : la carte `wave` (`requires` model-tg, `variants` `36-wavetable-tg`), la clé `with`
+  de model-tg et de sample-preview ; `check_requires` accepte désormais les versions « with » de la carte demandée
+  (`model-tg-st`) — un ajout qui ne va qu'avec une combinaison de Model-TG peut ainsi la demander.
+- `docs/flasher/tweaks.js` et `REF_MAINOS` (10 943 combinaisons), `docs/flasher/app.js` (textes en/fr, ancre de
+  guide), `docs/guide/index.html` (rubrique 15), `docs/assets/release.js` (1.35), `README.md`, `BUILD.md`,
+  `PROVENANCE.md`, `tools/webflash_smoke.js` (la carte, ses combinaisons, la ligne FR).
+- Tampon `2026-10-11-01` (les trois pages + `MC_BUILD`).
+
+**Preuves** : `gen_flasher_tweaks --check`, `ref_mainos --check`, `webbuild_check.sh`, `webflash_check.sh` et
+`webflash_smoke.sh` verts (Wave : avec Model-TG `model-tg-st,wavetable-tg`, avec l'écoute
+`model-tg-st,sample-preview-st,wavetable-tg`, jamais avec MACRO, Acid ni les moteurs).
+
+**À faire** : essayer sur la machine (Kevin) — flasher `model-tg-st,wavetable-tg`, convertir une table, l'envoyer
+(rubrique Convert, mode SMP), la jouer.
