@@ -103,7 +103,7 @@ Ils sont indépendants et combinables. Bon terrain d'essai à faible risque pour
 - **`[FAIT]`** Elle applique des **coefficients par piste** rangés dans des tableaux séparés (`0x40a78b80`, `…8b98`, `…8bb8`, `…8bd0`, `…8be8`, `…8c08`…). La présence de **deux coefficients (L et R) par piste** et de copies mises à l'échelle vers d'autres buffers correspond exactement au modèle du README :
   **volume/level de piste + pan (coefficient) + envois delay/reverb dérivés de la somme**.
 - **`[FAIT]`** Confirme la nature des stems de [01 §2](01-ms-multi-output.md#2-nature-des-stems-à-connaître-avant-de-mixer) : le point de prélèvement (`0x80001858`) est **avant** le pan et les envois. Les stems sont donc mono, pré-pan, sans FX — cohérent avec ce que dit l'auteur.
-- **`[FAIT]`, encourageant pour le mode 8 canaux** : la boucle d'accumulation itère sur **8 emplacements** (6 pistes + de la place). Cela conforte l'idée d'ajouter le **mix stéréo** en canaux 7-8 ([08 §A](08-feuille-de-route.md#a-8-canaux--6-pistes--mix-stéréo-recommandé-comme-jalon-2)).
+- **`[FAIT]`, encourageant pour le mode 8 canaux** : la boucle d'accumulation itère sur **8 emplacements** (6 pistes + de la place) *(corrigé le 11/10/2026, §8)*. Cela conforte l'idée d'ajouter le **mix stéréo** en canaux 7-8 ([08 §A](08-feuille-de-route.md#a-8-canaux--6-pistes--mix-stéréo-recommandé-comme-jalon-2)).
 - **`[À FAIRE]`** Confirmer lequel des buffers correspond au **mix final envoyé à l'USB** (celui que lit le feeder via `36(sp)`), s'il est **post-saturation** et **post-retours FX**. C'est la source à câbler pour les canaux 7-8.
 
 ## 7. Ce que cela change dans le plan
@@ -113,5 +113,13 @@ Ils sont indépendants et combinables. Bon terrain d'essai à faible risque pour
 - ✅ **Procédure de secours confirmée par le manuel** (MIDI IN obligatoire).
 - ⚠️ **Nouveau garde-fou** pour les extensions : éviter les 4 premiers octets des blobs (§5).
 - ▶️ **Prochaine étape RE utile** : finir de qualifier le buffer de mix (§6) avant de tenter le mode 8 canaux.
+
+## 8. Correction du 11/10/2026 (notes 53/54) : la « boucle sur 8 emplacements »
+
+En désassemblant le mixeur pour l'étude des 8 pistes audio ([54 §2.4](54-huit-pistes-audio.md)), la boucle
+`0x40056a9e..0x40056ac6` s'est révélée être un **masque de 8 bits** (`btst d1,d3`, avec `moveq #8` en
+`0x40056ac2`, `d1` de 0 à 7) de mute/routage — pas une accumulation sur 8 voies. Elle ne montre rien du nombre de
+pistes et ne conforte pas de « place au-delà des 6 » ([54 §2.4](54-huit-pistes-audio.md)). La ligne du §6 à ce
+sujet doit être lue avec cette correction.
 
 Les fichiers de désassemblage et le module `mcfw.py` sont dans `build/re/` (non versionnés). Voir [07 §2](07-snippets.md#2-mcfwpy--helpers-main-os-testé) pour le module.
