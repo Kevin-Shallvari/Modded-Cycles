@@ -34,6 +34,10 @@ contiendrait un mod du dépôt principal.
   Précédent : `6ch-multiout` et `sdvintage-snare`, en ligne de commande seulement
   (docs/AGENTS.md). La récupération reste garantie : section 3 seule, bootloader intact.
 - Chaque jalon Groove publie le SHA-256 du MAIN OS construit dans le PR, comme les autres mods.
+  **La pureté d'un jalon est vérifiable par son hash, pas par l'histoire de la branche** : la
+  branche `model-groove` porte aussi du travail du dépôt principal en cours (la machine Wave,
+  Model-TG…) ; un firmware Groove n'intègre jamais un mod du dépôt, il n'empile que les tweaks
+  Groove sur le `.syx` officiel.
 
 ## 2. Le modèle de charge, une fois les FX gardés (le choix de Kevin)
 
