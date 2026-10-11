@@ -67,6 +67,7 @@ const cstr = (str) => [...Buffer.from(str, "latin1"), 0];
 function fakeDevice(opts, reply) {
   const dev = Object.assign({ id: 27, name: "Model Cycles", version: "1.13", startStatus: 0, writeError: -1, silent: false,
     pings: 0, starts: 0, blocks: 0, received: null, size: 0, next: 0, bad: [] }, opts);
+  dev.sample = null;
   dev.handle = (d) => {
     if (d.length < 8 || XHEAD.some((b, k) => d[k] !== b)) return;           // not for the Transfer protocol
     const m = unpack(d.subarray(6, d.length - 1));
@@ -89,7 +90,18 @@ function fakeDevice(opts, reply) {
       const op = dev.blocks === dev.writeError ? 2 : dev.next >= dev.size ? 1 : 0;
       dev.blocks++;
       r = [...head, 0, 0, 0, 0, op];
-    }
+    } else if (m[4] === 0x10) r = [...head];                            // read dir (sample fs): empty
+    else if (m[4] === 0x11) r = [...head, 1];                           // create dir: ok
+    else if (m[4] === 0x40) {                                           // open writer: size at [5..8] BE
+      const total = be(m, 5);
+      dev.sample = { id: 0x2a, total, buf: new Uint8Array(total), blocks: 0 };
+      r = [...head, 1, 0, 0, 0, dev.sample.id, 0, 0, 0, 0];
+    } else if (m[4] === 0x42) {                                         // write: id, consumed, offset, data
+      const id = be(m, 5), len = be(m, 9), off = be(m, 13), data = m.subarray(17);
+      if (!dev.sample || id !== dev.sample.id || data.length !== len) dev.bad.push("sample write: bad id/len");
+      else { dev.sample.buf.set(data, off); dev.sample.blocks++; }
+      r = [...head, 1];
+    } else if (m[4] === 0x41) r = [...head, 1];                         // close writer
     if (r && !dev.silent) setTimeout(() => reply(pack(r)), 1);
   };
   return dev;
@@ -976,6 +988,27 @@ async function main() {
     check(!app.state.fw && app.state.fwError === "pick_one" && !doc.getElementById("feat-syntakt").checked,
       "every engine unticked -> no mod left to build");
     check(errors.length === 0, "no JS error in the Syntakt engines flow " + (errors.length ? JSON.stringify(errors) : ""));
+  }
+
+  // --- sample transfer (notes/53): uploadSample round-trip against the fake device ---
+  {
+    const L = await load();
+    const dev2 = L.dev;
+    const samples = Int16Array.from([0, 100, -100, 32767, -32768, 12345, -12345]);
+    const session = await L.w.MCFlasher.xferOpen(L.devIn(), L.devOut());
+    const res = await L.w.MCFlasher.uploadSample(session, "/Wavetables/x", samples, { restMs: 0 });
+    session.close();
+    const want = new Uint8Array(64 + samples.length * 2);
+    const dv = new DataView(want.buffer);
+    dv.setUint32(4, samples.length * 2, false);                 // size (bytes)
+    dv.setUint32(8, 48000, false);                              // rate
+    want[20] = 0x7f;                                            // loop type: none
+    for (let i = 0; i < samples.length; i++) dv.setInt16(64 + 2 * i, samples[i], false);
+    check(same(dev2.sample && dev2.sample.buf, want),
+      "uploadSample: the machine gets the 64-byte header + 16-bit big-endian PCM, byte for byte");
+    check(res.bytes === want.length && dev2.sample.blocks === 1,
+      "uploadSample: size = PCM + 64, one 8 KB block for a tiny table");
+    check(dev2.bad.length === 0, "uploadSample: no malformed message " + dev2.bad.slice(0, 2).join("; "));
   }
 
   console.log(fail ? `\nFAILED (${fail})` : "\nALL OK");

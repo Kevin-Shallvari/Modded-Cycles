@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Checks the fast USB path of the web flasher (docs/flasher/flasher.js) against a line by line
 transcription of Elektroid's C (src/connectors/elektron.c, https://github.com/dagargo/elektroid):
-7-bit packing both ways, the CRC of a block, and the bytes of the OS upgrade messages.
+7-bit packing both ways, the CRC of a block, the bytes of the OS upgrade messages, and the bytes of a
+sample upload (notes/53: open writer 0x40, write 0x42, close writer 0x41, 64-byte header, 8 KB blocks).
 
     python3 tools/webxfer_check.py          # needs node
 
@@ -20,6 +21,12 @@ MSG_HEADER = bytes([0xF0, 0, 0x20, 0x3C, 0x10, 0])
 OS_TRANSF_BLOCK_BYTES = 0x800
 OS_UPGRADE_START_REQUEST = bytes([0x50, 0, 0, 0, 0]) + b"sysex\0" + bytes([1])
 OS_UPGRADE_WRITE_RESPONSE = bytes([0x51] + [0] * 12)
+
+DATA_TRANSF_BLOCK_BYTES = 0x2000
+SAMPLE_HEADER_LEN = 64                       # struct elektron_sample_header
+FS_SAMPLE_OPEN_FILE_WRITER_REQUEST = bytes([0x40, 0, 0, 0, 0])
+FS_SAMPLE_WRITE_FILE_REQUEST = bytes([0x42] + [0] * 12)
+FS_SAMPLE_CLOSE_FILE_WRITER_REQUEST = bytes([0x41] + [0] * 8)
 
 
 def elektron_encode_payload(src):
@@ -65,6 +72,12 @@ def elektron_tx(msg, seq):
     return MSG_HEADER + elektron_encode_payload(bytes(msg)) + b"\xf7"
 
 
+def elektron_new_msg_path(data, path):
+    msg = elektron_new_msg(data)
+    msg += path.encode("cp1252") + b"\0"
+    return msg
+
+
 def elektron_new_msg_upgrade_os_start(size):
     msg = elektron_new_msg(OS_UPGRADE_START_REQUEST)
     msg[5:9] = size.to_bytes(4, "little")       # memcpy of a guint32 on a little-endian host
@@ -85,10 +98,63 @@ def elektron_new_msg_upgrade_os_write(os_data, offset):
     return msg, offset + n
 
 
+def elektron_new_msg_open_sample_write(path, size):
+    """elektron_new_msg_open_sample_write: total = PCM bytes + sizeof(header), big-endian at [5..8]."""
+    msg = elektron_new_msg_path(FS_SAMPLE_OPEN_FILE_WRITER_REQUEST, path)
+    msg[5:9] = (size + SAMPLE_HEADER_LEN).to_bytes(4, "big")
+    return msg
+
+
+def elektron_sample_header(pcm_len):
+    hdr = bytearray(SAMPLE_HEADER_LEN)
+    hdr[0] = 0                                  # type
+    hdr[1] = 0                                  # stereo: 0 = mono
+    hdr[4:8] = pcm_len.to_bytes(4, "big")       # size (bytes)
+    hdr[8:12] = (48000).to_bytes(4, "big")      # rate
+    hdr[12:16] = (0).to_bytes(4, "big")         # loop start
+    hdr[16:20] = (0).to_bytes(4, "big")         # loop end
+    hdr[20] = 0x7F                              # loop type: none
+    return hdr
+
+
+def elektron_new_msg_write_sample_blk(id_, pcm, total, seq):
+    """elektron_new_msg_write_sample_blk: seq 0 carries the header; samples go out 16-bit big-endian."""
+    msg = elektron_new_msg(FS_SAMPLE_WRITE_FILE_REQUEST)
+    msg[5:9] = id_.to_bytes(4, "big")
+    msg[13:17] = (DATA_TRANSF_BLOCK_BYTES * seq).to_bytes(4, "big")
+    bytes_blk = DATA_TRANSF_BLOCK_BYTES
+    consumed = 0
+    if seq == 0:
+        msg += elektron_sample_header(len(pcm))
+        consumed = SAMPLE_HEADER_LEN
+        bytes_blk -= consumed
+    i = 0
+    while i < bytes_blk and total < len(pcm):
+        v = int.from_bytes(pcm[total:total + 2], "little")   # g_htons of the file's 16-bit sample
+        msg += v.to_bytes(2, "big")
+        total += 2
+        consumed += 2
+        i += 2
+    msg[9:13] = consumed.to_bytes(4, "big")
+    return msg, total
+
+
+def elektron_new_msg_close_sample_write(id_, size):
+    msg = elektron_new_msg(FS_SAMPLE_CLOSE_FILE_WRITER_REQUEST)
+    msg[5:9] = id_.to_bytes(4, "big")
+    msg[9:13] = (size + SAMPLE_HEADER_LEN).to_bytes(4, "big")
+    return msg
+
+
 def main():
     rnd = random.Random(37)
     payloads = [bytes(rnd.getrandbits(8) for _ in range(n)) for n in (0, 1, 5, 6, 7, 8, 13, 14, 15, 100, 2061)]
     os_data = bytes(rnd.getrandbits(8) for _ in range(3 * OS_TRANSF_BLOCK_BYTES + 777))
+    pcm = bytes(rnd.getrandbits(8) for _ in range(5 * DATA_TRANSF_BLOCK_BYTES - 1234))   # odd-ish size
+    pcm += b"\0" if len(pcm) & 1 else b""
+    samples = [int.from_bytes(pcm[i:i + 2], "little", signed=True) for i in range(0, len(pcm), 2)]
+    path = "/Wavetables/Bass/table-wt"
+    sample_id = 0x2A
 
     # what Elektroid would send for an OS upgrade of os_data, starting at sequence number 5
     want_frames = [elektron_tx(elektron_new_msg_upgrade_os_start(len(os_data)), 5).hex()]
@@ -97,6 +163,17 @@ def main():
         msg, offset = elektron_new_msg_upgrade_os_write(os_data, offset)
         want_frames.append(elektron_tx(msg, seq).hex())
         seq += 1
+
+    # what Elektroid would send for a sample upload, starting at sequence number 5
+    want_sample = [elektron_tx(elektron_new_msg_open_sample_write(path, len(pcm)), 5).hex()]
+    total, seq = 0, 6
+    while True:
+        msg, total = elektron_new_msg_write_sample_blk(sample_id, pcm, total, seq - 6)
+        want_sample.append(elektron_tx(msg, seq).hex())
+        seq += 1
+        if total >= len(pcm):
+            break
+    want_sample.append(elektron_tx(elektron_new_msg_close_sample_write(sample_id, len(pcm)), seq).hex())
 
     js = r"""
 const F = require(process.argv[1]);
@@ -119,12 +196,24 @@ const session = { request(body) {
   const r = new Uint8Array(16); r[4] = body[0] | 0x80;
   return Promise.resolve(r);
 } };
-F.upgradeFast(session, un(inp.os), { restMs: 0 }).then((res) => {
-  out.frames = frames; out.res = res;
-  process.stdout.write(JSON.stringify(out));
-});
+// record the frames uploadSample sends (open 0xC0 gives the id; write 0xC2 and close 0xC1 acknowledge)
+const sFrames = [];
+let sseq = 5;
+const sSession = { request(body) {
+  const payload = new Uint8Array(4 + body.length);
+  payload[0] = sseq >> 8; payload[1] = sseq & 0xff; payload.set(body, 4); sseq++;
+  sFrames.push(hex(F.xferFrame(payload)));
+  const r = new Uint8Array(16); r[4] = body[0] | 0x80; r[5] = 1;
+  if (body[0] === 0x40) { r[6] = 0; r[7] = 0; r[8] = 0; r[9] = inp.sampleId; }
+  return Promise.resolve(r);
+} };
+Promise.all([
+  F.upgradeFast(session, un(inp.os), { restMs: 0 }).then((res) => { out.frames = frames; out.res = res; }),
+  F.uploadSample(sSession, inp.path, Int16Array.from(inp.samples), { restMs: 0 }).then((res) => { out.sampleFrames = sFrames; out.sampleRes = res; })
+]).then(() => process.stdout.write(JSON.stringify(out)));
 """
-    inp = json.dumps({"payloads": [p.hex() for p in payloads], "os": os_data.hex()})
+    inp = json.dumps({"payloads": [p.hex() for p in payloads], "os": os_data.hex(),
+                      "samples": samples, "path": path, "sampleId": sample_id})
     r = subprocess.run(["node", "-e", js, str(ROOT / "docs" / "flasher" / "flasher.js")],
                        input=inp, capture_output=True, text=True, check=True)
     got = json.loads(r.stdout)
@@ -145,6 +234,9 @@ F.upgradeFast(session, un(inp.os), { restMs: 0 }).then((res) => {
     check(got["frames"] == want_frames,
           f"upgradeFast sends Elektroid's exact bytes: start + {len(want_frames) - 1} blocks of 0x800 (last one short)")
     check(got["res"]["sent"] == len(os_data) and not got["res"]["cancelled"], "the whole file is sent")
+    check(got["sampleFrames"] == want_sample,
+          f"uploadSample sends Elektroid's exact bytes: open + {len(want_sample) - 2} blocks of 0x2000 + close")
+    check(got["sampleRes"]["bytes"] == len(pcm) + SAMPLE_HEADER_LEN, "the announced size is PCM + 64-byte header")
     print("\nALL OK" if not fails else f"\nFAILED ({fails})")
     sys.exit(1 if fails else 0)
 
