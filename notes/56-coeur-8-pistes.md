@@ -43,47 +43,81 @@ Conserver **la continuité** (les pointer-strides de § ne doivent pas se reecri
 sont *sur place*, exactement après les 6 ; ce qui doit partir, c'est l'autre utilisateur de la
 zone.
 
-### 3.1 Les états des voix : déplacer le bloc « autre utilisateur » (3 refs)
+### 3.1 Les états des voix : déplacer le bloc « autre utilisateur » `[HYP → le décodage avance (§3.3)]`
 
-- La zone à libérer : `0x42309ad0 .. 0x4230a100` (0x330 = 816 o de fin de l'empreinte born-8
-  à couvrir ; les 3 références `0x400598ea`, `0x40059be8`, `0x40059bf6` portent dessus).
-- **[À FAIRE]** DÉCODER l'**exacte étendue** du bloc (pour choisir sa nouvelle adresse DDR
-  libre, p.ex. au-dessus de la fin de BSS `0x423380b0`, sous la pile `0x48000000`, zone libre
-  notes/27 §3) et ses lectures d'index. Déplacement de la constante le cas échéant : 3 littéraux.
+- La zone à libérer : `0x42309ad0 .. 0x4230a100` (les deux logements des pistes 7-8 ; les références
+  `0x400598ea`, `0x40059be8`, `0x40059bf6` coincident avec ce que la borne-8 écrase) ;
+- **[À FAIRE]** Aucune réference littérale **à l'intérieur** de la plage : les sites-litteraux
+  ne visent que `0x42309ad0` (3 fois), `+4`, `0x42309b08` (2) et `0x42309b28` (1) — tout l'intérieur
+  est adressé par **décalage**, l'étendue exacte n'est donc visible qu'à l'exécution.
 
-### 3.2 Les tampons de sortie : déplacer le tampon « post-mix » (12 refs trouvées)
+### 3.3 (séance du 11/10) Ce que le bloc « autre utilisateur » est réellement — Demi-décode `[FAIT]`
 
-- Le bloc SRAM **vécu** : `0x80001b58..0x80001c58` (0x100 = 256 o) :
-  - `0x80001b58` (4 refs : `0x400569d4`, `0x400569fe`, `0x40056ad0`, `0x40056b0a`) — le tampon
-    dry/de staging du post-mix vers delay/reverb ;
-  - `0x80001bd8` (2 refs : `0x40056ade`, `0x40056b18`) ;
-  - sous-blocs internes désignés : `0x80001c00` (2), `0x80001c40` (3), `0x80001c48` (1).
+Désassemblant les 5 sites de références littérales, les deux premières fonctions sont l'état
+**d'un module annexe (des latches de temps)**, null doute un minuteur de phase horloge :
+
+- Peut-être une seule entité — la fonction `0x400598b8` lit et écrit :
+  - une table de **2 mots longs par côté** (index `d2 = lsl #3` : lité `0x42309ad0`, `0x42309ad4`),
+    avec une protection entrée-musique par table à 15 entrées (`0x4010da18/da30/da70`),
+    `moveq #f, d1` et un `and.l d1,d0` (clamps sur 15), l'écriture marquant un **délai infini**
+    (`0x7fffffff`) et un *span* mis à zéro ;
+  - **la table des index** `0x40a79134` et `0x40a7916c` (temps relatif par entrée et par mode) ;
+  - les deux autres références `0x42309b08` et `0x42309b28` sont les miens (les index + et le
+    travail applicatif de l'usage dans les autres fonctions du même module).
+- **Confusion claire** : un suivi d'événements géolocalisé aux **`« voice »` (côté audio)** à des
+  heures voulues. Le bloc est *offset-addressed* et borné **par ses tables d'index** ; son étendue
+  **réelle** dépend de ce que les indices portent ; l'étendue mécanique bornée par l'OS (un lapin :
+  index 0..15 × 8 o = 120 o) **est bien en deçà** de ce que le banc born-8 a écrit (0x4230a100).
+  **[À FAIRE]** faire le banc *de toute écriture détériorée*, pas juste l'empreinte, pour mesurer
+  l'extension réelle du bloc. Notons que l'étendue mécanique trackée a montré **0x4230a100**
+  — c'est peut-être **bien plus** avec les 8 pistes bornées : le banc d'extension à mesurer va
+  déterminer s'il faut reloger le bloc autant d'octets.
+- **L'alternative propre** qui reste ouverte : **conservé la continuité** (pistes 7-8 sur place →
+  il faut quand même un « déplacement du bloc externe »), ou **compiler un détour** pour
+  `_pistes 7-8 dans une seconde base` (« le débat propre est l'aide de la seconde zone »).
+
+### 3.2 Les tampons de sortie : déplacer le tampon « post-mix » `[FAIT sur 6 refs]`
+
+- Le vrai bloc : **2 tampons de 0x80 chaque** : L à `0x80001b58` et R à `0x80001bd8` —
+  tout le bloc `0x80001b58..0x80001c58` compris (0x100 = **256 o**), avec **6 références**,
+  toutes dans le noyau du mixeur :
+  - L : `0x400569d4`, `0x400569fe`, `0x40056ad0`, `0x40056b0a` (2 appels `pea` + le chemin de
+    l'envoi delay) ;
+  - R : `0x40056ade`, `0x40056b18` (le chemin delay/reverb en R) ;
+  - appels vers `0x400567a4` (recopier aux chaines) et `0x40056698/0x40056716` (multiplié par la
+    « table des coefficients ») : la même paire est écrite ensuite (le cheminement du post-mix
+    vers delay et vers reverb).
+- **Les 6 « xrefs » restantes sont des fausses positives** : `0x80001c00/0x1c40/0x1c48` tombent
+  dans des instructions (les seuls octets coïncidant avec un pointeur), vérifié octet par octet
+  (les fragments `02eb 8806 8000 1c40` des sites `0x400794xx`, `0x4007e8xx`, `0x4014baxx` — des
+  opérandes d'instructions, pas des pointeurs ; voir `build/re8/probe_postmix2.py`).
 - **[À FAIRE]** La place d'accueil en SRAM — *libre en stock* : les pages de xrefs relevées
   (`sram_xrefs.txt`) portent aussi les zones `0x800011e8..0x80001400` (un gap d'environ 540 o)
-  et `0x80007500..0x80007e80`. À trancher par le banc — la sortie SDRAM est le plan de secours
-  (latence, ~2 à 4 points du bloc `[HYP]`), l'accueil serait `0x4240....` avec les 12 littéraux
-  retouchés.
+  et `0x80007500..0x80007e80`. À trancher par le banc — la sortie SDRAM est le plan de secours.
+  **Coût estimé du plan SDRAM (Option B)** : 256 o·2 (lecture + écriture) par bloc avec ~5 cycles
+  de latence = ~640 cycles ≈ **0,4 point du bloc** `[HYP, calcul]` — bien moins que les « 2 à 4 »
+  estimés par le passé. À recevoir par le banc du mixeur (plans §4).
 - Le reste du mod (bornes, mixeur, descripteurs, quick-mute) ne dépend pas de ce choix.
 
 ## 4. Le chemin menant au premier firmware Groove
 
-1. Étendre `mcfw` avec le décodage du bloc « autre utilisateur » des états de voix (§3.1) et
-   trancher sa recopie (`0x4240...`).
-2. Trouver l'accueil SRAM du tampon post-mix (§3.2), par émulation empirique (le banc qui n'empeche
-   pas la fonction audio complète).
+1. Décoder l'étendue réelle du bloc « autres utilisateurs » (§3.3) et choisir sa recopie.
+2. Trouver l'accueil SRAM du tampon post-mix (§3.2), par le banc du mixeur (§4).
 3. Écrire `tools/gen_groove_8.py` (un seul `tweak` dérivé, en ligne de commande seulement,
-   pas dans le flasher ; SHV MAI obligatoire par build) : bornes + relocations + les littéraux
+   pas dans le flasher ; SHA-256 du MAIN OS obligatoire par build) : bornes + relocations + les littéraux
    cités, sorties dans `tweaks/model-cycles_OS1.13/NN-groove-8tracks.json`.
 4. Prouver en émulation avec `tools/re/test_load8.py` (pistes 0-5 octet-identiques stock ;
-   7-8 jouent avec machine TONE ; pile impeccable) — plus la horn MIDI/note-par-piste que le
+   7-8 jouent avec machine TONE ; pile impeccable) — plus la vérification MIDI/note-par-piste que le
    full ISR (qui ne se débusque pas).
 5. Sans modification : chaque jalon publie son SHA-256 du MAIN OS (notes/55 §2bis).
 
 ## 5. Ce qui compte pour la suite
 
-- Les emplacements à libérer totalisent ~0x330 o de SDRAM et 0x100 o de SRAM (§3), donc 8 pistes
-  + 2 états + l'accueil de ces blocs relogés dans un DDR libre.
-- La nécessité de connaître exactement « où » : le banc empirique a montré que chaque « assez
-  de pistes » est une hypothèse à vérifier — les zones de SRAM sont denses.
-- Le §3 s'applique sans conflit avec les mods du dépôt (la ligne Groove n'en porte aucun) : la
-  disposition du RAM relogée ne touche pas les sites de leurs écritures.
+- Les emplacements à libérer totalisent ~0x100 o de SRAM tu coût à trouver (§3.2) et la zone d'états du
+  bloc de temps (§3.3, étendue à corroborer) — les pistes elles-mêmes restent en place, continuité
+  gardée.
+- La nécessité de connaître exactement « où » : le banc empirique a montré que chaque « assez de
+  pistes » est une hypothèse à vérifier — les zones de SRAM sont denses, et l'étendue du bloc de temps
+  de temps n'apparaît pas dans les références littérales.
+- Le §3 s'applique sans conflit avec les mods du dépôt (la ligne Groove n'en porte aucun) : les
+  toutes écritures liées au mek des sites des mods du dépôt ne s'y chevauchent pas.
