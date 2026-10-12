@@ -439,3 +439,12 @@ MACRO et Acid.
 
 **À faire** : essayer sur la machine (Kevin) — flasher `model-tg-st,wavetable-tg`, convertir une table, l'envoyer
 (rubrique Convert, mode SMP), la jouer.
+
+## 15. Wave sans Model-TG (11/10/2026)
+
+La version combinée avec Model-TG n'était qu'une étape : le but est un firmware **sans** Model-TG (un moteur du Syntakt
++ Acid + Wave), et Wave lit désormais son fichier **elle-même** ([54](54-wave-autonome.md)). Ce qui change par rapport
+aux §13-14 : plus de Sampler de Model-TG, deux accroches dans l'OS (le navigateur note l'entrée du fichier,
+`0x400a6426` ; le premier appui sur le pad la lit, `0x4008171e`), le moteur lit `WT_BASE`/`WT_COUNT`, Wave est la
+7e machine et le générateur suit Acid seule. La carte Wave a été retirée du flasher le temps du milestone 2 (sa route
+d'envoi sans le mode SMP de Model-TG) ; elle reviendra avec le sélecteur de la fusion (milestone 3).

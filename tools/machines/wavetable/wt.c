@@ -1,11 +1,14 @@
 /*
- * Wave : machine ajoutee du Model:Cycles avec Model-TG (OS 1.13), qui joue une table d'ondes pre-travailee
- * (notes/52). Moteur en virgule fixe.
+ * Wave : machine ajoutee du Model:Cycles, seule (OS 1.13), qui joue une table d'ondes pre-travailee (notes/52).
+ * Moteur en virgule fixe.
  *
- * Le fichier que Model-TG a charge pour la piste (track_slot -> slot_base, slot_count ; en-tete de 64 o, puis
- * 16 bits gros-boutiens) est une table convertie par l'outil web : la table entiere, puis les copies adoucies
- * par octave plus courtes que la table (LGC, OFF). Rien n'est calcule ici : les copies sont lues telles
- * quelles. Un fichier non converti (slot_count non multiple de S_TOTAL) ne joue rien.
+ * Le fichier choisi dans le navigateur (limite a /Wavetables) est lu par notre chargeur (glue, gen_wavetable.py) :
+ * la piste enregistre l'entree de navigateur (16 o), puis un appui sur le pad lit le fichier entier (conteneur
+ * d'echantillon : en-tete de 64 o, PCM 16 bits gros-boutiens, fin de 16 o) dans 0x46800000 + 0x300000*t et pose
+ * WT_BASE[t] = debut du PCM (buffer + 64) et WT_COUNT[t] = (taille - 80) / 2. Le fichier est une table convertie
+ * par l'outil web : la table entiere, puis les copies adoucies par octave plus courtes que la table (LGC, OFF).
+ * Rien n'est calcule ici : les copies sont lues telles quelles. Un fichier non converti (WT_COUNT[t] non multiple
+ * de S_TOTAL) ne joue rien.
  *
  * Potards : COLOR = position dans la table ; MACHINE tenue + COLOR = enveloppe -> position (0 : rien ; param 0x0a,
  * k = 27) ; SHAPE = enveloppe -> coupure (64 : rien) ; SWEEP = coupure du passe-bas d'Acid (20 Hz -> 20 kHz) ;
@@ -63,29 +66,23 @@ static inline s32 qmac4(s32 a, s32 b, s32 c, s32 d, s32 e, s32 f, s32 g, s32 h)
 #define V32(o) (*(s32 *)(v + (o)))
 #define P16(o) (*(const s16 *)(p + (o)))
 
-/* Model-TG (adresses fournies par tools/gen_wavetable.py, ou par le banc HOST) */
+/* Chargeur (adresses des globales fournies par tools/gen_wavetable.py, ou par le banc HOST) */
 #ifdef HOST
-extern s32 host_track_slot[6], host_track_pend[6], host_slot[3 * 64];
+extern s32 host_wt_base[6], host_wt_count[6];
 extern char *host_mem;
 extern u32 host_clock;
-#define TRACK_SLOT host_track_slot
-#define TRACK_PEND host_track_pend
-#define SLOT_HASH  ((u32 *)host_slot)
-#define SLOT_BASE  ((u32 *)host_slot + 64)
-#define SLOT_COUNT ((u32 *)host_slot + 128)
+#define WT_BASE    host_wt_base
+#define WT_COUNT   host_wt_count
 #define CLOCK      host_clock
-#define SAMPLE(b)  ((const s16 *)(host_mem + (b)))
+#define PCM(b)     ((const s16 *)(host_mem + (b)))
 void host_amp(s32 *out, char *v);
-s32 host_load(u32 hash);
 #define AMP_DECAY(d) (0)
 #else
-#define TRACK_SLOT ((volatile s32 *)TG_TRACK_SLOT)
-#define TRACK_PEND ((volatile s32 *)TG_TRACK_PEND)
-#define SLOT_HASH  ((volatile u32 *)TG_SLOT_HASH)
-#define SLOT_BASE  ((volatile u32 *)(TG_SLOT_HASH + 256))
-#define SLOT_COUNT ((volatile u32 *)(TG_SLOT_HASH + 512))
+s32 wt_base[6], wt_count[6];                            /* remplis par le chargeur (glue), BSS a zero */
+#define WT_BASE    wt_base
+#define WT_COUNT   wt_count
 #define CLOCK      (*(volatile u32 *)0x8000184c)             /* change a chaque bloc audio */
-#define SAMPLE(b)  ((const s16 *)(b))
+#define PCM(b)     ((const s16 *)(b))
 #define CYC_VOICE0   0x42308828
 #define CYC_VSTRIDE  0x31c
 #define AMP_ENV(v)   ((void (*)(char *))0x400a9252)(v)
@@ -96,8 +93,6 @@ s32 host_load(u32 hash);
 #define MARK_OFF   0x2c
 #define MARK       0x57415631                       /* 'WAV1' */
 #define IDLE_LEVEL (1 << 14)
-#define HDR        64                               /* en-tete du fichier de Model-TG */
-#define LGN        11                               /* trames de 2048 points (regle fixe du convertisseur) */
 /* coude du filtre d'Acid (notes/51), niveaux Q27 */
 #define T1       16106127
 #define T2       53687091
@@ -160,7 +155,7 @@ void wt_update(s32 pmod, char *v, const char *p)
 	int t = a - tracks;
 	s32 acc = P16(0x1e) != 0, dec = knob(P16(0x24));
 	s32 col8 = P16(0x16), shape = knob(P16(0x18)), cut8 = P16(0x1a), res = knob(P16(0x1c)), epos = knob(P16(0x36));
-	s32 n, oct, r, i, fr, slot, pend, pf, mod;
+	s32 n, oct, r, i, fr, pf, mod;
 	u32 d;
 
 	if (V32(MARK_OFF) != MARK) {                    /* 1re note sur cette machine */
@@ -190,16 +185,9 @@ void wt_update(s32 pmod, char *v, const char *p)
 		}
 		a->env = Q31MAX;
 	}
-	/* le sample en attente de Model-TG : pris a la note, ou voix muette (comme son sampler_pre) */
-	pend = TRACK_PEND[t];
-	if (pend >= 0 && (V32(0x38) || idle(v))) {
-		TRACK_SLOT[t] = (s16)pend;
-		TRACK_PEND[t] = -1;
-	}
-	slot = TRACK_SLOT[t];
-	/* table pre-travailee : F trames, la longueur totale est F x S_TOTAL ; sinon rien a jouer */
-	if (slot >= 0 && slot < 64 && SLOT_HASH[slot]) {
-		u32 count = SLOT_COUNT[slot];
+	/* table posee par notre chargeur (glue) : F trames, la longueur totale est F x S_TOTAL ; sinon rien a jouer */
+	if (WT_BASE[t]) {
+		u32 count = (u32)WT_COUNT[t];
 		u32 f = count / S_TOTAL;
 		a->frames = (count % S_TOTAL == 0 && f >= 1 && f <= 256) ? (s32)f : 0;
 	} else {
@@ -271,7 +259,7 @@ void wt_render(s32 *out, char *v)
 {
 	struct wt *a = track_of(v);
 	int t = a - tracks;
-	s32 slot = TRACK_SLOT[t], lg[2], F = a->frames;
+	s32 lg[2], F = a->frames;
 	const s16 *cb[2], *base;
 	u32 ph = a->ph, dt = a->dt;
 	s32 s0 = a->s0, s1 = a->s1, s2 = a->s2, s3 = a->s3;
@@ -282,12 +270,12 @@ void wt_render(s32 *out, char *v)
 	int k;
 
 	if ((!V32(0x34) && !V32(0x38) && mag(V32(0x230)) < IDLE_LEVEL && mag(V32(0x234)) < IDLE_LEVEL)
-	    || slot < 0 || slot >= 64 || !F) {
+	    || !WT_BASE[t] || !F) {
 		for (int j = 0; j < 32; j++)
 			out[j] = 0;
 		return;
 	}
-	base = SAMPLE(SLOT_BASE[slot] + HDR);
+	base = PCM(WT_BASE[t]);
 	ps = a->pprev;                                  /* position glissee echantillon par echantillon */
 	dp = (a->pos - a->pprev) >> 5;
 	c0 = a->cpos >> 16;
