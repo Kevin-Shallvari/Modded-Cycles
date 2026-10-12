@@ -32,25 +32,32 @@ The Cycles OS only handles the **raw** file family; the Model:Samples advertises
   **This was the bug fixed last**: the first cut only had 3 pairs.
 - 35-byte list (no `0x09`, so Transfer does not ask the stereo question → mono, legacy chunk size).
 
-## Next move
+## Status (2026-10-12): M2 done and tried on the machine; Wave fixed and extended
 
-1. **Re-run the proof**: `M68K_CROSS=… LD_LIBRARY_PATH=… python3 tools/emu/test_wavetable.py --cycles firmware/model-cycles_OS1.13.syx`.
-   Fast harness (boot + SMP only, ~1 min) is at `C:\Users\Kevin\AppData\Local\Temp\opencode\smp_harness.py`
-   (imports `test_wavetable`, calls `fw_tests` + `smp_tests`). Expect the `smp_map` (50 B) and the
-   `rpc_type`/`rpc_ot` expectations (now 0x40→0x43, 0xC0→0xC3, 0xC7→0xC6) to pass. Then the full run (~6 min).
-2. **Page side** (`docs/convert/index.html` + `docs/flasher/flasher.js`): before an upload, send the 0x0F trigger
-   (SMP); add a manual "Set CYC/SMP" button. Read `notes/53` and `notes/37` for the SysEx framing.
-3. **Docs/registration**: tweak `description` + module docstring (M2), `BUILD.md` hashes (the append grew to
-   **12932 o**, so the three hashes there are stale), `notes/55-smp-sans-model-tg.md` (new) + `notes/README.md`,
-   `PROVENANCE.md`. The flasher card stays **removed** until M3.
-4. Re-run the no-firmware checks: `py_compile`, `gen_flasher_tweaks --check`, `ref_mainos --check` (the Wave JSON
-   is not in the flasher, so both should stay green), `gen_wavetable --check`.
+- **SMP switch** (notes/55 §8): verified on Kevin's Model:Cycles with `amidi` probes (ping 27 → `0F 01` → 25 with the
+  35-command list, readdir/mkdir/open/write/close, `0F 00` → 27), then the Convert page in a driven Chromium.
+- **Convert page** (notes/53 §12): it picked Linux's "Midi Through" port (fixed: the machine's port by name, never
+  "Through"); 8 KB SysEx blocks get lost from Chrome on Linux (2 KB there via `sampleBlock()`, 8 KB elsewhere; Kevin
+  sent 3 MB files with 8 KB blocks on Windows). Each write carries its byte offset (`opts.blockBytes`).
+- **Wave on hardware** (notes/54, dated sections): the machine byte was read at +0x38 instead of +38 (decimal, as
+  Model-TG) — the track was never recognised; the file length assumed a 16-byte trailer the +Drive doesn't have. Both
+  fixed; locked browser confirmed on the machine.
+- **YES loads the table** (Model-TG's `preset_fail_hook` method: `0x400a6732` → `wt_yes`, `pea` at `0x400a6752` →
+  `wt_msg`, `0x400a6602` → `wt_parse`); popup "Table loaded / to track N" or the reason. Kevin: "perfect".
+- **Table memory**: token `W` + key (8 hex) + hash (6 hex) in the sound name (`wt_stamp`, `wt_snd` = Model-TG's
+  `sound_obj`); `wt_tick` in the 5 empty LedHandler slots reloads via `0x4007de78(key, &entry)` at IPL 0, once per
+  audio block. Proven in emulation, and **works on Kevin's machine** (YES, power cycle, project reload; 2026-10-12).
+- Toolchain on Linux: the `mc-m68k-elf:16.2` podman image (`handoff/toolchain/Containerfile`, `handoff` branch); the
+  emu tests run on the host `.venv` (unicorn, numpy). `test_wavetable.py` TOUT OK.
+
+Next: M3 (merged generator: Syntakt engines + Acid + Wave, flasher
+card back, release notes).
 
 ## Known loose ends
 
-- A stray debug line appears when importing the emu modules in the harness (`id wavetable writes … pack …`,
-  `symbols {…}`, then one line per write). **Not from a `print()`/`sys.stdout.write`** in `tools/` (grepped) — find
-  and remove it before merging. It does **not** appear in `gen_wavetable.py`'s own output.
-- `BUILD.md` Wave hashes are stale (JSON changed twice).
+- The stray debug line seen with the old Windows harness does not appear when importing `test_wavetable` on Linux:
+  it came from that harness, not from `tools/`.
+- Release notes: not written for Wave on this branch (Wave is not in the flasher; release 1.35 still describes the old
+  Wave + Model-TG card). Do them with M3.
 - `vendor/Model-TG` is a git-ignored clone (gitignored via `vendor/`); needed to read the SMP reference.
 - Do NOT commit the `build/` toolchain helpers or any `.syx`.

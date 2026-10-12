@@ -4,12 +4,16 @@ d'ondes pré-travaillée puisée dans /Wavetables (notes/52, notes/54).
 
   - moteur : tools/machines/wavetable/wt.c (oscillateur sur les copies par octave gravées dans le fichier, passe-bas
     d'Acid, chaîne d'ampli d'origine), ses tables écrites ici dans wt_tables.h ;
-  - chargeur : notre code (glue_asm) dans le bloc ajouté après l'image. Two accroches dans l'OS :
+  - chargeur : notre code (glue_asm) dans le bloc ajouté après l'image. Deux accroches dans l'OS :
       * 0x400a6426 : le choix d'un fichier dans le navigateur (bloqué dans /Wavetables) note son entrée de 16 o
-        pour la piste active (stock : kit = *0x40a78888, son + 28 + 100 t, machine à +0x38) ;
+        pour la piste active (stock : kit = *0x40a78888, son + 28 + 100 t, machine à +38 comme Model-TG) ;
       * 0x4008171e : l'appui sur un pad lit le fichier choisi (API de fichiers de l'OS : 0x4007e4f4 / 0x4007baaa /
-        0x4007bc1c) dans 0x46800000 + 0x300000 t, puis pose WT_BASE[t] = tampon + 64 et WT_COUNT[t] = (taille - 80)/2.
-    Plus les 5 accroches du navigateur bloqué (notes/52 §3quater) ;
+        0x4007bc1c) dans 0x46800000 + 0x300000 t (wt_load), puis pose WT_BASE[t] = tampon + 64 et WT_COUNT[t] = (octets de PCM de l'en-tête, bornés au fichier)/2.
+    Plus les 5 accroches du navigateur bloqué (notes/52 §3quater), le YES qui charge la table quand le preset échoue
+    (0x400a6732, message en 0x400a6752 ; méthode de Model-TG) et la table retenue : jeton « W » + clé + empreinte dans
+    le nom du son, rechargé par une tâche de l'interface (cases vides des LedHandler) ;
+  - identité Transfer CYC/SMP (smp_glue_asm, notes/55) : la commande SysEx F0 00 20 3C 0F 00 <m> F7 fait répondre la
+    machine en Model:Samples (m = 1) pour que la page de conversion range les tables, sans Model-TG ; 6 sites de l'OS ;
   - mécanique des machines ajoutées : celle d'Acid seule (gen_acid.py, 26-acid.json) : 7e machine (index 6), crochet
     de démarrage 0x400004b2, aucun détour de la boucle des voix (les tables update/render déplacées suffisent) ;
   - la table est convertie par l'outil web (docs/convert/, référence tools/wt_convert.py) : la machine ne calcule
@@ -65,11 +69,22 @@ BROWSER = ((0x400a6c20, "4fefffe048d70c0c", "wt_open"), (0x400a40e2, "42a74eb940
            (0x400a70b0, "4eb94007d2f0", "wt_home"))
 
 # --- l'OS (chargeur, notes/54) ---
-KIT = 0x40a78888                  # kit d'origine : son(t) = kit + 28 + 100 t, octet de machine a +0x38
+KIT = 0x40a78888                  # kit d'origine : son(t) = kit + 28 + 100 t (KIT_SND, SND_SIZE de Model-TG)
+MACH_OFF = 38                     # octet de machine du son (decimal, `mvzb %a0@(38)` de Model-TG)
 PARSE_SITE, PARSE_OLD = 0x400a6426, "4eb9400a3052"     # jsr 0x400a3052 (lecture du preset d'origine), 6 o
+PARSE_SITE2 = 0x400a6602          # meme appel dans le YES du navigateur (0x400a64fa), memes arguments
 PARSE_CALL = 0x400a3052
 NOTE_SITE, NOTE_OLD = 0x4008171e, "4e56ff98707f"       # link.w %fp,#-104 ; moveq #127,%d0 (appui sur un pad), 6 o
 NOTE_CONT = 0x40081724
+YES_SITE, YES_OLD = 0x400a6732, "4ebaeac62f03"         # jsr 0x400a51fa (preset sur YES) + move.l %d3,-(%sp), 6 o
+PRESET_LOAD = 0x400a51fa          # rend 0 si le fichier est un preset ; arg 3 = piste visée
+ERR_PEA = 0x400a6752              # pea « Error loading\npreset » (0x401302b2) du YES : pointé sur wt_msg
+ERR_STR = 0x401302b2
+LED_SLOTS = (0x400ff9b8, 0x400ffa78, 0x40103070, 0x401031b4, 0x40107e18)   # LedHandler, fonction vide (Model-TG)
+LED_EMPTY = 0x400d7648            # rts
+BLOCKS = 0x8000184c               # compteur de blocs audio
+PROJECT = 0x400cf866              # projet courant ; piste t = projet + 212 + 68 t, son vivant = vtable[40]
+ENTRY_OF = 0x4007de78             # (clé, &entrée 16 o) -> 0 : l'entrée du navigateur d'un fichier, par sa clé
 OPEN, READ, CLOSE = 0x4007e4f4, 0x4007baaa, 0x4007bc1c  # API de fichiers de l'OS : ouvrir, lire, fermer
 BUF = 0x46800000                  # tampons libres, vue avec cache (notes/52 §4)
 BUF_STRIDE = 0x300000             # 3 Mo par piste (jusqu'a 256 trames)
@@ -90,8 +105,8 @@ SYSEX_SLOT = 15                   # place libre 0x0F (0..3, 5..15 libres)
 SYSEX_N = 18
 
 
-def tables_h():
-    n0 = 69 + 12 * math.log2(FOLD_OK / 1024 / math.sqrt(2) / 440)
+def layout():
+    """Copies gravées par l'outil web : taille log2 et position de chacune, longueur d'une trame (S_TOTAL)."""
     lg, off, s = [], [], 2048
     for c in range(NCOPY):
         l = 6
@@ -102,6 +117,12 @@ def tables_h():
         off.append(0 if lg[c] == 11 else s)         # 0 : la copie est la table elle-meme
         if lg[c] < 11:
             s += 1 << lg[c]
+    return lg, off, s
+
+
+def tables_h():
+    n0 = 69 + 12 * math.log2(FOLD_OK / 1024 / math.sqrt(2) / 440)
+    lg, off, s = layout()
     return ga.tables_h().replace("tools/gen_acid.py", "tools/gen_wavetable.py") + "\n".join([
         f"#define NCOPY {NCOPY}",
         f"#define COPY_N0 {round(n0 * 65536)}",
@@ -116,7 +137,7 @@ def glue_asm(syms):
     à l'appui d'un pad). Registre et pile de l'OS intacts autour des deux accroches."""
     return f"""
 	.text
-| ---- la piste d0 joue-t-elle notre machine ? (kit d'origine : *0x40a78888 + 28 + 100 t, octet +0x38)
+| ---- la piste d0 joue-t-elle notre machine ? (kit d'origine : *0x40a78888 + 28 + 100 t, octet +38)
 	.globl	wt_ours
 wt_ours:
 	move.l	{ACTIVE:#x}, %d0
@@ -135,7 +156,7 @@ wt_is_ours:
 	move.l	{KIT:#x}, %a0
 	adda.l	%d1, %a0
 	moveq	#0, %d0
-	move.b	56(%a0), %d2
+	move.b	{MACH_OFF}(%a0), %d2
 	cmpi.l	#{WT_MACH}, %d2
 	bne.s	1f
 	moveq	#1, %d0
@@ -143,7 +164,8 @@ wt_is_ours:
 	lea	12(%sp), %sp
 	rts
 
-| ---- choix d'un fichier : note son entrée (16 o) pour la piste active, puis charge le preset d'origine
+| ---- curseur ou YES sur un fichier : note son entrée (16 o) pour la piste active (sans décharger la table jouée),
+| puis la lecture de preset d'origine
 	.globl	wt_parse
 wt_parse:
 	lea	-24(%sp), %sp
@@ -166,12 +188,6 @@ wt_parse:
 	move.l	%d0, 8(%a0)
 	move.l	12(%a1), %d0
 	move.l	%d0, 12(%a0)
-	move.l	%a2, %d1		/* table à recharger : compte remis à zéro */
-	lsl.l	#2, %d1
-	lea	{syms['wt_count']:#x}, %a0
-	clr.l	(%a0,%d1.l)
-	lea	{syms['wt_base']:#x}, %a0
-	clr.l	(%a0,%d1.l)
 1:	movem.l	(%sp), %d0-%d2/%a0-%a2
 	lea	24(%sp), %sp
 	move.l	4(%sp), -(%sp)
@@ -179,32 +195,35 @@ wt_parse:
 	addq.l	#4, %sp
 	rts
 
-| ---- appui sur un pad : lit la table choisie pour la piste d0 dans son tampon SDRAM
-	.globl	wt_note
-wt_note:
-	lea	-60(%sp), %sp
-	movem.l	%d0-%d7/%a0-%a6, (%sp)
-	lea	-16(%sp), %sp
-	move.l	80(%sp), %d3		/* piste (1er argument de la fonction d'origine) */
-	move.l	%d3, %d0
-	bsr.w	wt_is_ours
-	tst.l	%d0
-	beq.w	9f
+| ---- lit la table notée pour la piste d0 dans son tampon ; d0 = 0, ou 1 rien de noté, 2 lecture, 3 trop grande,
+| 4 non convertie (notes/54)
+	.globl	wt_load
+wt_load:
+	lea	-44(%sp), %sp
+	movem.l	%d1-%d7/%a0-%a3, (%sp)
+	lea	-16(%sp), %sp		/* flux de l'API de fichiers */
+	move.l	%d0, %d3
+	move.l	%d3, %d2
+	lsl.l	#2, %d2
+	lea	{syms['wt_count']:#x}, %a1
+	clr.l	(%a1,%d2.l)
+	lea	{syms['wt_base']:#x}, %a1
+	clr.l	(%a1,%d2.l)
+	moveq	#1, %d5
 	move.l	%d3, %d0
 	lsl.l	#4, %d0
 	lea	wt_h, %a0
 	adda.l	%d0, %a0
-	move.l	(%a0), %d1		/* entrée enregistrée ? */
+	move.l	(%a0), %d1		/* entrée notée ? */
 	cmpi.l	#-1, %d1
-	beq.w	9f
+	beq.w	8f
 	tst.l	%d1
-	beq.w	9f
-	move.l	%d3, %d2
-	lsl.l	#2, %d2
-	lea	{syms['wt_count']:#x}, %a1
-	tst.l	(%a1,%d2.l)		/* déjà chargée ? */
-	bne.w	9f
-	move.l	8(%a0), %d6		/* taille du conteneur (en-tête + PCM + fin) */
+	beq.w	8f
+	moveq	#3, %d5
+	move.l	8(%a0), %d6		/* taille du fichier (en-tête + PCM, parfois une fin) */
+	cmpi.l	#{BUF_STRIDE:#x}, %d6
+	bhi.w	8f
+	moveq	#2, %d5
 	move.l	%d3, %d0		/* tampon = 0x46800000 + 0x300000 t */
 	move.l	%d0, %d1
 	lsl.l	#1, %d0
@@ -220,7 +239,7 @@ wt_note:
 	jsr	{OPEN:#x}
 	addq.l	#8, %sp
 	tst.l	%d0
-	blt.w	7f
+	blt.w	8f
 	move.l	%d4, %a2		/* lecture par morceaux de 64 Ko */
 	move.l	%d6, %d7
 1:	tst.l	%d7
@@ -240,33 +259,344 @@ wt_note:
 	adda.l	%d0, %a2
 	sub.l	%d0, %d7
 	bra.s	1b
-3:	move.l	%sp, %a1		/* ferme, pose WT_BASE / WT_COUNT */
+3:	move.l	%sp, %a1		/* ferme */
 	move.l	%a1, -(%sp)
 	jsr	{CLOSE:#x}
 	addq.l	#4, %sp
-	move.l	%d3, %d2
-	lsl.l	#2, %d2
+	move.l	%d6, %d0		/* octets de PCM : ceux de l'en-tête (+4), bornés au fichier */
+	sub.l	#64, %d0
+	move.l	%d4, %a0
+	move.l	4(%a0), %d1
+	tst.l	%d1
+	beq.s	4f
+	cmp.l	%d0, %d1
+	bhi.s	4f
+	move.l	%d1, %d0
+4:	lsr.l	#1, %d0
+	moveq	#4, %d5			/* des trames entières de S_TOTAL, sinon non convertie */
+	tst.l	%d0
+	beq.s	8f
+	move.l	%d0, %d1
+	move.l	#{layout()[2]}, %d7
+	divu.l	%d7, %d1
+	mulu.l	%d7, %d1
+	cmp.l	%d0, %d1
+	bne.s	8f
+	lea	{syms['wt_count']:#x}, %a0
+	move.l	%d0, (%a0,%d2.l)
 	lea	{syms['wt_base']:#x}, %a0
 	move.l	%d4, %d0
 	add.l	#64, %d0
 	move.l	%d0, (%a0,%d2.l)
-	lea	{syms['wt_count']:#x}, %a0
-	move.l	%d6, %d0
-	sub.l	#80, %d0
-	lsr.l	#1, %d0
-	move.l	%d0, (%a0,%d2.l)
-	bra.s	9f
+	moveq	#0, %d5
+	bra.s	8f
 6:	move.l	%sp, %a1		/* lecture incomplète : ferme */
 	move.l	%a1, -(%sp)
 	jsr	{CLOSE:#x}
 	addq.l	#4, %sp
-7:					/* échec : table à zéro (déjà) */
-9:	lea	16(%sp), %sp
-	movem.l	(%sp), %d0-%d7/%a0-%a6
+8:	move.l	%d5, %d0
+	lea	16(%sp), %sp
+	movem.l	(%sp), %d1-%d7/%a0-%a3
+	lea	44(%sp), %sp
+	rts
+
+| ---- appui sur un pad : charge la table notée si elle ne l'est pas encore (repli de YES)
+	.globl	wt_note
+wt_note:
+	lea	-60(%sp), %sp
+	movem.l	%d0-%d7/%a0-%a6, (%sp)
+	move.l	64(%sp), %d3		/* piste (1er argument de la fonction d'origine) */
+	move.l	%d3, %d0
+	bsr.w	wt_is_ours
+	tst.l	%d0
+	beq.s	9f
+	move.l	%d3, %d2
+	lsl.l	#2, %d2
+	lea	{syms['wt_count']:#x}, %a1
+	tst.l	(%a1,%d2.l)		/* déjà chargée ? */
+	bne.s	9f
+	move.l	%d3, %d0
+	bsr.w	wt_load
+	tst.l	%d0
+	bne.s	9f
+	move.l	%d3, %d0
+	bsr.w	wt_stamp
+9:	movem.l	(%sp), %d0-%d7/%a0-%a6
 	lea	60(%sp), %sp
 	link.w	%fp,#-104
 	moveq	#127, %d0
 	jmp	{NOTE_CONT:#x}
+
+| ---- YES dans le navigateur (0x400a6732) : le preset ne se lit pas ; sur une piste Wave on charge la table et le
+| message de l'OS devient le nôtre (wt_msg), comme le preset_fail_hook de Model-TG. Le chargement de preset échoue
+| toujours : la piste ne reçoit jamais la table comme un preset.
+	.globl	wt_yes
+wt_yes:
+	move.l	12(%sp), -(%sp)
+	move.l	12(%sp), -(%sp)
+	move.l	12(%sp), -(%sp)
+	jsr	{PRESET_LOAD:#x}
+	lea	12(%sp), %sp
+	tst.l	%d0
+	beq.w	9f			/* un vrai preset */
+	lea	-44(%sp), %sp
+	movem.l	%d1-%d7/%a0-%a3, (%sp)
+	lea	{ERR_STR:#x}, %a2	/* ailleurs : le message d'origine */
+	move.l	56(%sp), %d3		/* piste visée (3e argument) */
+	andi.l	#0xff, %d3
+	cmpi.l	#6, %d3
+	bcc.s	5f
+	move.l	%d3, %d0
+	bsr.w	wt_is_ours
+	tst.l	%d0
+	beq.s	5f
+	move.l	{ACTIVE:#x}, %d0	/* entrée notée sur la piste active -> piste visée */
+	cmp.l	%d0, %d3
+	beq.s	1f
+	lsl.l	#4, %d0
+	lea	wt_h, %a0
+	adda.l	%d0, %a0
+	move.l	%d3, %d1
+	lsl.l	#4, %d1
+	lea	wt_h, %a1
+	adda.l	%d1, %a1
+	move.l	(%a0)+, (%a1)+
+	move.l	(%a0)+, (%a1)+
+	move.l	(%a0)+, (%a1)+
+	move.l	(%a0)+, (%a1)+
+1:	move.l	%d3, %d0
+	bsr.w	wt_load
+	move.l	%d0, %d4
+	bne.s	2f
+	move.l	%d3, %d0		/* chargée : son nom la retient */
+	bsr.w	wt_stamp
+2:	move.l	%d4, %d0
+	lea	wt_msgs, %a0		/* message n° d0 */
+	lsl.l	#2, %d0
+	movea.l	(%a0,%d0.l), %a2
+	tst.l	%d0
+	bne.s	5f
+	lea	wt_msg, %a1		/* « Table loaded\nto track N » */
+4:	move.b	(%a2)+, %d1
+	beq.s	3f
+	move.b	%d1, (%a1)+
+	bra.s	4b
+3:	move.l	%d3, %d1
+	addi.l	#49, %d1
+	move.b	%d1, (%a1)+
+	clr.b	(%a1)
+	bra.s	7f
+5:	lea	wt_msg, %a1
+6:	move.b	(%a2)+, %d1
+	move.b	%d1, (%a1)+
+	bne.s	6b
+7:	movem.l	(%sp), %d1-%d7/%a0-%a3
+	lea	44(%sp), %sp
+	moveq	#1, %d0			/* toujours « échec » : l'OS affiche wt_msg */
+9:	movea.l	(%sp)+, %a1		/* rejoue le move.l %d3,-(%sp) recouvert */
+	move.l	%d3, -(%sp)
+	jmp	(%a1)
+
+| ---- son vivant de la piste d0 (objet de piste du projet, vtable[40]), ou 0 ; repris de sound_obj (Model-TG, MIT).
+| Garde d2-d5/a2-a3 seulement.
+	.globl	wt_snd
+wt_snd:
+	lea	-24(%sp), %sp
+	movem.l	%d2-%d5/%a2-%a3, (%sp)
+	move.l	%d0, %d3
+	cmpi.l	#6, %d3
+	bcc.s	8f
+	jsr	{PROJECT:#x}
+	tst.l	%d0
+	beq.s	8f
+	move.l	%d3, %d4
+	moveq	#68, %d5
+	muls.l	%d5, %d4
+	addi.l	#212, %d0
+	add.l	%d4, %d0
+	movea.l	%d0, %a2
+	move.l	(%a2), %d4		/* vtable */
+	beq.s	8f
+	movea.l	%d4, %a3
+	movea.l	40(%a3), %a3
+	move.l	%a3, %d4
+	beq.s	8f
+	move.l	%a2, -(%sp)
+	jsr	(%a3)
+	addq.l	#4, %sp
+	bra.s	9f
+8:	moveq	#0, %d0
+9:	movem.l	(%sp), %d2-%d5/%a2-%a3
+	lea	24(%sp), %sp
+	rts
+
+| ---- la table de la piste d0 (wt_h) est retenue : wt_tok[t] et le nom du son, « W » + clé (8 chiffres hex) +
+| empreinte (6), que l'OS enregistre avec le projet (comme le jeton « SMP » de Model-TG)
+	.globl	wt_stamp
+wt_stamp:
+	lea	-60(%sp), %sp
+	movem.l	%d0-%d7/%a0-%a6, (%sp)
+	move.l	%d0, %d7
+	lsl.l	#4, %d0
+	lea	wt_h, %a2
+	adda.l	%d0, %a2
+	move.l	(%a2), %d5		/* clé */
+	move.l	4(%a2), %d6		/* empreinte, 24 bits */
+	andi.l	#0xffffff, %d6
+	move.l	%d7, %d0
+	lsl.l	#3, %d0
+	lea	wt_tok, %a0
+	adda.l	%d0, %a0
+	move.l	%d5, (%a0)
+	move.l	%d6, 4(%a0)
+	move.l	%d7, %d0
+	bsr.w	wt_snd
+	tst.l	%d0
+	beq.s	9f
+	movea.l	%d0, %a1
+	addq.l	#4, %a1			/* le nom : 16 o */
+	move.b	#87, (%a1)+		/* 'W' */
+	move.l	%d5, %d1
+	moveq	#8, %d2
+	bsr.s	wt_hex
+	move.l	%d6, %d1
+	lsl.l	#8, %d1
+	moveq	#6, %d2
+	bsr.s	wt_hex
+	clr.b	(%a1)
+9:	movem.l	(%sp), %d0-%d7/%a0-%a6
+	lea	60(%sp), %sp
+	rts
+
+| d1 = valeur cadrée à gauche, d2 = chiffres : écrit d2 chiffres hex en a1+ (abîme d0, d1, d2, d3)
+wt_hex:
+	moveq	#28, %d3
+1:	move.l	%d1, %d0
+	lsr.l	%d3, %d0
+	addi.l	#48, %d0		/* '0' */
+	cmpi.l	#57, %d0
+	ble.s	2f
+	addq.l	#7, %d0
+2:	move.b	%d0, (%a1)+
+	lsl.l	#4, %d1
+	subq.l	#1, %d2
+	bne.s	1b
+	rts
+
+| ---- a0 = un nom : d0 = 1 et d1 = clé, d2 = empreinte (24 bits) s'il porte notre jeton, sinon d0 = 0
+	.globl	wt_tokof
+wt_tokof:
+	lea	-12(%sp), %sp
+	movem.l	%d3-%d4/%a0, (%sp)
+	moveq	#0, %d0
+	move.b	(%a0)+, %d3
+	cmpi.b	#87, %d3		/* 'W' */
+	bne.s	8f
+	tst.b	14(%a0)
+	bne.s	8f
+	moveq	#0, %d1
+	moveq	#8, %d4
+	bsr.s	3f
+	bne.s	8f
+	move.l	%d1, %d2
+	moveq	#0, %d1
+	moveq	#6, %d4
+	bsr.s	3f
+	bne.s	8f
+	move.l	%d1, %d3
+	move.l	%d2, %d1
+	move.l	%d3, %d2
+	moveq	#1, %d0
+8:	movem.l	(%sp), %d3-%d4/%a0
+	lea	12(%sp), %sp
+	rts
+3:	moveq	#0, %d3			/* d4 chiffres hex en a0+ -> d1 ; Z = 0 si un caractère n'en est pas un */
+	move.b	(%a0)+, %d3
+	subi.l	#48, %d3
+	cmpi.l	#9, %d3
+	bls.s	4f
+	subq.l	#7, %d3
+	cmpi.l	#10, %d3
+	blt.s	5f
+	cmpi.l	#15, %d3
+	bhi.s	5f
+4:	lsl.l	#4, %d1
+	or.l	%d3, %d1
+	subq.l	#1, %d4
+	bne.s	3b
+	moveq	#0, %d3			/* Z = 1 : fini */
+	rts
+5:	moveq	#1, %d3			/* Z = 0 : refusé */
+	rts
+
+| ---- tâche de l'interface (cases vides des LedHandler, comme Model-TG), au niveau 0 et une fois par bloc audio : la
+| table que nomme le son d'une piste Wave est chargée si ce n'est pas déjà fait (projet rechargé, mise sous tension,
+| autre kit). Une clé dont le fichier a disparu ou changé ne charge rien.
+	.globl	wt_tick
+wt_tick:
+	lea	-60(%sp), %sp
+	movem.l	%d0-%d7/%a0-%a6, (%sp)
+	moveq	#0, %d0
+	move.w	%sr, %d0
+	andi.l	#0x0700, %d0
+	bne.w	9f
+	move.l	{BLOCKS:#x}, %d0
+	cmp.l	wt_clock, %d0
+	beq.w	9f
+	move.l	%d0, wt_clock
+	moveq	#0, %d7			/* piste */
+1:	move.l	%d7, %d0
+	bsr.w	wt_is_ours
+	tst.l	%d0
+	beq.s	5f
+	move.l	%d7, %d0
+	bsr.w	wt_snd
+	tst.l	%d0
+	beq.s	5f
+	movea.l	%d0, %a0
+	addq.l	#4, %a0
+	bsr.w	wt_tokof
+	tst.l	%d0
+	beq.s	5f
+	move.l	%d7, %d0
+	lsl.l	#3, %d0
+	lea	wt_tok, %a2
+	adda.l	%d0, %a2
+	cmp.l	(%a2), %d1
+	bne.s	2f
+	cmp.l	4(%a2), %d2
+	beq.s	5f
+2:	move.l	%d1, (%a2)		/* tenté une fois, même si ça échoue */
+	move.l	%d2, 4(%a2)
+	move.l	%d2, %d6
+	pea	wt_tmp
+	move.l	%d1, -(%sp)
+	jsr	{ENTRY_OF:#x}
+	addq.l	#8, %sp
+	tst.l	%d0
+	bne.s	5f
+	lea	wt_tmp, %a0
+	move.l	4(%a0), %d0
+	andi.l	#0xffffff, %d0
+	cmp.l	%d6, %d0
+	bne.s	5f
+	move.l	%d7, %d0
+	lsl.l	#4, %d0
+	lea	wt_h, %a1
+	adda.l	%d0, %a1
+	move.l	(%a0)+, (%a1)+
+	move.l	(%a0)+, (%a1)+
+	move.l	(%a0)+, (%a1)+
+	move.l	(%a0)+, (%a1)+
+	move.l	%d7, %d0
+	bsr.w	wt_load
+5:	addq.l	#1, %d7
+	moveq	#6, %d0
+	cmp.l	%d0, %d7
+	blt.w	1b
+9:	movem.l	(%sp), %d0-%d7/%a0-%a6
+	lea	60(%sp), %sp
+	rts
 
 | ---- navigateur : sur notre piste, /Wavetables (créé s'il manque), sans remonter au-dessus
 	.globl	wt_open
@@ -365,6 +695,19 @@ wt_h:	.space	96				/* entrées de navigateur des 6 pistes */
 wt_h_dir:	.long	0, 0, 0, 0
 wt_path:	.asciz	"/Wavetables"
 	.align	2
+wt_msgs:	.long	wt_m0, wt_m1, wt_m2, wt_m3, wt_m4
+wt_m0:	.asciz	"Table loaded\\nto track "
+wt_m1:	.asciz	"No table\\nselected"
+wt_m2:	.asciz	"Table read\\nfailed"
+wt_m3:	.asciz	"Table too big\\n(256 frames max)"
+wt_m4:	.asciz	"Table not\\nconverted"
+	.align	2
+	.globl	wt_msg
+wt_msg:	.space	64
+	.globl	wt_tok
+wt_tok:	.space	48			/* table retenue par piste : clé, empreinte 24 bits */
+wt_tmp:	.space	16
+wt_clock:	.long	0
 """
 
 
@@ -750,6 +1093,11 @@ def build_tweak(img):
             w(va, old, new_)
         # chargeur (notes/54)
         w(PARSE_SITE, bytes.fromhex(PARSE_OLD), call(gsyms["wt_parse"]))
+        w(PARSE_SITE2, bytes.fromhex(PARSE_OLD), call(gsyms["wt_parse"]))
+        w(YES_SITE, bytes.fromhex(YES_OLD), call(gsyms["wt_yes"]))
+        w(ERR_PEA + 2, g7.be32(ERR_STR), g7.be32(gsyms["wt_msg"]))
+        for slot in LED_SLOTS:          # tâche de l'interface (notes/54)
+            w(slot, g7.be32(LED_EMPTY), g7.be32(gsyms["wt_tick"]))
         w(NOTE_SITE, bytes.fromhex(NOTE_OLD), jmp(gsyms["wt_note"]))
         # identite Transfer CYC/SMP sans Model-TG (notes/55)
         w(ID_HOOK_SITE, bytes.fromhex(ID_HOOK_OLD), jmp(gsyms["smp_id_hook"]))
@@ -812,8 +1160,10 @@ def build_tweak(img):
         "description": [
             "Machine Wave en 7e machine, après les 6 d'origine (notes/52, notes/54) : elle joue une de tes tables",
             "d'ondes, un fichier de /Wavetables (créé s'il manque) converti par l'outil web (table entière puis copies",
-            "adoucies par octave), ouvert dans le navigateur sur la piste de Wave, puis lu par la machine elle-même au",
-            "premier appui sur le pad. Pas de repliement, rien de calculé sur la machine.",
+            "adoucies par octave), choisi dans le navigateur sur la piste de Wave et chargé par YES (message « Table",
+            "loaded »), retenu dans le nom du son et rechargé avec le projet. Pas de repliement, rien de calculé sur la",
+            "machine.",
+            "Pour l'envoi, la commande SysEx 0x0F la fait répondre en Model:Samples (notes/55), sans Model-TG.",
             "COLOR = position dans la table, SHAPE = enveloppe -> position (64 : rien), MACHINE tenue + COLOR = Env Pos,",
             "SWEEP = coupure du passe-bas d'Acid (20 Hz -> 20 kHz), CONTOUR = résonance, DECAY = enveloppe et chaîne",
             "d'ampli d'origine, PUNCH = accent. Code : tools/machines/wavetable/wt.c. Généré par tools/gen_wavetable.py.",
@@ -827,7 +1177,8 @@ def build_tweak(img):
         "append": {"at": f"{at:#x}", "dest": f"{pay:#x}", "size": size, "parts": parts, "reloc": reloc,
                    "pack": [[f"{a_:#x}", n_] for a_, n_ in segs]},
         "symbols": dict({k: f"{syms[k]:#x}" for k in ("wt_update", "wt_render", "wt_base", "wt_count")},
-                        **{k: f"{gsyms[k]:#x}" for k in ("wt_parse", "wt_note", "wt_open", "wt_close",
+                        **{k: f"{gsyms[k]:#x}" for k in ("wt_parse", "wt_note", "wt_load", "wt_yes", "wt_msg", "wt_snd", "wt_stamp",
+                                                        "wt_tokof", "wt_tick", "wt_tok", "wt_open", "wt_close",
                                                         "smp_id_hook", "smp_id_hook2", "smp_rpc_type", "smp_rpc_ot",
                                                         "smp_trig", "smp_mode", "smp_desc", "smp_list", "smp_map",
                                                         "smp_namebuf")},

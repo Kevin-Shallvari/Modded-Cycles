@@ -89,12 +89,15 @@ def test_table(seed=7, frames=64, n=N):
     return np.concatenate(out)
 
 
-def container(data, inode):
-    """Le fichier tel que sur le +Drive : en-tete de 64 o (taille a +8), PCM 16 bits gros-boutiens, fin de 16 o."""
+def container(data, inode, tail=0, hsh=0x13579b):
+    """Le fichier tel que la page l'envoie (uploadSample) et que le +Drive le garde : en-tete de 64 o (octets de PCM
+    a +4, 48000 a +8), PCM 16 bits gros-boutiens, sans fin (mesure sur la machine, notes/54) ; tail : fin ajoutee."""
     pcm = np.asarray(data, dtype="<i2").astype(">i2").tobytes()
     hdr = bytearray(64)
-    struct.pack_into(">I", hdr, 8, 64 + len(pcm) + 16)
-    return struct.pack(">IIII", inode, 0, 64 + len(pcm) + 16, 0), bytes(hdr) + pcm + bytes(16)
+    struct.pack_into(">II", hdr, 4, len(pcm), 48000)
+    hdr[20] = 0x7f
+    n = 64 + len(pcm) + tail
+    return struct.pack(">IIII", inode, hsh, n, 0), bytes(hdr) + pcm + bytes(tail)
 
 
 def converter_tests(table):
@@ -211,12 +214,9 @@ class Fw:
         return uc
 
 
-def loader(uc, fw, track, handle, cont, inode):
-    """Simule le parcours navigateur -> chargeur sur le vrai code de l'OS : l'API de fichiers de l'OS est remplacee
-    par un arbre en memoire d'un seul fichier. Renvoie le journal des appels."""
-    log = []
-    fs = {inode: cont}
-
+def os_stubs(uc, fs, log, preset=None):
+    """L'API de fichiers de l'OS remplacee par fs {inode: octets} ; la lecture de preset au curseur rend 0 ; le
+    chargement de preset du YES rend preset["ret"] (si preset est donne)."""
     def op_ret(uc_, d0):
         sp = uc_.reg_read(A7)
         ra = struct.unpack(">I", uc_.mem_read(sp, 4))[0]
@@ -257,13 +257,70 @@ def loader(uc, fw, track, handle, cont, inode):
     uc.hook_add(UC_HOOK_CODE, op_read, begin=READ, end=READ)
     uc.hook_add(UC_HOOK_CODE, op_close, begin=CLOSE, end=CLOSE)
     uc.hook_add(UC_HOOK_CODE, lambda u, a, s, d: op_ret(u, 0), begin=PARSE_CALL, end=PARSE_CALL)
+    if preset is not None:
+        uc.hook_add(UC_HOOK_CODE, lambda u, a, s, d: op_ret(u, preset["ret"]), begin=GW.PRESET_LOAD,
+                    end=GW.PRESET_LOAD)
 
-    # kit simule : la borne haute de wt_is_ours, machine = Wave pour toutes les pistes
+
+PRJ, VT, STUB, SNDS = 0x90012000, 0x90012400, 0x90012500, 0x90013000   # projet simule (au-dessus de la pile)
+
+
+def project(uc, names, entries):
+    """Projet simule pour wt_snd (piste t = projet + 212 + 68 t, son vivant = vtable[40]) : son t en SNDS + 100 t, nom
+    en +4 ; entries {cle: (empreinte, taille)} pour 0x4007de78."""
+    def ret(u, d0):
+        sp = u.reg_read(A7)
+        u.reg_write(PC, struct.unpack(">I", u.mem_read(sp, 4))[0])
+        u.reg_write(A7, sp + 4)
+        u.reg_write(D0, d0 & 0xffffffff)
+
+    def snd(u, a, sz, d):
+        this = struct.unpack(">I", u.mem_read(u.reg_read(A7) + 4, 4))[0]
+        ret(u, SNDS + 100 * ((this - PRJ - 212) // 68))
+
+    def entry_of(u, a, sz, d):
+        sp = u.reg_read(A7)
+        key, out = struct.unpack(">II", u.mem_read(sp + 4, 8))
+        if key not in entries:
+            ret(u, -1)
+            return
+        u.mem_write(out, struct.pack(">IIII", key, entries[key][0], entries[key][1], 0))
+        ret(u, 0)
+
+    uc.mem_write(PRJ, b"\0" * 0x1000)
+    for t in range(6):
+        uc.mem_write(PRJ + 212 + 68 * t, struct.pack(">I", VT))
+    uc.mem_write(VT + 40, struct.pack(">I", STUB))
+    uc.mem_write(STUB, b"\x4e\x75")
+    uc.mem_write(SNDS, b"\0" * 600)
+    for t, n in enumerate(names):
+        uc.mem_write(SNDS + 100 * t + 4, n.encode().ljust(16, b"\0")[:16])
+    uc.hook_add(UC_HOOK_CODE, lambda u, a, sz, d: ret(u, PRJ), begin=GW.PROJECT, end=GW.PROJECT)
+    uc.hook_add(UC_HOOK_CODE, snd, begin=STUB, end=STUB)
+    uc.hook_add(UC_HOOK_CODE, entry_of, begin=GW.ENTRY_OF, end=GW.ENTRY_OF)
+
+
+def name_of(uc, t):
+    return bytes(uc.mem_read(SNDS + 100 * t + 4, 16)).split(b"\0")[0].decode("latin1")
+
+
+def kit(uc, machines, track):
+    """Kit simule (octet de machine de chaque son) et piste active."""
     uc.mem_write(KIT, struct.pack(">I", KITPTR))
     uc.mem_write(KITPTR, b"\0" * 0x400)
-    for t in range(6):
-        uc.mem_write(KITPTR + 28 + 100 * t + 0x38, bytes([GW.WT_MACH]))
+    for t, m in enumerate(machines):
+        uc.mem_write(KITPTR + 28 + 100 * t + GW.MACH_OFF, bytes([m]))
     uc.mem_write(ACTIVE, struct.pack(">I", track))
+
+
+def loader(uc, fw, track, handle, cont, inode):
+    """Simule le parcours navigateur -> chargeur sur le vrai code de l'OS : l'API de fichiers de l'OS est remplacee
+    par un arbre en memoire d'un seul fichier. Renvoie le journal des appels."""
+    log = []
+    os_stubs(uc, {inode: cont}, log)
+
+    kit(uc, [GW.WT_MACH] * 6, track)                # machine = Wave pour toutes les pistes
+    project(uc, ["Pad"] * 6, {})
     uc.mem_write(BWRITE, handle)
 
     def call(pc, args, until):
@@ -294,7 +351,113 @@ def fw_tests(stock, data):
           f"({len(log)} appels)")
     check(base == BUF + 64 and count == len(data) and got_pcm == np.asarray(data, dtype="<i2").astype(">i2").tobytes(),
           f"WT_BASE = {base:#x} (tampon + 64), WT_COUNT = {count} (echantillons), PCM copie a l'octet")
+    check(name_of(uc, 0) == "W%08X%06X" % (inode, 0x13579b), f"charge a l'appui du pad : retenue aussi ({name_of(uc, 0)})")
+    want = b"\x4e\xb9" + struct.pack(">I", fw.sym["wt_parse"])
+    check(all(bytes(uc.mem_read(va, 6)) == want for va in (GW.PARSE_SITE, GW.PARSE_SITE2)),
+          f"lecture du preset au curseur ({GW.PARSE_SITE:#x}) et sur YES ({GW.PARSE_SITE2:#x}) -> wt_parse")
+    handle, cont = container(data, inode + 1, tail=16)
+    uc2 = fw.boot()
+    loader(uc2, fw, 1, handle, cont, inode + 1)
+    count1 = struct.unpack(">i", uc2.mem_read(fw.sym["wt_count"] + 4, 4))[0]
+    del uc2
+    check(count1 == len(data), f"fichier avec 16 o de fin : WT_COUNT = {count1} (taille de l'en-tete, {len(data)} attendu)")
     return fw, uc
+
+
+def yes_tests(fw, data):
+    """YES dans le navigateur (0x400a6732, notes/54) : sur une piste Wave le chargement de preset echoue, la table se
+    charge dans la piste visee et le message de l'OS devient le notre ; ailleurs, le message d'origine."""
+    print("2bis. YES dans le navigateur (Unicorn)")
+    D3, inode = mk.UC_M68K_REG_D3, 0x2468ace0
+    handle, cont = container(data, inode)
+    bad = container(data[:-GW.layout()[2] // 2], inode)        # une demi-trame de moins : non convertie
+
+    def run(machines, active, target, preset_ret, file):
+        handle_, cont_ = file
+        uc = fw.boot()
+        os_stubs(uc, {inode: cont_}, [], {"ret": preset_ret})
+        kit(uc, machines, active)
+        project(uc, ["Pad"] * 6, {})
+        uc.mem_write(BWRITE, handle_)
+        sp = E.STACK - 0x800
+        uc.mem_write(sp, struct.pack(">II", E.STOP, BWRITE))         # wt_parse, comme en 0x400a6602
+        uc.reg_write(A7, sp)
+        uc.reg_write(A0, BREAD)
+        uc.emu_start(fw.sym["wt_parse"], E.STOP, count=20_000_000)
+        uc.mem_write(sp, struct.pack(">IIII", E.STOP, 0x11111111, 0x22222222, target))
+        uc.reg_write(A7, sp)
+        uc.reg_write(D3, 0xd3d3d3d3)
+        uc.emu_start(fw.sym["wt_yes"], E.STOP, count=50_000_000)
+        msg = bytes(uc.mem_read(fw.sym["wt_msg"], 64)).split(b"\0")[0].decode()
+        cnt = [struct.unpack(">I", uc.mem_read(fw.sym["wt_count"] + 4 * t, 4))[0] for t in range(6)]
+        stack = (uc.reg_read(A7) == sp and uc.mem_read(sp, 4) == struct.pack(">I", 0xd3d3d3d3)
+                 and uc.reg_read(D3) == 0xd3d3d3d3)
+        err = bytes(uc.mem_read(GW.ERR_STR, 32)).split(b"\0")[0].decode()
+        pea = bytes(uc.mem_read(GW.ERR_PEA, 6)) == b"\x48\x79" + struct.pack(">I", fw.sym["wt_msg"])
+        run.names = [name_of(uc, t) for t in range(6)]
+        return uc.reg_read(D0), msg, cnt, stack, err, pea
+
+    wave = [GW.WT_MACH] * 6
+    d0, msg, cnt, stack, err, pea = run(wave, 1, 1, 1, (handle, cont))
+    check(d0 == 1 and msg == "Table loaded\nto track 2" and cnt[1] == len(data) and stack and pea,
+          f"piste Wave : preset refuse -> table chargee ({cnt[1]} echantillons), message « {msg!r} » a la place de "
+          f"l'erreur (pea {GW.ERR_PEA:#x} -> wt_msg), pile et d3 de l'OS rendus")
+    tok = "W%08X%06X" % (inode, 0x13579b)
+    check(run.names[1] == tok and run.names[0] == "Pad",
+          f"la table est retenue dans le nom du son de la piste : « {run.names[1]} » (les autres pistes gardent le leur)")
+    d0, msg, cnt, stack, _, _ = run(wave, 1, 1, 0, (handle, cont))
+    check(d0 == 0 and msg == "" and cnt[1] == 0 and stack, "un vrai preset : rien de change (d0 0, rien charge)")
+    d0, msg, cnt, stack, err, _ = run([0] + wave[1:], 0, 0, 1, (handle, cont))
+    check(d0 == 1 and msg == err and cnt[0] == 0 and stack,
+          f"piste d'une autre machine : le message d'origine « {err!r} », rien charge")
+    d0, msg, cnt, stack, _, _ = run(wave, 2, 2, 1, bad)
+    check(d0 == 1 and msg == "Table not\nconverted" and cnt[2] == 0 and stack and run.names[2] == "Pad",
+          f"fichier non converti : « {msg!r} », rien charge, nom du son inchange")
+    d0, msg, cnt, stack, _, _ = run(wave, 0, 3, 1, (handle, cont))
+    check(msg == "Table loaded\nto track 4" and cnt[3] == len(data) and cnt[0] == 0 and stack,
+          "piste visee (3e argument) autre que la piste active : la table va a la piste visee")
+
+
+def tick_tests(fw, data):
+    """La table retenue revient (notes/54) : la tache de l'interface lit le jeton du nom du son de chaque piste Wave et
+    charge le fichier que nomme sa cle, si son empreinte est la meme ; une seule fois par jeton."""
+    print("2ter. table retenue : tache de l'interface (Unicorn)")
+    SR, inode, hsh = mk.UC_M68K_REG_SR, 0x0001a2b3, 0x00c0ffee | 1
+    handle, cont = container(data, inode, hsh=hsh)
+    tok = "W%08X%06X" % (inode, hsh & 0xffffff)
+    entries = {inode: (hsh, len(cont))}
+    uc = fw.boot()
+    log = []
+    os_stubs(uc, {inode: cont}, log)
+    kit(uc, [0, GW.WT_MACH, GW.WT_MACH, GW.WT_MACH, GW.WT_MACH, GW.WT_MACH], 0)
+    project(uc, [tok, tok, "Pad", "W0001A2B3BADBAD", tok[:-1] + "G", tok], entries)
+
+    def tick(blocks, sr=0x2000):
+        uc.mem_write(GW.BLOCKS, struct.pack(">I", blocks))
+        sp = E.STACK - 0x800
+        uc.mem_write(sp, struct.pack(">I", E.STOP))
+        uc.reg_write(SR, sr)
+        uc.reg_write(A7, sp)
+        uc.emu_start(fw.sym["wt_tick"], E.STOP, count=200_000_000)
+        return ([struct.unpack(">I", uc.mem_read(fw.sym["wt_count"] + 4 * t, 4))[0] for t in range(6)],
+                sum(e[0] == "open" for e in log), uc.reg_read(A7) == sp + 4)
+
+    cnt, opens, ok = tick(1, sr=0x2700)
+    check(opens == 0 and not any(cnt) and ok, "niveau d'interruption non nul : rien")
+    cnt, opens, ok = tick(1)
+    n = len(data)
+    check(cnt == [0, n, 0, 0, 0, n] and opens == 2 and ok,
+          f"pistes 2 et 6 (jeton, meme empreinte) chargees ({n} echantillons) ; piste 1 (autre machine), 3 (sans "
+          f"jeton), 4 (empreinte changee : autre fichier), 5 (jeton abime) : rien")
+    cnt, opens, ok = tick(1)
+    check(opens == 2, "meme bloc audio : la tache ne repasse pas")
+    cnt, opens, ok = tick(2)
+    check(opens == 2 and cnt[1] == n, "bloc suivant, jetons inchanges : pas de relecture")
+    uc.mem_write(SNDS + 100 * 2 + 4, tok.encode())
+    cnt, opens, ok = tick(3)
+    check(opens == 3 and cnt[2] == n, "autre son sur la piste 3 (kit change, jeton) : sa table est chargee")
+    check(all(bytes(uc.mem_read(a, 4)) == struct.pack(">I", fw.sym["wt_tick"]) for a in GW.LED_SLOTS),
+          f"les {len(GW.LED_SLOTS)} cases vides des LedHandler -> wt_tick")
 
 
 def smp_tests(fw, uc):
@@ -342,8 +505,8 @@ def smp_tests(fw, uc):
         check(got == want, f"rpc_type : smp_mode {mode}, type {src:#04x} -> {got:#04x} ({want:#04x} attendu)")
 
     # c) reponse (0x40094c9a, entre par jmp) : le type raw redevient sample (le stock l'ecrit apres, depuis d0)
-    for mode, src, want in ((0, 0x94, 0x94), (1, 0x94, 0x90), (1, 0x95, 0x91), (1, 0x96, 0x92), (1, 0xc0, 0xc3),
-                            (1, 0xc7, 0xc6), (0, 0x90, 0x90)):
+    for mode, src, want in ((0, 0x94, 0x94), (1, 0x94, 0x90), (1, 0x95, 0x91), (1, 0x96, 0x92), (1, 0xc3, 0xc0),
+                            (1, 0xc7, 0xc6), (1, 0xc0, 0xc0), (0, 0x90, 0x90)):
         wr(sym["smp_mode"], mode)
         uc.mem_write(HDR, b"\0" * 16)
         uc.mem_write(HDR + 8, bytes([src]))
@@ -351,11 +514,12 @@ def smp_tests(fw, uc):
         got = uc.reg_read(D0) & 0xff
         check(got == want, f"rpc_ot : smp_mode {mode}, type {src:#04x} -> {got:#04x} ({want:#04x} attendu)")
 
-    # d) la commande SysEx 0x0F pose le drapeau
-    for m in (1, 0, 1):
+    # d) la commande SysEx 0x0F pose le drapeau, par l'aiguillage SysEx de l'OS (0x400812f6 : msg, longueur, 0)
+    for m, want in ((1, 1), (0, 0), (1, 1), (2, 1)):
         uc.mem_write(MSG, bytes([0xf0, 0x00, 0x20, 0x3c, 0x0f, 0x00, m, 0xf7]))
-        call(sym["smp_trig"], [MSG], E.STOP)
-        check(rd(sym["smp_mode"]) == m, f"commande SysEx 0x0F, octet {m} -> smp_mode {rd(sym['smp_mode'])}")
+        call(0x400812f6, [MSG, 8, 0], E.STOP)
+        check(rd(sym["smp_mode"]) == want, f"SysEx F0 00 20 3C 0F 00 {m:02X} F7 par l'aiguillage de l'OS -> smp_mode "
+              f"{rd(sym['smp_mode'])} ({want} attendu{', octet hors bornes ignore' if m > 1 else ''})")
 
     # e) reponse d'identite (0x40084b8e) : longueur de liste + nom, l'allocateur et le constructeur remplaces
     seen = []
@@ -388,8 +552,8 @@ def smp_tests(fw, uc):
     check(uc.mem_read(sym["smp_list"], 35) == bytes.fromhex(
         "010203050450525110131112202122233031323640414246535455565758595a5b5c5d"),
         "liste « sample » de 35 octets (celle du Model:Samples, sans la question stereo)")
-    check(uc.mem_read(sym["smp_map"], 50) == bytes.fromhex(
-        "1014111512162024212522262330333134323536374043414442454647" "0000"),
+    check(uc.mem_read(sym["smp_map"], 32) == bytes.fromhex(
+        "101411151216" "2024212522262327" "3033313432353637" "4043414442454647" "0000"),
         "table de renommage : toute la famille sample (0x10..0x46) vers ses jumeaux raw")
 
 
@@ -492,6 +656,8 @@ def main():
     table = read_wav(a.table) if a.table else test_table()
     data = converter_tests(table)
     fw, uc = fw_tests(stock, data)
+    yes_tests(fw, data)
+    tick_tests(fw, data)
     smp_tests(fw, uc)
     del uc
     playback(fw, data)

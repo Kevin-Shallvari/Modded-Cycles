@@ -335,7 +335,9 @@ machine. Wave est **autonome** ([note 54](notes/54-wave-autonome.md)) : 7e machi
 propre lecture du fichier (navigateur bloqué dans `/Wavetables`, puis l'appui sur le pad) remplace le Sampler de
 Model-TG, donc elle est incompatible avec lui. Le fichier vit dans `/Wavetables` et s'y range par le protocole de
 Transfer ([note 52](notes/52-etude-tables-d-ondes.md), [note 53](notes/53-envoi-des-tables-depuis-l-outil-web.md)) ;
-Wave n'est plus une carte du flasher tant que l'envoi sans le mode SMP de Model-TG n'existe pas.
+pour l'envoi, la page de conversion fait répondre la machine en Model:Samples par une commande SysEx que Wave
+ajoute (`F0 00 20 3C 0F 00 <m> F7`, [note 55](notes/55-smp-sans-model-tg.md)), sans Model-TG. Wave revient dans le
+flasher avec la fusion des générateurs (milestone 3).
 ```sh
 python3 tools/gen_wavetable.py --cycles model-cycles_OS1.13.syx [--check]
 python3 tools/emu/test_wavetable.py --cycles model-cycles_OS1.13.syx
@@ -348,9 +350,9 @@ octets, et `--check` le dit. La preuve a besoin d'`unicorn` et `numpy` (environ 
 
 | `-t` | MAIN OS patché (SHA-256) |
 |---|---|
-| `wavetable` | `72304b2ae1cdeaa240a607bd78300afd6142c1e2269bd36da18b7e9742d78f64` |
-| `6ch-usbup,wavetable` | `4904eb8daae1c301e7a43f8e66fce3a5a6f0d3894bf41595111fd32ec8418d85` |
-| `wavetable,trig-hold,arp,tempo-max,boot-anim` | `2167e431441a8197fbc788debc38d225e85c86ae90876d0283c23e79da77ea8f` |
+| `wavetable` | `3042eee5bd95af627249497a705ae4dfd9de5cef3abfd0e8fb6a2d59734d0f96` |
+| `6ch-usbup,wavetable` | `e0a6e0065fda10a35ac97830a140aa42bce6d49a4f4ed7a1eeb0e169a56216e9` |
+| `wavetable,trig-hold,arp,tempo-max,boot-anim` | `93ce8dedf4d36059b866926248d8d0cee0581431e8118042e7d1ca5c5aa5e72d` |
 
 ### Écoute d'un pas en pause
 

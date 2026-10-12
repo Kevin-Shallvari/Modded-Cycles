@@ -11555,7 +11555,7 @@ const FEAT = {
       short: "One extra machine that plays your own wavetables, kept in /Wavetables.",
       clash: "both add machines in the same place in memory",
       desc: "An extra machine after Chord that plays one of your wavetables. Convert the table first on the site (Convert tab): it bakes in quieter, shorter copies per octave so high notes don't fold back, then send it to the machine with the Convert page's “Send to the machine” button (Device Config > Transfer > SMP). On the machine, open /Wavetables on the Wave track (FUNC + MACHINES) to pick the table: the machine reads it itself, the first time you press the pad. COLOR moves through the table, SHAPE is the cutoff envelope (bipolar), SWEEP is the low-pass cutoff, CONTOUR the resonance, DECAY the amp and the envelopes, GATE and PUNCH the original amp chain.",
-      note: "A project using Wave needs a firmware with Wave at the same place (7th machine). The table lives in /Wavetables on the machine and Wave reads it itself; the Convert page writes it there over USB, with the machine in SMP mode." },
+      note: "A project using Wave needs a firmware with Wave at the same place (7th machine). The table lives in /Wavetables on the machine and Wave reads it itself; the Convert page writes it there over USB." },
   },
   fr: {
     usb6: { label: "Audio USB 6 canaux",
@@ -11614,7 +11614,7 @@ const FEAT = {
       short: "Une machine en plus : elle joue tes propres tables d'ondes, rangées dans /Wavetables.",
       clash: "les deux ajoutent des machines au même endroit de la mémoire",
       desc: "Une machine ajoutée après Chord qui joue une de vos tables d'ondes. Convertissez d'abord la table sur le site (rubrique Convert) : elle grave des copies plus douces et plus courtes par octave, pour que les aigus ne se replient pas, puis rangez-la sur la machine avec le bouton « Envoyer à la machine » de la page Convert (Device Config > Transfer > SMP). Sur la machine, ouvrez /Wavetables sur la piste Wave (FUNC + MACHINES) pour choisir la table : la machine la lit elle-même, au premier appui sur le pad. COLOR parcourt la table, SHAPE est l'enveloppe de coupure (bipolaire), SWEEP la coupure du passe-bas, CONTOUR la résonance, DECAY l'ampli et les enveloppes, GATE et PUNCH la chaîne d'ampli d'origine.",
-      note: "Un projet qui utilise Wave demande un firmware où Wave est à la même place (7e machine). La table vit dans /Wavetables sur la machine et Wave la lit elle-même ; la page Convert l'y écrit par USB, avec la machine en mode SMP." },
+      note: "Un projet qui utilise Wave demande un firmware où Wave est à la même place (7e machine). La table vit dans /Wavetables sur la machine et Wave la lit elle-même ; la page Convert l'y écrit par USB." },
   },
 };
 

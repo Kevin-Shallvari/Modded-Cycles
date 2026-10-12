@@ -38,7 +38,7 @@ conteneur entier). Pas besoin d'appeler `0x4007eb16`.
 Deux accroches, plus les 5 du navigateur bloqué ([52 §3quater](52-etude-tables-d-ondes.md)) :
 
 - **`0x400a6426`** (`jsr 0x400a3052`, 6 o) → `jsr wt_parse` : la piste **active** (`0x40a700c4`) joue-t-elle Wave
-  (kit d'origine : `*(u32*)0x40a78888 + 28 + 100 t`, octet +0x38) ? Si oui, recopie l'entrée de 16 o dans `wt_h[t]`
+  (kit d'origine : `*(u32*)0x40a78888 + 28 + 100 t`, octet +38 ; d'abord écrit +0x38 par erreur, voir §fin) ? Si oui, recopie l'entrée de 16 o dans `wt_h[t]`
   et remet `WT_COUNT[t]` à zéro (la table est à recharger), puis rejoue `jsr 0x400a3052` (le navigateur ne change pas) ;
 - **`0x4008171e`** (prologue `link.w %fp,#-104 ; moveq #127,%d0`, 6 o) → `jmp wt_note` : à l'appui d'un pad, si la
   piste joue Wave, une entrée est notée et `WT_COUNT[t] == 0` (pas déjà chargée), ouvre le fichier, le lit en morceaux
@@ -97,3 +97,67 @@ sont ceux de 2.38 (`LD_LIBRARY_PATH` vers leur `libopcodes`/`libbfd`).
   flasher, puis retour de Wave dans le flasher ;
 - **Matériel (Kevin)** : flasher `wavetable`, poser une table (mode SMP), la jouer — le son, la latence du premier
   chargement, la charge.
+
+## Correction : l'octet de machine est en +38, pas en +0x38 (12/10/2026)
+
+Premier essai de Kevin sur la machine (firmware Wave seule) : sur la piste Wave, le navigateur n'est pas bloqué dans
+`/Wavetables`, YES sur une table affiche « Error loading preset » (aussi juste après un redémarrage), et le pad ne
+joue rien. Cause `[FAIT]` : `wt_is_ours` lisait l'octet de machine du son en **+0x38** (56) au lieu de **+38**
+(décimal, `0x26`) — celui que lit Model-TG (`mvzb %a0@(38)`, « Sampler (machine byte +38 = 6) », `KIT_SND` = 28,
+`SND_SIZE` = 100) et que donnent les [notes 46](46-ecoute-des-samples.md) et [52](52-etude-tables-d-ondes.md). La
+piste Wave n'était donc jamais reconnue : ni verrou, ni entrée notée, ni lecture ; YES tombait sur le chargement de
+preset de l'OS. La preuve posait l'octet au même mauvais endroit, d'où « TOUT OK ». Corrigé (`MACH_OFF` = 38 dans
+`tools/gen_wavetable.py`, même constante dans la preuve) ; preuve TOUT OK. Sur la machine (Kevin, 12/10/2026) : le
+navigateur est de nouveau bloqué dans `/Wavetables` `[FAIT : sur la machine]` ; le pad ne jouait toujours rien et YES
+affichait toujours l'erreur — sections suivantes.
+
+## Longueur de la table : l'en-tête, pas « taille − 80 » (12/10/2026)
+
+Liste du dossier par le protocole de Transfer `[FAIT : sur la machine]` : les tables du +Drive font **64 o d'en-tête
++ PCM, sans fin** (`ESW Analog - ARP Pulse-wt` : 17 216 o = 64 + 2 trames × 4 288 × 2 ; `… 303 Saw-wt` : 2 195 520 o =
+64 + 256 trames). `WT_COUNT = (taille − 80) / 2` donnait 8 échantillons de moins : jamais un nombre entier de trames,
+donc rien ne jouait. Le chargeur prend maintenant les octets de PCM de l'en-tête (+4, ce qu'écrit `uploadSample`),
+bornés au fichier ; un fichier avec 16 o de fin marche aussi. La preuve construisait son fichier avec une fin et la
+taille en +8 : elle suit maintenant l'en-tête de la page (octets de PCM en +4, 48 000 en +8, sans fin), plus un cas
+avec fin.
+
+## YES charge la table, comme le Sampler de Model-TG (12/10/2026)
+
+Le YES du navigateur (`0x400a64fa`) lit le fichier comme un preset (`0x400a51fa`, 3e argument = piste visée) ;
+l'échec affiche « Error loading\npreset » (`pea 0x401302b2` en `0x400a6752`). On reprend la méthode du
+`preset_fail_hook` de Model-TG (MIT) :
+
+| Site | Écriture | Rôle |
+|---|---|---|
+| `0x400a6732` (6 o) | `jsr 0x400a51fa` (relatif, 4 o) + `move.l %d3,-(%sp)` → `jsr wt_yes` | rejoue le chargement de preset ; s'il échoue et que la piste visée joue Wave : `wt_load`, puis le message ; rejoue le `move.l` recouvert |
+| `0x400a6754` (4 o) | `0x401302b2` → `wt_msg` | l'OS affiche notre message (« Table loaded\nto track N », ou la raison) ; ailleurs, `wt_msg` reprend le texte d'origine |
+| `0x400a6602` (6 o) | `jsr 0x400a3052` → `jsr wt_parse` | la lecture de preset du YES note aussi l'entrée choisie (même appel qu'au curseur) |
+
+Le chargement de preset échoue toujours : la piste ne reçoit jamais la table comme un preset. `wt_load` (partagé avec
+le repli au pad) rend un code : 0 chargée, 1 rien de noté, 2 lecture, 3 plus de 3 Mo, 4 pas un nombre entier de
+trames (« Table not\nconverted »). Le curseur ne décharge plus la table jouée : il note seulement l'entrée.
+
+## La table retenue : jeton dans le nom du son (12/10/2026)
+
+Comme le jeton « SMP » de Model-TG (`name_store`) : le nom du son (16 o en +4 du son vivant, `wt_snd` = `sound_obj`
+de Model-TG : projet `0x400cf866` + 212 + 68 t, vtable[40]) est enregistré tel quel avec le projet. Après un
+chargement réussi (YES ou pad), `wt_stamp` y écrit **« W » + clé (8 chiffres hex) + empreinte (24 bits, 6 chiffres)**,
+15 caractères. La clé est le premier mot de l'entrée du navigateur ; `0x4007de78(clé, &entrée)` `[FAIT :
+désassemblage]` reconstruit l'entrée (+0 clé, +4 empreinte impaire, +8 taille) et rend 0, ou −1 si le fichier n'existe
+plus ou que le système de fichiers n'est pas prêt.
+
+Retour de la table : `wt_tick`, dans les 5 cases des LedHandler qui pointent sur une fonction vide (`0x400d7648`,
+celles de Model-TG ; aucun autre tweak ne les touche), au niveau d'interruption 0 et une fois par bloc audio
+(`0x8000184c`). Pour chaque piste Wave dont le nom porte un jeton différent de `wt_tok[t]` : il le note (une seule
+tentative par jeton), reconstruit l'entrée, vérifie l'empreinte (un autre fichier sur la même clé ne charge rien) et
+charge. Projet rechargé, mise sous tension, autre kit : la table revient sans appui. Limites : un fichier déplacé ou
+renommé peut changer de clé (la table ne revient pas, YES la retrouve) ; le nom du son montre le jeton, pas le nom de
+la table.
+
+Preuve (`tools/emu/test_wavetable.py` §2bis, §2ter) : YES sur une piste Wave (table chargée, message, pile et `d3`
+rendus, jeton écrit), vrai preset (rien), autre machine (message d'origine), fichier non converti, piste visée ≠ piste
+active ; tâche : niveau non nul (rien), jetons valides chargés, autre machine / sans jeton / empreinte changée / jeton
+abîmé (rien), une fois par bloc, pas de relecture, kit changé. TOUT OK.
+
+**Sur la machine (Kevin, 12/10/2026)** `[FAIT : sur la machine]` : YES charge la table (« Table loaded »), le pad la
+joue, et la table revient après extinction / rallumage et rechargement du projet (« it works »).
