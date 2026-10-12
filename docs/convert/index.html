@@ -29,6 +29,9 @@
   .actions.on{display:flex}
   .xrow{display:none;align-items:center;gap:8px;justify-content:center;margin-top:12px;color:var(--ink-2);font-size:15px}
   .xrow.on{display:flex}
+  .reset{margin:14px 0 0;text-align:center;color:var(--ink-2);font-size:14px}
+  .linkbtn{font:inherit;color:inherit;text-decoration:underline;background:none;border:0;padding:0;cursor:pointer}
+  .linkbtn:disabled{opacity:.5;cursor:default}
   .xrow select{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:inherit}
   .xrow .btn{padding:8px 16px;font-size:15px}
   .bar{display:none;height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin:14px auto 0;max-width:420px}
@@ -84,6 +87,9 @@
       <div class="status" id="xstatus"></div>
       <div class="bar" id="bar"><i id="barfill"></i></div>
     </div>
+    <p class="reset"><span data-l="en">The page switches the machine to Model:Samples mode for the transfer and back afterwards. If a transfer was cut off:</span><span data-l="fr">La page passe la machine en mode Model:Samples pour l'envoi, puis la remet. Si un envoi a été interrompu :</span>
+      <button type="button" class="linkbtn" id="reset"><span data-l="en">switch it back to Model:Cycles</span><span data-l="fr">la remettre en Model:Cycles</span></button>
+      <span data-l="en">(restarting the machine does the same).</span><span data-l="fr">(redémarrer la machine fait de même).</span></p>
 
     <dl class="facts">
       <dt><span data-l="en">What it does</span><span data-l="fr">Ce qu'il fait</span></dt>
@@ -106,7 +112,7 @@
 </footer>
 
 <script src="../assets/site.js?v=2026-10-10-01"></script>
-<script src="../flasher/flasher.js?v=2026-10-11-01"></script>
+<script src="../flasher/flasher.js?v=2026-10-12-05"></script>
 <script src="convert.js?v=2026-10-10-01"></script>
 <script>
 (function(){
@@ -115,7 +121,8 @@
       status = document.getElementById("status"), xstatus = document.getElementById("xstatus"),
       dl = document.getElementById("dl"), send = document.getElementById("send"),
       pace = document.getElementById("pace"), stop = document.getElementById("stop"),
-      bar = document.getElementById("bar"), barfill = document.getElementById("barfill");
+      bar = document.getElementById("bar"), barfill = document.getElementById("barfill"),
+      reset = document.getElementById("reset");
   var en = document.documentElement.lang !== "fr";
   function say(msg, err) { status.textContent = msg; status.className = "status" + (err ? " err" : ""); }
   function xsay(msg, err) { xstatus.textContent = msg; xstatus.className = "status" + (err ? " err" : ""); }
@@ -159,8 +166,16 @@
       say((en ? "Done: " : "Terminé : ") + out.length + (en ? " file(s)" : " fichier(s)") + (skipped ? (en ? ", " + skipped + " skipped" : ", " + skipped + " ignoré(s)") : "") + ".");
     }
   }
+  // The machine's ports by name (as the flasher), never Linux's "Midi Through" loopback, which echoes the ping back.
   function pickPorts(access) {
-    var ins = [...access.inputs.values()], outs = [...access.outputs.values()];
+    var live = function (p) { return p.state !== "disconnected" && !/through/i.test(p.name || ""); };
+    var dev = function (p) { return /model\s*[:_-]?\s*(cycles|samples)/i.test(p.name || ""); };
+    var ins = [...access.inputs.values()].filter(live), outs = [...access.outputs.values()].filter(live);
+    var dIns = ins.filter(dev), dOuts = outs.filter(dev);
+    for (var i = 0; i < dOuts.length; i++)
+      for (var k = 0; k < dIns.length; k++)
+        if (dOuts[i].name === dIns[k].name) return { input: dIns[k], output: dOuts[i] };
+    if (dIns.length && dOuts.length) return { input: dIns[0], output: dOuts[0] };
     for (var i = 0; i < outs.length; i++)
       for (var k = 0; k < ins.length; k++)
         if (outs[i].name === ins[k].name) return { input: ins[k], output: outs[i] };
@@ -173,44 +188,59 @@
       + mbps.toFixed(1) + " MB/s · " + Math.round(s.blockMs) + " ms/block"
       + (s.rest > 0 ? " · pause " + s.rest + " ms" : "");
   }
-  async function transfer(list) {
-    if (!window.MCFlasher) { xsay(en ? "Transfer unavailable (flasher.js not loaded)." : "Envoi indisponible (flasher.js non chargé).", true); return; }
+  function midiReady() {
+    if (!window.MCFlasher) { xsay(en ? "Transfer unavailable (flasher.js not loaded)." : "Envoi indisponible (flasher.js non chargé).", true); return false; }
     if ((typeof window.isSecureContext !== "undefined" && !window.isSecureContext) || !navigator.requestMIDIAccess) {
       xsay(en ? "This needs Web MIDI on a secure page: open it in Chrome, Edge or Opera, served over http (not by double-clicking the file)."
               : "Il faut le Web MIDI sur une page sécurisée : ouvrez-la dans Chrome, Edge ou Opera, servie en http (pas par double-clic sur le fichier).", true);
-      return;
+      return false;
     }
+    return true;
+  }
+  async function openMachine() {
+    xsay(en ? "Asking for MIDI access…" : "Demande d'accès MIDI…");
+    var granted = false;
+    var hint = setTimeout(function () {
+      if (!granted) xsay(en
+        ? "Waiting for your permission: the browser shows a prompt near the address bar — click “Allow”. If you blocked it before, click the icon left of the address and allow MIDI."
+        : "En attente de votre autorisation : le navigateur affiche une demande près de la barre d'adresse — cliquez sur « Autoriser ». Si vous l'avez bloquée, cliquez sur l'icône à gauche de l'adresse et autorisez le MIDI.");
+    }, 2500);
+    var access;
+    try { access = await navigator.requestMIDIAccess({ sysex: true }); }
+    catch (e) {
+      granted = true; clearTimeout(hint);
+      throw new Error(en ? "MIDI access was refused. Click the icon left of the address, allow MIDI, reload the page and try again."
+                         : "Accès MIDI refusé. Cliquez sur l'icône à gauche de l'adresse, autorisez le MIDI, rechargez la page et réessayez.");
+    }
+    granted = true; clearTimeout(hint);
+    xsay(en ? "MIDI access granted — looking for the machine…" : "Accès MIDI accordé — recherche de la machine…");
+    var pair = pickPorts(access);
+    if (!pair) throw new Error(en ? "No MIDI port found: plug the Model:Cycles over USB." : "Aucun port MIDI : branchez le Model:Cycles en USB.");
+    return { session: await window.MCFlasher.xferOpen(pair.input, pair.output), output: pair.output };
+  }
+  async function transfer(list) {
+    if (!midiReady()) return;
     var F = window.MCFlasher, paceMs = Number(pace.value) || 0;
     stopFlag = false;
-    send.disabled = true; stop.hidden = false;
+    send.disabled = true; reset.disabled = true; stop.hidden = false;
     try {
-      xsay(en ? "Asking for MIDI access…" : "Demande d'accès MIDI…");
-      var granted = false;
-      var hint = setTimeout(function () {
-        if (!granted) xsay(en
-          ? "Waiting for your permission: the browser shows a prompt near the address bar — click “Allow”. If you blocked it before, click the icon left of the address and allow MIDI."
-          : "En attente de votre autorisation : le navigateur affiche une demande près de la barre d'adresse — cliquez sur « Autoriser ». Si vous l'avez bloquée, cliquez sur l'icône à gauche de l'adresse et autorisez le MIDI.");
-      }, 2500);
-      var access;
-      try { access = await navigator.requestMIDIAccess({ sysex: true }); }
-      catch (e) {
-        granted = true; clearTimeout(hint);
-        throw new Error(en ? "MIDI access was refused. Click the icon left of the address, allow MIDI, reload the page and try again."
-                           : "Accès MIDI refusé. Cliquez sur l'icône à gauche de l'adresse, autorisez le MIDI, rechargez la page et réessayez.");
-      }
-      granted = true; clearTimeout(hint);
-      xsay(en ? "MIDI access granted — looking for the machine…" : "Accès MIDI accordé — recherche de la machine…");
-      var pair = pickPorts(access);
-      if (!pair) throw new Error(en ? "No MIDI port found: plug the Model:Cycles over USB." : "Aucun port MIDI : branchez le Model:Cycles en USB.");
-      var session = await F.xferOpen(pair.input, pair.output);
+      var m = await openMachine(), session = m.session, flipped = false;
       try {
         var p0 = performance.now();
         await session.request([0x01]);                       // raw ping: the round-trip with no writing
         var pingMs = Math.round(performance.now() - p0);
         var who = await F.xferIdentify(session);
+        if (who.id === 27) {                                 // Wave's firmware: switch to Model:Samples for the transfer
+          xsay(en ? "Switching the machine to Model:Samples mode…" : "Passage de la machine en mode Model:Samples…");
+          who = await F.setSmpMode(session, m.output, true);
+          flipped = who.id === 25;
+          if (!flipped) throw new Error(en
+            ? "The machine stayed a Model:Cycles: its firmware has no Wave machine. Flash one with Wave first."
+            : "La machine est restée un Model:Cycles : son firmware n'a pas la machine Wave. Flashez d'abord un firmware avec Wave.");
+        }
         if (who.id !== 25) throw new Error(en
-          ? "The machine must be in SMP mode (Device Config › Transfer › SMP). It answered “" + (who.device || who.id) + "”."
-          : "La machine doit être en mode SMP (Device Config › Transfer › SMP). Elle a répondu « " + (who.device || who.id) + " ».");
+          ? "This is not a Model:Cycles with the Wave machine. It answered “" + (who.device || who.id) + "”."
+          : "Ce n'est pas un Model:Cycles avec la machine Wave. Il a répondu « " + (who.device || who.id) + " ».");
         xsay((en ? "Connected: " : "Connecté : ") + (who.device || who.id) + (en ? " — sending " : " — envoi de ") + list.length + (en ? " file(s)…" : " fichier(s)…"));
         var grand = 0, before = [];
         for (var i = 0; i < list.length; i++) { before.push(grand); grand += list[i].samples.length * 2 + 64; }
@@ -240,14 +270,33 @@
         barfill.style.width = "100%";
         xsay((stopFlag ? (en ? "Stopped. Sent " : "Arrêté. Envoyé ") : (en ? "Sent " : "Envoyé ")) + done
           + (en ? " file(s) to /Wavetables." : " fichier(s) dans /Wavetables."));
-      } finally { session.close(); }
+      } finally {
+        if (flipped) { try { await F.setSmpMode(session, m.output, false); } catch (e) { /* a restart does it too */ } }
+        session.close();
+      }
     } catch (e) {
       xsay(e && e.message ? e.message : String(e), true);
-    } finally { send.disabled = false; stop.hidden = true; }
+    } finally { send.disabled = false; reset.disabled = false; stop.hidden = true; }
+  }
+  async function backToCycles() {
+    if (!midiReady()) return;
+    send.disabled = true; reset.disabled = true;
+    try {
+      var m = await openMachine();
+      try {
+        var who = await window.MCFlasher.setSmpMode(m.session, m.output, false);
+        xsay(who.id === 27 ? (en ? "The machine answers as a Model:Cycles again." : "La machine répond de nouveau en Model:Cycles.")
+                           : (en ? "The machine still answers “" : "La machine répond toujours « ") + (who.device || who.id) + (en ? "”. Restart it." : " ». Redémarrez-la."),
+             who.id !== 27);
+      } finally { m.session.close(); }
+    } catch (e) {
+      xsay(e && e.message ? e.message : String(e), true);
+    } finally { send.disabled = false; reset.disabled = false; }
   }
   file.addEventListener("change", function () { if (file.files.length) run(file.files); });
   dir.addEventListener("change", function () { if (dir.files.length) run(dir.files); });
   send.addEventListener("click", function () { if (results) transfer(results); });
+  reset.addEventListener("click", backToCycles);
   stop.addEventListener("click", function () { stopFlag = true; xsay(en ? "Stopping after the current table…" : "Arrêt après la table en cours…"); });
   try { var sp = localStorage.getItem("mc-pace"); if (sp !== null) pace.value = sp; } catch (e) {}
   pace.addEventListener("change", function () { try { localStorage.setItem("mc-pace", pace.value); } catch (e) {} });

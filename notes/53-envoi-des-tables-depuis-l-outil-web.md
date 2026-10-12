@@ -202,3 +202,38 @@ cadence du **flash de firmware n'est pas touchée** (un OS abîmé ne se récup�
 **À faire** : essayer sur la machine (Kevin) à 0 / 10 / 25 / 50 ms — noter MB/s et ms/bloc face au ping, vérifier
 qu'une table et un dossier (sous-dossiers compris) jouent — puis fixer la cadence par défaut ; trancher la taille de
 l'en-tête (64 contre ~80 mesurés, §7).
+
+## 11. Sans Model-TG (12/10/2026)
+
+Wave est autonome ([54](54-wave-autonome.md)) et incompatible avec Model-TG : le mode SMP vient désormais du tweak
+Wave lui-même ([55](55-smp-sans-model-tg.md)). La page ne demande plus de passer *Device Config › Transfer › SMP* :
+si la machine répond 27, elle envoie `F0 00 20 3C 0F 00 01 F7`, relit l'identité, envoie, puis remet la machine en
+Model:Cycles (`0F 00`). Un bouton remet la machine en Model:Cycles après un envoi coupé.
+
+## 12. L'envoi expirait sous Linux : port « Midi Through » et blocs de 8 Ko (12/10/2026)
+
+Essai de Kevin (Chromium, Linux, firmware Wave seule) : « Envoyer à la machine » finissait en délai dépassé, puis,
+une fois le port corrigé, en reculs de cadence et erreur « write ». Sondes `amidi` (accès direct au port) sur la
+machine `[FAIT : sur la machine]` : identité, bascule SMP (`0x0F`), dossiers, ouverture / écriture / fermeture d'un
+fichier répondent toutes, en blocs de 8 Ko comme de 2 Ko. La machine accepte **n'importe quelle taille de bloc** :
+chaque écriture porte sa position en octets dans le fichier (en-tête compris), la réponse rend le total reçu.
+
+Puis Chromium sans tête piloté sur la machine, chaque message MIDI journalisé `[FAIT : sur la machine]` :
+
+1. **Mauvais port.** `pickPorts` prenait la première paire entrée/sortie de même nom, ici « Midi Through Port-0 »,
+   le bouclage de Linux, qui renvoie le ping tel quel. Correction : les ports au nom de la machine
+   (`Model:Cycles` / `Model:Samples`, comme le flasher), jamais un port « Through ».
+2. **Blocs de 8 Ko perdus.** Un bloc de 8 Ko fait 9 389 o de SysEx ; depuis Chromium, la machine n'en reçoit pas
+   toujours un entier : sur une table de 64 trames, le premier bloc reste sans réponse (8 s), les renvois sont refusés
+   (`00`), erreur « write ». Un fichier d'un seul bloc est passé une fois : la perte est aléatoire. `[HYP]` : le
+   séquenceur ALSA recopie le message dans le tampon de sortie du port (4 Ko) et perd ce qui n'y tient pas ; `amidi`,
+   qui écrit directement sur le port, n'a jamais perdu de bloc. Les blocs de 2 Ko du flash ([37](37-flash-rapide-usb.md))
+   tiennent. Correction : `uploadSample` envoie des blocs de `SAMPLE_BLOCK` = 2 Ko (2 367 o de SysEx) avec la
+   position en octets (`opts.blockBytes` pour un autre format ; à 8 Ko on retrouve exactement les octets d'Elektroid).
+
+Résultat, même Chromium, table de 64 trames (548 944 o) : 269 blocs, tous acceptés, 0,1 Mo/s à 10 ms de pause,
+**0,3 Mo/s sans pause** (4 ms par bloc) ; la machine bascule et revient en Model:Cycles. Preuves hors machine :
+`tools/webxfer_check.py` (octet pour octet à 8 Ko ; à 2 Ko, positions cumulées).
+
+Attention pendant un envoi : un autre programme qui parle à la machine (onglet du flasher, autre onglet Convert) peut
+la remettre en Model:Cycles au milieu ; fermer les autres onglets.

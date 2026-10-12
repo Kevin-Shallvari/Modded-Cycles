@@ -322,11 +322,19 @@ function sleep(ms) {
 
 // ---------------------------------------------------------------------------
 // Sample / file transfer over the same Transfer protocol (notes/53). The Wave machine reads its tables from the
-// +Drive, where they sit as Model:Samples "sample" files, so the machine must answer id 25 (Model-TG's
-// Device Config > Transfer > SMP). Commands, bodies and the 64-byte header come from Elektroid's
+// +Drive, where they sit as Model:Samples "sample" files, so the machine must answer id 25 (Wave's SMP
+// identity, switched by setSmpMode, notes/55). Commands, bodies and the 64-byte header come from Elektroid's
 // src/connectors/elektron.c (FS_SAMPLE_*); numbers in a body are big-endian.
 // ---------------------------------------------------------------------------
 const DATA_BLOCK = 0x2000;             // DATA_TRANSF_BLOCK_BYTES
+const ALSA_BLOCK = 0x800;              // Chrome on Linux / ChromeOS (ALSA) loses 8 KB SysEx (notes/53 §12)
+
+/* Upload block size for this browser: 8 KB as Elektroid, 2 KB where Web MIDI goes through ALSA. */
+function sampleBlock() {
+  const nav = typeof navigator !== "undefined" ? navigator : null;
+  const p = nav ? ((nav.userAgentData && nav.userAgentData.platform) || nav.platform || nav.userAgent || "") : "";
+  return /linux|chrome ?os|cros/i.test(p) ? ALSA_BLOCK : DATA_BLOCK;
+}
 const SAMPLE_HEADER_LEN = 64;          // struct elektron_sample_header
 const ELEKTRON_SAMPLE_RATE = 48000;
 
@@ -367,6 +375,7 @@ async function sampleMakeDir(session, path) {
 
 /* Upload mono 16-bit samples (Int16Array) to `path` on the sample filesystem. Elektroid's
  * elektron_upload_sample: open writer, 8 KB blocks (the first carries the 64-byte header), close writer.
+ * opts.blockBytes (sampleBlock() by default): each write carries its byte offset in the file.
  * Pacing: starts at opts.restMs (0 by default), then backs off (opts.stepMs, up to opts.maxRestMs) and
  * resends the block whenever one is refused or times out (opts.maxRetry) — the ack already gates the flow,
  * the pause is only a margin. opts.onSpeed(s) reports each block's round-trip. */
@@ -378,6 +387,7 @@ async function uploadSample(session, path, samples, opts = {}) {
   const step = Number.isFinite(opts.stepMs) ? opts.stepMs : 10;
   const maxRest = Number.isFinite(opts.maxRestMs) ? opts.maxRestMs : 200;
   let rest = Number.isFinite(opts.restMs) ? opts.restMs : 0;
+  const blockBytes = Number.isFinite(opts.blockBytes) && opts.blockBytes > SAMPLE_HEADER_LEN ? opts.blockBytes : sampleBlock();
 
   const header = new Uint8Array(SAMPLE_HEADER_LEN);
   const hv = new DataView(header.buffer);
@@ -393,12 +403,12 @@ async function uploadSample(session, path, samples, opts = {}) {
   if (r0[5] !== 1) throw new XferError("refused", xferString(r0, 6));
   const id = u32be(r0, 6);
 
-  let sent = 0, seq = 0, blockMs = 0, retries = 0;
+  let sent = 0, seq = 0, pos = 0, blockMs = 0, retries = 0;
   for (;;) {
     const block = [];
     let consumed = 0;
     if (seq === 0) { for (let i = 0; i < SAMPLE_HEADER_LEN; i++) block.push(header[i]); consumed += SAMPLE_HEADER_LEN; }
-    let n = Math.min(DATA_BLOCK - consumed, pcmLen - sent);
+    let n = Math.min(blockBytes - consumed, pcmLen - sent);
     n -= n & 1;                                 // whole 16-bit samples
     for (let i = 0; i < n; i += 2) {
       const v = samples[(sent + i) >> 1];       // 16-bit big-endian on the wire
@@ -409,7 +419,7 @@ async function uploadSample(session, path, samples, opts = {}) {
     const bt = performance.now();
     let r;
     try {
-      r = await session.request([0x42, ...be32(id), ...be32(consumed), ...be32(DATA_BLOCK * seq), ...block]);
+      r = await session.request([0x42, ...be32(id), ...be32(consumed), ...be32(pos), ...block]);
     } catch (e) {
       if (retries++ < maxRetry) { rest = Math.min(maxRest, Math.max(rest + step, Math.round(blockMs) + step)); if (opts.onRetry) opts.onRetry({ blockMs, rest, tries: retries, reason: "timeout" }); continue; }
       throw e;
@@ -419,7 +429,7 @@ async function uploadSample(session, path, samples, opts = {}) {
       if (retries++ < maxRetry) { rest = Math.min(maxRest, Math.max(rest + step, Math.round(blockMs) + step)); if (opts.onRetry) opts.onRetry({ blockMs, rest, tries: retries, reason: "refused" }); continue; }
       throw new XferError("write", xferString(r, 6));
     }
-    sent += n; seq++;
+    sent += n; seq++; pos += consumed;
     if (opts.onProgress) opts.onProgress(sent, pcmLen);
     if (opts.onSpeed) opts.onSpeed({ sent, total: pcmLen, blockMs, rest, blocks: seq, seconds: (Date.now() - t0) / 1000 });
     if (sent >= pcmLen) break;
@@ -431,11 +441,23 @@ async function uploadSample(session, path, samples, opts = {}) {
   return { bytes: total, blocks: seq, seconds: (Date.now() - t0) / 1000, rest };
 }
 
+/* Wave's identity switch (notes/55): F0 00 20 3C 0F 00 <m> F7, 1 = Model:Samples, 0 = Model:Cycles. No reply;
+ * resolves to the new xferIdentify answer. Not kept across a restart (back to Model:Cycles). */
+function smpModeMessage(on) {
+  return new Uint8Array([0xf0, 0x00, 0x20, 0x3c, 0x0f, 0x00, on ? 1 : 0, 0xf7]);
+}
+async function setSmpMode(session, output, on) {
+  output.send(smpModeMessage(on));
+  await sleep(REST_MS);
+  return xferIdentify(session);
+}
+
 const API = { splitMessages, verify, packetChecksum, transferSeconds, sendSysex,
               PRODUCTS, DEFAULT_PACE, DIN_BYTES_PER_SEC,
               encode7, decode7, crc32, xferFrame, xferParse, xferString, xferOpen, xferIdentify, upgradeFast,
               fastSeconds, XferError, XFER_IDS, XFER_PRODUCT, OS_BLOCK,
-              DATA_BLOCK, SAMPLE_HEADER_LEN, ELEKTRON_SAMPLE_RATE, be32, pathBytes, sampleReadDir, sampleMakeDir, uploadSample };
+              DATA_BLOCK, ALSA_BLOCK, sampleBlock, SAMPLE_HEADER_LEN, ELEKTRON_SAMPLE_RATE, be32, pathBytes, sampleReadDir, sampleMakeDir, uploadSample,
+              smpModeMessage, setSmpMode };
 if (typeof module !== "undefined" && module.exports) module.exports = API;
 if (typeof window !== "undefined") window.MCFlasher = API;
 })();

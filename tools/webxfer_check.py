@@ -207,9 +207,19 @@ const sSession = { request(body) {
   if (body[0] === 0x40) { r[6] = 0; r[7] = 0; r[8] = 0; r[9] = inp.sampleId; }
   return Promise.resolve(r);
 } };
+// smaller blocks (opts.blockBytes): each write's offset and size, and the frame length
+const small = [];
+const dSession = { request(body) {
+  const payload = new Uint8Array(4 + body.length); payload.set(body, 4);
+  if (body[0] === 0x42) small.push({ len: F.xferFrame(payload).length, size: ((body[5] << 24) | (body[6] << 16) | (body[7] << 8) | body[8]),
+    off: ((body[9] << 24) | (body[10] << 16) | (body[11] << 8) | body[12]) >>> 0, data: body.length - 13 });
+  const r = new Uint8Array(16); r[4] = body[0] | 0x80; r[5] = 1;
+  return Promise.resolve(r);
+} };
 Promise.all([
   F.upgradeFast(session, un(inp.os), { restMs: 0 }).then((res) => { out.frames = frames; out.res = res; }),
-  F.uploadSample(sSession, inp.path, Int16Array.from(inp.samples), { restMs: 0 }).then((res) => { out.sampleFrames = sFrames; out.sampleRes = res; })
+  F.uploadSample(sSession, inp.path, Int16Array.from(inp.samples), { restMs: 0, blockBytes: F.DATA_BLOCK }).then((res) => { out.sampleFrames = sFrames; out.sampleRes = res; }),
+  F.uploadSample(dSession, inp.path, Int16Array.from(inp.samples), { restMs: 0, blockBytes: F.ALSA_BLOCK }).then(() => { out.small = small; out.smallBlock = F.ALSA_BLOCK; })
 ]).then(() => process.stdout.write(JSON.stringify(out)));
 """
     inp = json.dumps({"payloads": [p.hex() for p in payloads], "os": os_data.hex(),
@@ -237,6 +247,12 @@ Promise.all([
     check(got["sampleFrames"] == want_sample,
           f"uploadSample sends Elektroid's exact bytes: open + {len(want_sample) - 2} blocks of 0x2000 + close")
     check(got["sampleRes"]["bytes"] == len(pcm) + SAMPLE_HEADER_LEN, "the announced size is PCM + 64-byte header")
+    sm, pos, ok = got["small"], 0, True
+    for b in sm:
+        ok &= b["off"] == pos and b["size"] == b["data"] and b["data"] <= got["smallBlock"] 
+        pos += b["data"]
+    check(ok and pos == len(pcm) + SAMPLE_HEADER_LEN,
+          f"Linux blocks: {len(sm)} writes of <= {got['smallBlock']:#x} bytes at running byte offsets")
     print("\nALL OK" if not fails else f"\nFAILED ({fails})")
     sys.exit(1 if fails else 0)
 

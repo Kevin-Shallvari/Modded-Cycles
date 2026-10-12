@@ -69,6 +69,9 @@ function fakeDevice(opts, reply) {
     pings: 0, starts: 0, blocks: 0, received: null, size: 0, next: 0, bad: [] }, opts);
   dev.sample = null;
   dev.handle = (d) => {
+    if (dev.wave && d.length === 8 && d[4] === 0x0f && XHEAD.slice(0, 4).every((b, k) => d[k] === b)) {   // Wave's 0x0F (notes/55)
+      dev.id = d[6] ? 25 : 27; dev.name = d[6] ? "Model Samples" : "Model Cycles"; return;
+    }
     if (d.length < 8 || XHEAD.some((b, k) => d[k] !== b)) return;           // not for the Transfer protocol
     const m = unpack(d.subarray(6, d.length - 1));
     const head = [0, 0, m[0], m[1], m[4] | 0x80];
@@ -1009,8 +1012,20 @@ async function main() {
     check(same(dev2.sample && dev2.sample.buf, want),
       "uploadSample: the machine gets the 64-byte header + 16-bit big-endian PCM, byte for byte");
     check(res.bytes === want.length && dev2.sample.blocks === 1,
-      "uploadSample: size = PCM + 64, one 8 KB block for a tiny table");
+      "uploadSample: size = PCM + 64, one block for a tiny table");
     check(dev2.bad.length === 0, "uploadSample: no malformed message " + dev2.bad.slice(0, 2).join("; "));
+  }
+
+  // --- Wave's CYC/SMP switch (notes/55): setSmpMode flips the identity, a firmware without Wave stays a Cycles ---
+  for (const wave of [true, false]) {
+    const L = await load({ device: { wave } });
+    const session = await L.w.MCFlasher.xferOpen(L.devIn(), L.devOut());
+    const on = await L.w.MCFlasher.setSmpMode(session, L.devOut(), true);
+    const off = await L.w.MCFlasher.setSmpMode(session, L.devOut(), false);
+    session.close();
+    check(wave ? on.id === 25 && on.device === "Model:Samples" && off.id === 27 : on.id === 27 && off.id === 27,
+      wave ? "setSmpMode: Wave firmware answers Model:Samples, then Model:Cycles again"
+           : "setSmpMode: a firmware without Wave keeps answering Model:Cycles");
   }
 
   console.log(fail ? `\nFAILED (${fail})` : "\nALL OK");
