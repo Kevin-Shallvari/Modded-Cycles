@@ -147,6 +147,30 @@ def new_off(mapping, layout, off):
     raise KeyError(off)
 
 
+def layout():
+    """Dispositions et accueils (calcul pur, sans image) — partagé avec les bancs.
+
+    Retourne homes (nom -> adresse), zone_map/clus_map (ancien décalage -> nouveau),
+    les tailles reconstruites et la liste des plages occupées (pour l'assertion de
+    non-recouvrement et pour le banc 0xFF).
+    """
+    zone_map, zone_size = widen(ZONE_LAYOUT, SLOTS)
+    clus_map, clus_size = widen(CLUSTER_LAYOUT, SLOTS)
+    homes, cursor = {}, DDR_BASE
+    for name, (base, stride, _) in ROWS.items():
+        homes[name] = cursor
+        cursor += stride * SLOTS
+    homes["zone evenements"] = cursor
+    cursor += zone_size
+    homes["cluster"] = cursor
+    cursor += clus_size
+    spans = sorted([(homes[n], homes[n] + ROWS[n][1] * SLOTS, n) for n in ROWS]
+                   + [(homes["zone evenements"], homes["zone evenements"] + zone_size, "zone evenements"),
+                      (homes["cluster"], homes["cluster"] + clus_size, "cluster")])
+    return dict(homes=homes, zone_map=zone_map, zone_size=zone_size, clus_map=clus_map,
+                clus_size=clus_size, spans=spans)
+
+
 def is_operand_site(stock, va):
     """Le littéral en `va` est-il l'opérande d'une instruction (et non une coïncidence) ?"""
     v = u32(stock, va)
@@ -210,19 +234,8 @@ def main():
     print("zone événements : %#x -> %#x octets" % (0x290, zone_size))
     print("cluster BSS     : %#x -> %#x octets" % (0x68, clus_size))
 
-    # accueils
-    homes, cursor = {}, DDR_BASE
-    for name, (base, stride, _) in ROWS.items():
-        homes[name] = cursor
-        cursor += stride * SLOTS
-    homes["zone evenements"] = cursor
-    cursor += zone_size
-    homes["cluster"] = cursor
-    cursor += clus_size
-
-    spans = sorted([(homes[n], homes[n] + ROWS[n][1] * SLOTS, n) for n in ROWS]
-                   + [(homes["zone evenements"], homes["zone evenements"] + zone_size, "zone evenements"),
-                      (homes["cluster"], homes["cluster"] + clus_size, "cluster")])
+    lay = layout()
+    homes, spans = lay["homes"], lay["spans"]
     if spans[-1][1] > DDR_HI:
         raise SystemExit("!! les accueils ne tiennent pas dans la fenêtre DDR")
     for (a, b, na), (c, d, nb) in zip(spans, spans[1:]):

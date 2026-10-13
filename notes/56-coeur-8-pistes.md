@@ -384,6 +384,31 @@ Le census des accueils a été refait (`build/re8/probe_homes.py`, `probe_sramga
   instruction** (désassemblé) — les coïncidences d'octets des tables de données (dont le census en
   avait relevé plusieurs) sont rejetées et comptées.
 
+### 3.11 Le banc du jalon 1 `[FAIT]` (13/10)
+
+`tools/re/test_groove.py` : Unicorn, le **vrai code de l'OS**, image stock contre image groove.
+
+| Contrôle | Résultat |
+|---|---|
+| A. littéraux relogés (131 écritures, 534 octets) | ok |
+| B. pistes 0-5 **octet pour octet identiques** au stock (1 note trk 0 ; 6 notes) | ok |
+| C. les pistes **6 et 7 jouent** | ok (704 valeurs non nulles chacune) |
+| D. pistes 6-7 **muettes** sans trig | ok (0 valeur) |
+| E. **isolement** : 6 seule vs 6+7 (idem 7) | ok — aucun recouvrement entre les pistes neuves |
+| F. banc **`0xFF` vs `0`**, accueil par accueil | ok sur les 8 accueils |
+| G. **appels de machine par piste** | 24 par piste (0-7) ; index comparé `d4` = 4 |
+
+- **F, subtilité qui a failli tromper** : la première version comparait **tous** les blocs de sortie,
+  y compris ceux des pistes non rendues — qui gardent la valeur de remplissage (`0xFF` vs `0`) et
+  font donc échouer le banc **à tort**. La comparaison juste porte sur les pistes **actives**. Le banc
+  remplit maintenant **un accueil à la fois** et exige le même signal : chacun des huit accueils passe.
+- **G tranche le §3.8.f** : l'index comparé aux tables de six est `d4` = 4, c'est-à-dire l'index de
+  **machine**, pas la piste — les gardes `moveq #$5` de la boucle des voix sont bien des bornes de
+  machine, inchangées.
+- **Limite assumée** : l'ISR complet ne s'émule pas (notes/27 §3.4) ; les lignes que la boucle des
+  voix ne touche pas (params, retrig, zone, cluster) ne sont donc **pas** couvertes par F — c'est
+  l'objet de la liste machine (§3.6 point 5).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
@@ -394,8 +419,11 @@ Le census des accueils a été refait (`build/re8/probe_homes.py`, `probe_sramga
    **bornes des lignes simples** (§3.8.f : boucle maîtresse `7006`→`7008`, params
    `0x18c`→`0x210` ×2, tampons de travail `0x120`→`0x180`), avec les décoys de la boucle des voix
    (tables de 6 **machines**, pas 6 pistes).
-2. **Bancs de contrôle** (§3.6) : hooks de lecture aux accueils, puis banc `0xFF` vs `0` sur chaque
-   relogement ; stub de démarrage si nécessaire.
+2. **Bancs de contrôle** `[FAIT — jalon 1]` (§3.6, §3.11) : `tools/re/test_groove.py` — pistes 0-5
+   octet pour octet identiques au stock, pistes 6-7 jouent et sont muettes sans trig, isolement des
+   pistes neuves, banc `0xFF` **accueil par accueil**, appels de machine par piste. Les hooks de
+   lecture ne sont plus nécessaires (le banc `0xFF` couvre les accueils que la boucle touche) ; le
+   stub de démarrage est retiré (§3.10).
 3. **Générateur** `[FAIT — jalon 1]` : `tools/gen_groove_8.py` écrit
    `tweaks/model-cycles_OS1.13/56-groove-8tracks.json` (131 écritures) : les bornes, les 113 littéraux
    relogés (lignes + deux mini-zones, sites vérifiés par désassemblage), les constructions des

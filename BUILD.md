@@ -412,6 +412,7 @@ construction en ligne de commande seulement, jalon par jalon, chacun publiant so
 ```sh
 python3 tools/gen_groove_8.py --cycles model-cycles_OS1.13.syx
 python3 tools/build.py --cycles model-cycles_OS1.13.syx --tweaks 56-groove-8tracks
+python3 tools/re/test_groove.py --cycles model-cycles_OS1.13.syx
 python3 tools/re/test_load8.py --cycles model-cycles_OS1.13.syx
 ```
 
