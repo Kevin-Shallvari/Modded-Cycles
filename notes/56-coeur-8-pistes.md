@@ -173,12 +173,104 @@ de petits champs, et certaines boucles sont **déroulées** ou portent des **dé
   dans le voisinage laissé en place. Les 6 références et la validation de la fenêtre restent utiles
   comme accueil des lignes SRAM (§3.4).
 
+### 3.8 Liste d'édition (étape 1) — les mini-zones `[FAIT]`
+
+Désassemblage octet par octet (`build/re8/probe_editlist.py`, `probe_editlist2.py`,
+`probe_bounds.py`, `probe_bounds2.py`). Chaque ligne donne les **octets d'origine** : le générateur
+n'aura qu'à les remplacer.
+
+#### a) Groupe déroulé : l'option A ne tient pas, l'option B tient largement
+
+```
+0x40058ddc  23c0800017e4   move.l d0, $800017e4.l
+0x40058de2  42b9800017ec   clr.l $800017ec.l     ┐
+0x40058de8  42b9800017f0   clr.l $800017f0.l     │
+0x40058dee  42b9800017f4   clr.l $800017f4.l     │ 36 octets (6 × 6)
+0x40058df4  42b9800017f8   clr.l $800017f8.l     │
+0x40058dfa  42b9800017fc   clr.l $800017fc.l     │
+0x40058e00  42b980001800   clr.l $80001800.l     ┘
+0x40058e06  6000039c       bra.w $400591a4       ← immédiatement après : aucune marge
+```
+
+- **A (ajouter deux `clr.l`) est impossible en place** : il faudrait insérer 12 octets au milieu de la
+  fonction, donc décaler tout ce qui suit et corriger chaque saut de la région. Rejeté.
+- **B (remplacer les six par une boucle) tient dans les 36 octets** : `lea.l $<A'>.l,a0` (6) +
+  `moveq #$8,d1` (2) + `clr.l (a0)+` (2) + `subq.l #$1,d1` (2) + `bne.b` (2) = **14 octets**, 22 de
+  reste (compléter par des `nop`). Seul contrôle avant d'écrire : que `d1`/`a0` soient morts au point
+  de branchement `$400591a4`.
+- **C (repli)** : recopier le groupe dans l'espace libre (huit `clr.l` + `jmp` de retour) et remplacer
+  les six instructions par un `jmp` (6 octets) — plus gros, gardé en secours.
+
+#### b) Mini-zone 1 — les trois autres constructions
+
+| Construction | Site | Octets d'origine | Remplacement |
+|---|---|---|---|
+| base T2 | `0x400591f8` | `41f9800017cc` `lea.l $800017cc.l,a0` | nouvelle base T2 |
+| distance T2→T1 | `0x40059218` | `42a8ffe8` `clr.l -$18(a0)` | `42a8ffe0` (−0x20) |
+| zéro du logement | `0x40059228` | `4290` `clr.l (a0)` | inchangé (décalage 0) |
+| **borne** de boucle | `0x40059240` | `7206` `moveq #$6,d1` | `7208` (8) |
+| base A | `0x40059518` | `41f9800017ec` `lea.l $800017ec.l,a0` | nouvelle base A |
+| distance A→B | `0x40059520` | `42a80014` `clr.l $14(a0)` | `42a8001c` (B = A + 8 logements) |
+| **fin absolue** | `0x40059524` | `b1fc80001804` `cmpa.l #$80001804,a0` | `<A'> + 0x20` |
+
+**Correction du census** : `0x8000181c` **n'est pas** un tableau par piste — c'est un **masque 32
+bits**, un bit par piste (`or.l d0,$8000181c.l` / `and.l d0,$8000181c.l` avec `d0 = 1 << piste`).
+Huit pistes tiennent dans 32 bits : **aucune modification**. Idem `0x80001820`. Le chevauchement
+redouté avec pmod (`0x80001830`) n'existe donc pas. Les tableaux par piste de la zone se réduisent à
+**T1 `0x800017b4`, T2 `0x800017cc`, A `0x800017ec`, B `0x80001804`** (4 × 6 logements de 4 octets).
+
+#### c) Mini-zone 2 — le cluster BSS
+
+Correction du census : le cluster contient aussi des **tableaux de mots** (pas 2) indexés par la
+piste (`move.w d0,(a0,d2.l*2)`), et deux tampons de 12 octets recopiés l'un dans l'autre.
+
+| Élément | Base | Pas | Logements | Sites |
+|---|---|---|---|---|
+| tampon source | `0x40fe4c90` | 2 | 6 mots (12 o) | `0x40056da6`, `0x4005983c` |
+| tableau long | `0x40fe4c9c` | 4 | 6 | 8 sites |
+| note courante | `0x40fe4cb4` | 4 | 6 | 4 sites |
+| tableau mot | `0x40fe4cd0` | 2 | 6 mots (12 o) | 4 sites |
+| tableau mot | `0x40fe4cdc` | 2 | 6 mots (12 o) | 4 sites |
+| petits champs | `0x40fe4cf0/4` | — | — | 2 + 1 |
+
+| Construction | Site | Origine | Remplacement |
+|---|---|---|---|
+| boucle bitmask | `0x4005929a` | `7206` `moveq #$6,d1` | `7208` |
+| remise à zéro | `0x4005965c` | `7218` `moveq #$18,d1` | `7220` (8 longs) |
+| garde « dernière piste » | `0x400596f2` | `7405` `moveq #$5,d2` | `7407` |
+| taille de la copie | `0x40059830` | `4878000c` `pea.l #$c.w` | `48780010` (16 o) |
+
+Les littéraux plus bas (`0x40fe4b84`, `0x40fe4b90`, `0x40fe4b94`) appartiennent à **d'autres objets**
+(sites `0x400fabcc`, `0x40056d5c`, `0x4005938e`) : ils ne font pas partie du cluster.
+
+#### d) Bornes candidates : vérifiées une par une
+
+| Site | Valeur | Verdict |
+|---|---|---|
+| `0x40058d22` | `7406` #6 | **piste** (boucle T2, tête `0x40058cec`) → 8 |
+| `0x40059240` | `7206` #6 | **piste** (boucle bitmask événements) → 8 |
+| `0x4005929a` | `7206` #6 | **piste** (boucle bitmask cluster) → 8 |
+| `0x4005973c` | `7006` #6 | **piste** (boucle qui appelle `(a2)` par piste) → 8 |
+| `0x40059538` | `7406` #6 | **piste** : `cmp.l d0,d2` — `6` = « toutes les pistes » (joker) → 8 |
+| `0x4005965c` | `7218` #0x18 | **piste** (6 longs) → `7220` |
+| `0x400596f2` | `7405` #5 | **piste** (dernière piste) → 7 |
+| `0x4005873a` | `7006` #6 | **non** : `cmp.l (a2),d0` — **étiquette de type** d'objet → inchangé |
+| `0x4005856a` | `7006` #6 | **non** : valeur rangée dans un objet neuf (même étiquette) → inchangé |
+| `0x40059668` | `7205` #5 | **non** : valeur écrite dans un **registre matériel** (`0xfc04c07f`) → inchangé |
+| `0x400588f2`, `0x40058ace`, `0x40058b0a`, `0x40058c2a` | #5 | à vérifier |
+| `0x40058b22` | #7 | à vérifier |
+| `0x400595f2` | #6 | à vérifier |
+
+C'est le cœur du « census durci » (§3.6.1) : sur 13 bornes candidates, 7 sont des comptes de pistes,
+3 sont des valeurs étrangères (étiquette d'objet, registre matériel) et 3 restent à trancher.
+
 ## 4. Le chemin menant au premier firmware Groove
 
-1. **Liste d'édition des mini-zones** (§3.5) : bornes (`moveq #6` en `0x40059240`, `cmpa #0x80001804`
-   en `0x40059526`), le groupe déroulé `0x40058de4..0x40058e02` (six instructions → huit), les deux
-   décalages figés (`-$18(a0)`, `0x14(a0)` en `0x40059218/0x40059228`), et les bornes des lignes
-   simples (boucle des voix `6→8`, init `0x120→0x180`, lissage `0x18c→0x210`).
+1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
+   événements, les quatre du cluster BSS, le tri des 13 bornes candidates, et la décision
+   **option B** pour le groupe déroulé (A ne tient pas : aucune marge après `0x40058e06`).
+   Restent à trancher 3 bornes candidates (§3.8.d) et les bornes des lignes simples (boucle des
+   voix `6→8`, init `0x120→0x180`, lissage `0x18c→0x210`).
 2. **Bancs de contrôle** (§3.6) : hooks de lecture aux accueils, puis banc `0xFF` vs `0` sur chaque
    relogement ; stub de démarrage si nécessaire.
 3. Écrire `tools/gen_groove_8.py` (tweak en ligne de commande seulement, pas dans le flasher ;
