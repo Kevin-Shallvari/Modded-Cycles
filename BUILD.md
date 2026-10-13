@@ -403,6 +403,27 @@ python3 tools/ref_mainos.py --cycles model-cycles_OS1.13.syx --syntakt Syntakt_O
 Pour ajouter un moteur : l'ajouter à `CATALOG` de `tools/gen_syntakt_engines.py` (et ses plages copiées), puis relancer
 `gen_syntakt_engines.py --all` et `--all --tg`, `gen_flasher_tweaks.py` et `ref_mainos.py`, et tester chaque nouveau tweak en émulation.
 
+### Huit pistes audio (Model:Groove)
+
+Ligne dérivée **Model:Groove** ([note 55](../../notes/55-model-groove.md)) : l'OS d'origine, sans aucun
+mod du dépôt, dont le seul but est de passer de six à huit pistes audio. **Hors flasher** :
+construction en ligne de commande seulement, jalon par jalon, chacun publiant son SHA-256 du MAIN OS.
+
+```sh
+python3 tools/gen_groove_8.py --cycles model-cycles_OS1.13.syx
+python3 tools/build.py --cycles model-cycles_OS1.13.syx --tweaks 56-groove-8tracks
+python3 tools/re/test_load8.py --cycles model-cycles_OS1.13.syx
+```
+
+Jalon 1 ([note 56](../../notes/56-coeur-8-pistes.md) §3.10) : le moteur compte huit pistes et toutes
+les lignes par piste sont relogées dans la fenêtre DDR `0x4230dc10..0x4232d1a8` (128 Ko, dans le BSS
+remis à zéro au démarrage) ; bornes, 113 littéraux relogés et reconstruction des deux mini-zones.
+**Pas encore jouable depuis le panneau** : le mixeur (2 appels), les descripteurs, le format de
+pattern et la sélection de piste sont des jalons suivants.
+
+MAIN OS (jalon 1, 534 octets modifiés) : `ee0d0c75857061a0f1b7269d787fb5a5527fb445f1e98f54defd2d190970174a`
+(OS d'origine : `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`).
+
 ## Flasher (rappel)
 
 1. **STARTUP MENU** : éteindre, maintenir **[FUNC]**, allumer, **[TRIG 4]** (OS UPGRADE).

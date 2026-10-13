@@ -124,8 +124,9 @@ de petits champs, et certaines boucles sont **déroulées** ou portent des **dé
    (la banque d'ondes de CHORD précède la couture SRAM — ses lectures ne doivent pas mordre dedans).
 3. **Banc `0xFF`** : chaque relogement est rejoué deux fois, accueil rempli de `0xFF` puis de `0`,
    comportement identique exigé — preuve qu'aucune ligne n'est lue avant d'être écrite.
-4. **Stub de démarrage** si 3 échoue : petit nettoyage (~20 o) après la remise à zéro du BSS et avant
-   les interruptions (la couture SRAM et la queue haute ne sont **pas** nettoyées au démarrage).
+4. **Stub de démarrage** — **retiré** (§3.10) : les accueils étant dans le BSS remis à zéro au
+   démarrage, le contenu initial est nul et aucun nettoyage n'est nécessaire. Il ne reviendrait que
+   si l'on déplaçait un jour une ligne vers une zone non remise à zéro.
 5. **Liste machine** écrite d'avance pour Maxime : 6 pistes d'origine identiques, panneau/maintien,
    écrans, MIDI, chargement/sauvegarde de projet, audio USB et `CONFIG › UPGRADE`, puis les 2 pistes.
 6. **Assertion de disposition** (ajoutée après le §3.8.e) : le générateur connaît le début et la
@@ -350,14 +351,38 @@ conséquences concrètes.
    une **écriture sur écriture** entre deux pistes neuves : il passe les deux contrôles. D'où deux
    contrôles neufs (§3.6, points 6 et 7).
 3. **Le travail et le budget changent un peu** : la zone se reconstruit sur **six** tableaux (≈ +0x30
-   octets, toujours dans la couture SRAM de 2 880), cinq immediats de plus à recalculer, et un cas de
-   plus pour le banc.
+   octets), cinq immediats de plus à recalculer, et un cas de plus pour le banc.
 
 **Le gain** : la méthode a été refaite pour **toutes** les lignes avec un balayage capable de
 détecter ce contre-exemple. « Aucun tableau n'est atteint autrement que par base + pas » est
 maintenant **prouvé** pour chaque ligne, au lieu d'être supposé à partir de celles qu'on avait
 regardées. C'est exactement ce que veut dire « census durci » — et c'est pourquoi cette étape vient
 **avant** la première écriture.
+
+### 3.10 Correction des accueils : **tout en DDR** `[FAIT]` (13/10)
+
+Le census des accueils a été refait (`build/re8/probe_homes.py`, `probe_sramgaps.py`) et il
+**invalide** le choix SRAM des §3.1/§5.
+
+- La **couture SRAM** `0x800074c0..0x80008000` n'a que **~550 o** libres (`0x800074c0..0x800076da`) :
+  à partir de `0x800076da` le stock y pointe déjà — 12 littéraux, dont un **tableau de trois
+  pointeurs** en `0x4010b304` (`0x80007e53`, `0x80007a82`, `0x800076da`). Elle n'est de plus **pas
+  recopiée** au démarrage : son contenu initial est indéfini. Elle ne peut donc recevoir que de
+  petites choses, et seulement avec un nettoyage au démarrage.
+- La **queue SRAM** `0x8000f2e8..0x80010000` est encore plus dense (99 littéraux).
+- Le SRAM entier est plein : sur les 927 adresses SRAM référencées, le plus grand trou sans littéral
+  fait **962 o** — et la seule ligne des **tampons de sortie** en demande **1024**. Aucune ligne ne
+  peut donc rester en SRAM.
+- **Conclusion** : toutes les lignes relogées vont dans la **fenêtre DDR** `0x4230dc10..0x4232d1a8`
+  (128 Ko, **aucun** littéral, dans le BSS **remis à zéro** au démarrage). Bénéfice inattendu : le
+  contenu initial est nul, donc **aucun stub de nettoyage n'est nécessaire** (§3.6 point 4 tombe —
+  les cinq lignes SRAM sont d'ailleurs **toutes à zéro dans l'image**, vérifié).
+- **Conséquence à mesurer** : les lignes chaudes (params, tampons de sortie, tampons de travail)
+  quittent le SRAM rapide pour la DDR. Les états de voix, eux, y sont **déjà** dans le stock : l'accès
+  DDR n'est donc pas anormal pour ce moteur, mais le coût des lignes chaudes doit être remesuré.
+- **Méthode** : le générateur n'accepte un site de littéral que s'il est **l'opérande d'une
+  instruction** (désassemblé) — les coïncidences d'octets des tables de données (dont le census en
+  avait relevé plusieurs) sont rejetées et comptées.
 
 ## 4. Le chemin menant au premier firmware Groove
 
@@ -371,15 +396,22 @@ regardées. C'est exactement ce que veut dire « census durci » — et c'est po
    (tables de 6 **machines**, pas 6 pistes).
 2. **Bancs de contrôle** (§3.6) : hooks de lecture aux accueils, puis banc `0xFF` vs `0` sur chaque
    relogement ; stub de démarrage si nécessaire.
-3. Écrire `tools/gen_groove_8.py` (tweak en ligne de commande seulement, pas dans le flasher ;
-   SHA-256 du MAIN OS publié par build) : bornes + ~50 littéraux des lignes 1–8 + les deux mini-zones
-   + les 2 appels neufs du mixeur + 10 entrées de descripteurs + 3 bornes du quick-mute + le pas du
-   pattern et la conversion des projets — sortie dans `tweaks/model-cycles_OS1.13/NN-groove-8tracks.json`.
+3. **Générateur** `[FAIT — jalon 1]` : `tools/gen_groove_8.py` écrit
+   `tweaks/model-cycles_OS1.13/56-groove-8tracks.json` (131 écritures) : les bornes, les 113 littéraux
+   relogés (lignes + deux mini-zones, sites vérifiés par désassemblage), les constructions des
+   mini-zones, et une **assertion de non-recouvrement** des accueils. **Tout en DDR** (§3.10).
+   Restent, jalon 2 : les 2 appels du mixeur et les 2 tableaux de gains, les 10 entrées de
+   descripteurs, le pas du pattern et la conversion des projets, l'interface (non décodée) — et la
+   remesure CPU des lignes chaudes en DDR.
 4. Prouver en émulation avec `tools/re/test_load8.py` (pistes 0-5 octet-identiques stock ; 7-8 jouent
    avec machine TONE ; pile impeccable) — plus le banc `0xFF` ; la vérification MIDI/note par piste
    relève de la machine (l'ISR complet ne s'émule pas).
 5. Chaque jalon publie son SHA-256 du MAIN OS (notes/55 §2bis) ; essai machine par Maxime avec la
    liste du §3.6.
+
+**Jalon 1 publié** (13/10) : `56-groove-8tracks.json`, 131 écritures, 534 octets modifiés, MAIN OS
+`ee0d0c75857061a0f1b7269d787fb5a5527fb445f1e98f54defd2d190970174a` (OS d'origine
+`cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`). Le générateur passe `--check`.
 
 ## 5. Ce qui compte pour la suite
 
@@ -387,9 +419,10 @@ regardées. C'est exactement ce que veut dire « census durci » — et c'est po
   2 neufs), deux sont des **mini-zones entrelacées** qui demandent en plus des retouches de code
   (§3.5) : bornes à porter à 8, un groupe déroulé de six instructions à allonger, deux décalages
   figés et une comparaison de fin absolue.
-- **Accueils** : SRAM — la couture `0x800074c0..0x80008000` (2 880 o, jamais copiée) pour les lignes
-  2–5 (~2 Ko), la queue `0x8000f2e8..0x80010000` (3 352 o) en réserve ; DDR — la fenêtre
-  `0x4230dc10..0x4232d1a8` (≈128 Ko, dans le BSS remis à zéro) pour la ligne 1 (6,4 Ko).
+- **Accueils** : **tout en DDR** — la fenêtre `0x4230dc10..0x4232d1a8` (≈128 Ko, aucun littéral, dans
+  le BSS remis à zéro au démarrage), corrigé au §3.10 : le SRAM n'a pas la place (plus grand trou
+  962 o, tampons de sortie 1024) et la couture SRAM n'a que ~550 o libres. Aucun stub de nettoyage
+  n'est donc nécessaire ; à mesurer : le coût des lignes chaudes passées en DDR.
 - **La zone du panneau n'est plus touchée** (§3.1) : entrées, maintien et anti-rebond restent
   intacts ; c'est la plus grosse réduction de risque de la séance.
 - **Les contrôles** (§3.6) : census durci, hooks de lecture, banc `0xFF`, stub de démarrage si
