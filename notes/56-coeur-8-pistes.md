@@ -216,8 +216,24 @@ n'aura qu'à les remplacer.
 **Correction du census** : `0x8000181c` **n'est pas** un tableau par piste — c'est un **masque 32
 bits**, un bit par piste (`or.l d0,$8000181c.l` / `and.l d0,$8000181c.l` avec `d0 = 1 << piste`).
 Huit pistes tiennent dans 32 bits : **aucune modification**. Idem `0x80001820`. Le chevauchement
-redouté avec pmod (`0x80001830`) n'existe donc pas. Les tableaux par piste de la zone se réduisent à
-**T1 `0x800017b4`, T2 `0x800017cc`, A `0x800017ec`, B `0x80001804`** (4 × 6 logements de 4 octets).
+redouté avec pmod (`0x80001830`) n'existe donc pas.
+
+**Et surtout : la zone compte SIX tableaux par piste, pas quatre** (§3.8.e). Deux d'entre eux
+n'apparaissent dans **aucun littéral** : ils ne sont atteints que par *décalage calculé*
+(`addi.l #$NN` puis `(a0, dN.l*4)`), donc invisibles au balayage du census. La famille d'immediats
+`0x77…0x93` est la signature « piste + constante » :
+
+| Tableau | Atteint par | Immediat | Sites |
+|---|---|---|---|
+| `0x8000177c` | `0x800015a0 + (piste + 0x77) × 4` | `addi.l #$77` | `0x40058c32` |
+| `0x80001794` | `+ 0x7d` | `addi.l #$7d` | `0x40058c3e` |
+| `0x800017b4` (T1) | `+ 0x85` | `addi.l #$85` | `0x40059018`, `0x40059716` |
+| `0x800017cc` (T2) | `+ 0x8b` | `addi.l #$8b` | `0x40058f1a`, `0x400590a4`, `0x4005970a` |
+| `0x800017ec` (A) | `+ 0x93` | `addi.l #$93` | 6 sites |
+| `0x80001804` (B) | A + 0x18 (déplacement `$14(a0)`) | — | `0x40059520` |
+
+Ces cinq immediats devront être **recalculés** dans la nouvelle disposition (ils encodent la
+position de chaque tableau dans la zone).
 
 #### c) Mini-zone 2 — le cluster BSS
 
@@ -257,20 +273,39 @@ Les littéraux plus bas (`0x40fe4b84`, `0x40fe4b90`, `0x40fe4b94`) appartiennent
 | `0x4005873a` | `7006` #6 | **non** : `cmp.l (a2),d0` — **étiquette de type** d'objet → inchangé |
 | `0x4005856a` | `7006` #6 | **non** : valeur rangée dans un objet neuf (même étiquette) → inchangé |
 | `0x40059668` | `7205` #5 | **non** : valeur écrite dans un **registre matériel** (`0xfc04c07f`) → inchangé |
-| `0x400588f2`, `0x40058ace`, `0x40058b0a`, `0x40058c2a` | #5 | à vérifier |
-| `0x40058b22` | #7 | à vérifier |
-| `0x400595f2` | #6 | à vérifier |
+| `0x400588f2` | `7205` #5 | **piste** : garde `si (piste > 5) sortir`, puis ligne retrig `0x40a78d58 + piste×0x1c` → 7 |
+| `0x40058c2a` | `7205` #5 | **piste** : garde, puis zone événements via `+0x77` / `+0x7d` → 7 |
+| `0x400595f2` | `7006` #6 | **piste** : boucle de 6 copies par piste (vers `0x800015a0`) → 8 |
+| `0x40058ace`, `0x40058b0a` | `7205` #5 | **non** : valeurs de champ d'objets dans une **séquence d'auto-test** (magies `0x12345678`, `0x12345679`, `0x89000000`, `0x78000000`) → inchangé |
+| `0x40058b22` | `7207` #7 | **non** : même séquence d'auto-test → inchangé |
 
-C'est le cœur du « census durci » (§3.6.1) : sur 13 bornes candidates, 7 sont des comptes de pistes,
-3 sont des valeurs étrangères (étiquette d'objet, registre matériel) et 3 restent à trancher.
+Bilan des **16 bornes candidates** (13 lignes) : **10 sont des comptes de pistes** (à porter à 8, ou 7
+pour les gardes « dernière piste ») et **6 sont des valeurs étrangères** (étiquette de type, champ
+d'objet, registre matériel, valeurs d'auto-test) qu'il ne faut **pas** toucher.
+
+#### e) Le trou du census : les tableaux atteints par décalage calculé
+
+Le census des littéraux ne peut voir qu'un tableau **dont l'adresse de base est écrite en clair**. Or
+le code atteint aussi des tableaux par `addi.l #$NN, dN` (NN = piste + constante) suivi de
+`(aN, dN.l*4)` : l'adresse n'apparaît alors **nulle part**. Un balayage systématique des immediats
+(`probe_offsets.py`, `probe_offsets2.py`) sur chaque base de ligne montre que **seule la zone
+« événements » utilise ce motif** ; la famille `0x77…0x93` y désigne six tableaux par piste (§3.8.b).
+La méthode naïve produit beaucoup de faux positifs (un même `addi` peut alimenter n'importe quelle
+base) : le signal fiable est le **groupe d'immediats contigus** utilisés avec *cette* base.
+
+Conséquence pour la suite : le générateur devra réécrire ces cinq immediats **et** vérifier, pour
+chaque ligne, qu'aucun tableau n'est atteint par un motif de ce genre (les autres lignes n'en ont pas
+d'après ce balayage).
 
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
-   événements, les quatre du cluster BSS, le tri des 13 bornes candidates, et la décision
-   **option B** pour le groupe déroulé (A ne tient pas : aucune marge après `0x40058e06`).
-   Restent à trancher 3 bornes candidates (§3.8.d) et les bornes des lignes simples (boucle des
-   voix `6→8`, init `0x120→0x180`, lissage `0x18c→0x210`).
+   événements, les quatre du cluster BSS, la décision **option B** pour le groupe déroulé (A ne
+   tient pas : aucune marge après `0x40058e06`), le tri complet des **16 bornes candidates**
+   (10 comptes de pistes, 6 valeurs étrangères), et la **fermeture du trou du census** : la zone
+   événements compte **six** tableaux par piste, dont deux invisibles aux littéraux (§3.8.e).
+   Restent les bornes des lignes simples (boucle des voix `6→8`, init `0x120→0x180`,
+   lissage `0x18c→0x210`).
 2. **Bancs de contrôle** (§3.6) : hooks de lecture aux accueils, puis banc `0xFF` vs `0` sur chaque
    relogement ; stub de démarrage si nécessaire.
 3. Écrire `tools/gen_groove_8.py` (tweak en ligne de commande seulement, pas dans le flasher ;
