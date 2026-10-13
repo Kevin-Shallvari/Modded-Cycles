@@ -128,6 +128,16 @@ de petits champs, et certaines boucles sont **déroulées** ou portent des **dé
    les interruptions (la couture SRAM et la queue haute ne sont **pas** nettoyées au démarrage).
 5. **Liste machine** écrite d'avance pour Maxime : 6 pistes d'origine identiques, panneau/maintien,
    écrans, MIDI, chargement/sauvegarde de projet, audio USB et `CONFIG › UPGRADE`, puis les 2 pistes.
+6. **Assertion de disposition** (ajoutée après le §3.8.e) : le générateur connaît le début et la
+   taille de chaque tableau de la zone reconstruite ; il **vérifie qu'aucun ne recouvre un autre**
+   (les tableaux de 6 sont adjacents, un dimensionnement faux les fait se chevaucher en silence).
+   Contrôle statique, exact, sans machine.
+7. **Test d'isolement des pistes neuves** (ajouté après le §3.8.e) : écrire un marqueur distinct dans
+   un logement de la piste 7, puis vérifier que le logement correspondant de la piste 8 est
+   **intact**. C'est le contrôle qui manquait au banc `0xFF` : celui-ci ne voit pas les collisions
+   *écriture sur écriture* entre deux pistes neuves (§3.9.2).
+8. **Contrôle d'appel par piste** (§3.8.f) : compter les appels `table[d4]` de la boucle des voix par
+   piste, pour trancher le seul « ne pas toucher » à risque (index de machine vs de piste).
 
 
 ### 3.7 Annexe : le tampon de staging « post-mix » (dessin dépassé)
@@ -297,15 +307,68 @@ Conséquence pour la suite : le générateur devra réécrire ces cinq immediats
 chaque ligne, qu'aucun tableau n'est atteint par un motif de ce genre (les autres lignes n'en ont pas
 d'après ce balayage).
 
+#### f) Bornes des lignes simples — octets exacts
+
+| Ligne | Site | Origine | Remplacement |
+|---|---|---|---|
+| boucle maîtresse des voix | `0x400a7e40` | `7006` `moveq #$6,d0` | `7008` (8) |
+| parcours params (a) | `0x40056f92` | `0c810000018c` `cmpi.l #$18c,d1` | `0c8100000210` (8 × 0x42) |
+| parcours params (b) | `0x400584ea` | `0c800000018c` `cmpi.l #$18c,d0` | `0c8000000210` |
+| parcours tampons de travail | `0x4005978c` | `0c8200000120` `cmpi.l #$120,d2` | `0c8200000180` (8 × 0x30) |
+
+- La boucle maîtresse (`0x400a7d4a`) est **le** point de commande : `moveq #$6,d0` en `0x400a7e40`,
+  puis les pointeurs avancent (`a5/a6/a3/a4 += 0x31c` états, `a2 += 0x42` params, `d3 += 0x80`
+  sorties) et `cmp.l d2,d0 / bne.w` referme. Une seule instruction porte les huit pistes.
+- Les deux `cmpi #0x18c` (396 = 6 × 66) sont les deux parcours de la ligne **params** ; `cmpi #0x120`
+  (288 = 6 × 48) est le parcours des **tampons de travail** (il range `0x8000bd98 + d2` dans
+  `-$31c(a2)`, le champ pointeur de l'état de voix).
+
+**Décoys de la boucle des voix** : les gardes `moveq #$5` en `0x400a7dba`, `0x400a7dc0` et
+`0x400a7df4` ne comptent **pas** les pistes. L'index comparé (`d4`) est **lu dans l'état de voix**
+(`move.l (a6),d4`), pas dans le compteur de piste (`d2`) : c'est l'indice de **machine**. Les tables
+visées (`0x40118610`, `0x40118628`, `0x40118640`) ont **6 entrées** (trois blocs de 0x18 : deux
+tables de pointeurs de fonction, une suite d'octets `00 01 02 03 04 05`) — six machines, pas six
+pistes. Inchangées.
+`[À VÉRIFIER au banc]` C'est le seul « ne pas toucher » à risque : si l'index était en fait la
+piste, les pistes 7-8 ne recevraient **aucun** appel de machine (silencieuses). Contrôle simple :
+compter les appels de `table[d4]` par piste dans le banc — un appel par piste avec `d4` = piste ⇒
+c'est la piste ; `d4` variant indépendamment ⇒ c'est la machine.
+
+### 3.9 Conséquences du trou du census (pourquoi cette trouvaille compte)
+
+Le trou du §3.8.e n'est pas une curiosité : c'est un défaut de **méthode**, et il a trois
+conséquences concrètes.
+
+1. **Le plan aurait produit une machine subtilement fausse.** Construit sur quatre tableaux au lieu
+   de six : les deux tableaux invisibles restent à 6 logements alors que le code en écrit 8 → la
+   piste 7 écrit dans le **premier logement de la piste 8** (une piste écrase l'autre), et toute la
+   nouvelle disposition est dimensionnée autour d'une forme incomplète, donc décalée. Aucun plantage :
+   le symptôme est « la piste 7 fait parfois dérailler la piste 8 » — le genre de bug qui coûte des
+   jours sur la machine.
+2. **Les preuves prévues ne l'auraient pas attrapé.** Le banc `0xFF` teste *lecture avant écriture* ;
+   la comparaison « pistes 0-5 identiques au stock » ne couvre pas les pistes neuves. Ce défaut est
+   une **écriture sur écriture** entre deux pistes neuves : il passe les deux contrôles. D'où deux
+   contrôles neufs (§3.6, points 6 et 7).
+3. **Le travail et le budget changent un peu** : la zone se reconstruit sur **six** tableaux (≈ +0x30
+   octets, toujours dans la couture SRAM de 2 880), cinq immediats de plus à recalculer, et un cas de
+   plus pour le banc.
+
+**Le gain** : la méthode a été refaite pour **toutes** les lignes avec un balayage capable de
+détecter ce contre-exemple. « Aucun tableau n'est atteint autrement que par base + pas » est
+maintenant **prouvé** pour chaque ligne, au lieu d'être supposé à partir de celles qu'on avait
+regardées. C'est exactement ce que veut dire « census durci » — et c'est pourquoi cette étape vient
+**avant** la première écriture.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
    événements, les quatre du cluster BSS, la décision **option B** pour le groupe déroulé (A ne
    tient pas : aucune marge après `0x40058e06`), le tri complet des **16 bornes candidates**
    (10 comptes de pistes, 6 valeurs étrangères), et la **fermeture du trou du census** : la zone
-   événements compte **six** tableaux par piste, dont deux invisibles aux littéraux (§3.8.e).
-   Restent les bornes des lignes simples (boucle des voix `6→8`, init `0x120→0x180`,
-   lissage `0x18c→0x210`).
+   événements compte **six** tableaux par piste, dont deux invisibles aux littéraux (§3.8.e), et les
+   **bornes des lignes simples** (§3.8.f : boucle maîtresse `7006`→`7008`, params
+   `0x18c`→`0x210` ×2, tampons de travail `0x120`→`0x180`), avec les décoys de la boucle des voix
+   (tables de 6 **machines**, pas 6 pistes).
 2. **Bancs de contrôle** (§3.6) : hooks de lecture aux accueils, puis banc `0xFF` vs `0` sur chaque
    relogement ; stub de démarrage si nécessaire.
 3. Écrire `tools/gen_groove_8.py` (tweak en ligne de commande seulement, pas dans le flasher ;
