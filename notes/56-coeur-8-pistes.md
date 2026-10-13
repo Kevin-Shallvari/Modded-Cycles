@@ -91,13 +91,29 @@ Désassemblant les 5 sites de références littérales, les deux premières fonc
   dans des instructions (les seuls octets coïncidant avec un pointeur), vérifié octet par octet
   (les fragments `02eb 8806 8000 1c40` des sites `0x400794xx`, `0x4007e8xx`, `0x4014baxx` — des
   opérandes d'instructions, pas des pointeurs ; voir `build/re8/probe_postmix2.py`).
-- **[À FAIRE]** La place d'accueil en SRAM — *libre en stock* : les pages de xrefs relevées
-  (`sram_xrefs.txt`) portent aussi les zones `0x800011e8..0x80001400` (un gap d'environ 540 o)
-  et `0x80007500..0x80007e80`. À trancher par le banc — la sortie SDRAM est le plan de secours.
-  **Coût estimé du plan SDRAM (Option B)** : 256 o·2 (lecture + écriture) par bloc avec ~5 cycles
-  de latence = ~640 cycles ≈ **0,4 point du bloc** `[HYP, calcul]` — bien moins que les « 2 à 4 »
-  estimés par le passé. À recevoir par le banc du mixeur (plans §4).
-- Le reste du mod (bornes, mixeur, descripteurs, quick-mute) ne dépend pas de ce choix.
+- **[FAIT en émulation, 11/10]** La fenêtre `0x800074b4..0x80008000` (2 892 o) est validée comme
+  accueil, quatre garde-fous (`build/re8/probe_window.py`) :
+  1. la copie de démarrage (ROM `0x4019b590` → SRAM `0x80000000`) y dépose **723 mots, tous nuls**
+     — c'est du padding de BSS, pas des données ;
+  2. la table des pointeurs de machines `0x40118590` (32 entrées) vise des adresses éparses
+     (`0x80002464`, `0x80002060`, `0x8000e2d8`…, plus haut `0x8000e6dc`) : **aucune entrée dans la
+     fenêtre** ;
+  3. le balayage de toute l'image ne donne que 12 valeurs distinctes de la fenêtre, 59 occurrences,
+     toutes dans des zones de données (masques de sprites/constantes : le plus bas, `0x800076da` ;
+     le plus fréquent, `0x80007fff` × 46 = un masque) ; **les 565 premiers octets
+     `0x800074b4..0x800076d9` n'apparaissent nulle part**, pas même comme coïncidence ;
+  4. exécution réelle (boot + 24 blocs, les 6 machines d'origine trigées, CHORD compris) :
+     **0 accès** à la fenêtre.
+- **Accueil retenu** (dans les 565 o vierges) : staging L/R (256 o) à `0x800074b4..0x800075b4`,
+  **+ les tampons de travail des pistes 7-8** (2 × 0x30 = 96 o) à `0x800075b4..0x80007644`.
+  En 0x80001c58 il y a en effet un **compteur de temps de 4 o** (outil de mesure `0x4008ec4c`,
+  lu comme valeur) — et juste après, la banque d'ondes de CHORD : le tampon de staging n'a donc
+  pas le droit d'y rester, et les iniciarateurs (l'init voix `0x4005974c` avance `0x8000bd98 +
+  t·0x30`, bornée par le `cmpi #0x120` de son boucle 6 pistes) écriraient le tampon de KICK
+  (0x8000beB8, notes/26) si on les laissait avancer — d'où les 96 o dans la fenêtre.
+- **Limites de la preuve** : l'ISR complet et les IRQ UI/MIDI/séquenceur ne sont pas émulés ;
+  les 12 constantes restent éventuellement lues par du code non couvert. Audite plus profond
+  possible : un relevé d'écriture depuis la machine (firmware de diagnostic).
 
 ## 4. Le chemin menant au premier firmware Groove
 
