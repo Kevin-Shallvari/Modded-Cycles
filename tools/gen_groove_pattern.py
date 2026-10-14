@@ -106,6 +106,16 @@ EXCLUDE = {
 # --- la garde du nombre de patterns --------------------------------------
 GUARD_VA = 0x400083BA               # moveq #95 -> moveq #79
 
+# --- corrections octet a octet -------------------------------------------
+# Le gestionnaire de queue (0x4005b766) valide l'index de PISTE encode dans les verrous
+# ranges contre 5 : `moveb #5,%d5` (0x4005b820). Les cinq autres sites `moveb #5,%dN` de
+# l'image ont ete revus (§3.41) : aucun n'est une borne de piste (un compteur a rebours
+# 0x400596a0, un cas de commutation, un champ d'objet, un « genre » de table, un contexte
+# EMAC). Une seule correction, donc.
+PATCHES = [
+    (0x4005B820, "1a3c0005", "1a3c0007", "borne #5 -> #7 : index de piste encode"),
+]
+
 # La revue des sites en mode registre a ete faite (§3.38) ; mais le BANC a trouve DEUX bornes
 # oubliees (§3.39, §3.40) :
 #   - 26310 = 6 x 4385 (la borne de piste du gestionnaire de queue) : AJOUTEE, le banc passe ;
@@ -114,7 +124,7 @@ GUARD_VA = 0x400083BA               # moveq #95 -> moveq #79
 #     sont a revoir. Tant que ce n'est pas fait, l'outil REFUSE d'ecrire (sauf --draft) : aucun
 #     firmware incomplet ne doit pouvoir etre construit.
 REVIEW_PENDING = True
-PENDING_VALUES = ["borne #5 de l'index de piste encode (6 sites moveb #5 a revoir)"]
+PENDING_VALUES = ["controle C du banc (queues des pistes 0-5) non explique"]
 
 _MD = None
 
@@ -225,6 +235,14 @@ def main():
         raise SystemExit("!! la garde du nombre de patterns n'est pas en %#x" % GUARD_VA)
     writes.append((GUARD_VA, bytes([op, 95]), bytes([op, 79]),
                    "nombre de patterns : 96 -> 80"))
+
+    # corrections octet a octet
+    for va, old_hex, new_hex, role in PATCHES:
+        ob = bytes.fromhex(old_hex)
+        if stock[va - BASE:va - BASE + len(ob)] != ob:
+            bad.append("%s : octets d'origine inattendus en %#x" % (role, va))
+        writes.append((va, ob, bytes.fromhex(new_hex), role))
+        print("  correctif %-48s %2d octet(s)" % (role, len(ob)))
 
     if bad:
         for b in bad:

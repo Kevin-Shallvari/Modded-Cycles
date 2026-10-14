@@ -69,13 +69,18 @@ def build_images(stock):
 
 
 def make_packed(n):
-    """Un bloc range synthetique : en-tete 4 o (genre = 4) puis n x 2474 o."""
+    """Un bloc range synthetique : en-tete 4 o (genre = 4) puis n x 2474 o.
+
+    La QUEUE rangee est laissee a ZERO : le gestionnaire la lit comme des entrees de
+    verrou, et des octets quelconques lui feraient ecrire n'importe ou (§3.40.c). A zero,
+    elle signifie « pas de verrou » — ce qui rend les controles C et D significatifs.
+    """
     buf = bytearray(PACKED_SIZE)
     struct.pack_into('>I', buf, 0, 4)                  # le genre attendu par 0x4005b8b0
     for t in range(n):
         base = 4 + t * (STEP + 1752)
-        for k in range(STEP + 1752):
-            buf[base + k] = (t * 7 + k) & 0xFF         # reconnaissable par piste
+        for k in range(STEP):
+            buf[base + k] = (t * 7 + k) & 0xFF         # les pas, reconnaissables par piste
     return bytes(buf)
 
 

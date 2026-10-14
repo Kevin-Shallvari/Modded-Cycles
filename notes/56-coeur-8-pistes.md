@@ -1938,6 +1938,60 @@ la lecture statique avait manquées.
 4. l'aller-retour complet (déplier puis **replier** = la sauvegarde) ;
 5. le convertisseur v6 → v7 (banque F), puis la page de pistes.
 
+### 3.41 Les six sites `moveb #5` revus — et le contrôle C qui reste inexpliqué `[FAIT]`/`[HYP]` (14/10)
+
+`build/re8/probe_b5b.py`, `probe_g5.py`.
+
+#### a) Revue des six sites `moveb #5,%dN` `[FAIT]`
+
+| Site | Contexte | Verdict |
+|---|---|---|
+| **`0x4005b820`** | le gestionnaire de queue : index de piste **encodé** dans les verrous | **la borne de piste → `#7`** ✓ |
+| `0x400596a0` | écrit 5 dans `0x40a78e10` | **un compteur à rebours** (`movel 0x40a78e10,%d0` / `bles` / `subql #1` / … → pose un drapeau à zéro), **pas une borne de piste** ✗ |
+| `0x400411ee` | `movel %d0,%a2@(112)`, un objet de voix | sans rapport ✗ |
+| `0x4005cde0` | compare une valeur de table (« genre ») | sans rapport ✗ |
+| `0x40061048` | un cas de commutation (`beqw`/`bnew`) | sans rapport ✗ |
+| `0x400aad6c` | contexte EMAC / note (`moveq #27`, `lsll`) | sans rapport ✗ |
+
+**Une seule correction, donc** : `moveb #5,%d5` → `moveb #7,%d5` en `0x4005b820` (4 octets,
+`1a3c0005` → `1a3c0007`). Le jeu de changements passe à **192 écritures**.
+
+#### b) Ce que ça donne `[FAIT]`
+
+- **contrôle A** : ok (les deux tweaks sans recouvrement, constantes patchées) ;
+- **contrôle B : PASSE** ✓ — la queue déployée de la **piste 7** est remplie
+  (2 076 / 2 176 mots `0xFFFF`) et **rien** en stock : le dépliage couvre bien **huit pistes** ;
+- **contrôle D** : s'améliore (27 → **4** octets non nuls après la piste 5 en stock).
+
+#### c) Le **contrôle C reste en échec**, et je ne l'explique pas encore `[HYP]`
+
+Le **bloc des pas (0..4332) est identique** ✓ — mais les **queues des pistes 0-5 diffèrent**
+entre le stock et Groove ✗. Deux lectures possibles, et je ne tranche pas :
+
+1. **mes données de test sont encore en cause** : la queue rangée est mise à zéro, et le
+   gestionnaire la lit comme des **entrées de verrou** ; une entrée nulle peut être interprétée
+   et écrire un verrou — différemment selon la borne `#5`/`#7` et les bornes de piste ;
+2. **il reste un effet réel** du patch sur les queues 0-5, que la lecture statique n'a pas vu.
+
+**Le contrôle C est le plus important du banc** (les pistes 0-5 ne doivent pas bouger) : tant
+qu'il échoue, le jalon 2 **n'est pas prouvé**.
+
+#### d) L'état
+
+`57-groove-patterns.json` est **de nouveau retiré** (non versionné) et le générateur **refuse
+d'écrire** (`REVIEW_PENDING = True`, motif : contrôle C). Acquis : **192 écritures vérifiées**,
+la disposition arrêtée, le contrôle B qui passe, et **deux bornes trouvées par le banc** dont une
+corrigée.
+
+#### e) La suite, précise
+
+1. **trancher le contrôle C** : écrire dans le banc une queue rangée **au vrai format** (entrées
+   de verrou valides, pistes 0-7) — ou partir d'un pattern **réel** — pour que C mesure le patch
+   et non mes données ;
+2. si C passe : régénérer, `--check`, publier le hash du jalon 2, puis l'aller-retour complet
+   (déplier → **replier** = la sauvegarde) ;
+3. le convertisseur v6 → v7 (banque F), puis la page de pistes.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
