@@ -744,6 +744,39 @@ par une** (la méthode a montré que ~40 % des candidates sont des valeurs étra
 copie A↔B à étendre, le format fichier, et la conversion des projets existants. À mener **par lots**,
 comme le reste : triage → extensions → preuve. Le prochain lot utile est le triage de ces 24 bornes.
 
+### 3.20 Le compte de pistes du pattern est **4332 = 6 × 722** `[FAIT]` (14/10)
+
+Le pas de piste 722 est utilisé pour calculer les pointeurs par piste, et les boucles sont bornées
+par une **constante**, pas par un « 6 » :
+
+```
+4000c5a6  addil #722,%d3
+4000c5ac  lea %a3@(88),%a3
+4000c5b4  cmpil #4332,%d3        ; 4332 = 6 x 722 : fin du bloc des six pistes
+4000c5ba  bnes 0x4000c59a
+```
+
+Balayage (`probe_pattern5.py`) :
+
+| Constante | Sens | Sites |
+|---|---|---|
+| **4332** | 6 × 722, fin du bloc des pistes | **21 longs** : `0x4000c5b6`, `0x4000c626`, `0x4000cfc0`, `0x4000d15a`, `0x4000d1a8`, `0x4005433a`, `0x400545f6`, `0x40054b56`, `0x40054da2`, `0x40054e5c`, `0x40054e98`, `0x40054fc8`, `0x40055062`, `0x4005b91e`, `0x4005b92c`, `0x4005ba66`, `0x4005bfb0`, `0x4005c2a2`, `0x4006160c`, `0x4006163e`, `0x40061646` (+ un mot à `0x4004af9c`) |
+| **4336** | 4332 + 4 (bloc + un en-tête ?) | 2 longs (`0x4000c5be`, `0x40112945`) + mots |
+| **30710** | taille d'un pattern | 12 longs (`0x4000eaa6`…`0x400819c4`) + mots |
+| **5776** = 8 × 722 | — | **aucun** (le mod doit l'introduire) |
+
+- **Le bloc des pistes d'un pattern fait donc 4332 o, écrit en clair à 21 endroits**, dont la zone
+  **audio** (`0x40054xxx`) : le moteur lit aussi les pas du pattern courant. Pour huit pistes :
+  **4332 → 5776**, `4336 → 5780`, et la taille de pattern **30710 → 32154** (30710 + 2 × 722).
+- Le nombre de pistes du pattern **n'est donc pas dispersé en « 24 bornes »** : c'est **une classe de
+  constantes**, comme les pas de ligne du moteur (§3.4). C'est une bien meilleure nouvelle que le
+  premier relevé ne le laissait croire.
+- **Ce qui reste à trancher** : chaque site est-il un pas, une comparaison ou une taille ? (les 21
+  longs semblent être des comparaisons de fin de bloc) ; et surtout **la forme fichier** — la même
+  constante 4332 y apparaît (`0x4005b91e`, `0x4005b92c`, `0x4005ba66`, `0x4005bfb0`, `0x4005c2a2`),
+  donc la conversion et la compatibilité des projets se jouent là. Le **30710** est la taille du
+  pattern en mémoire ; reste à voir si la forme fichier a la sienne.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
