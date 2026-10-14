@@ -498,6 +498,55 @@ mixeur** (`0x40056000..0x40058300`). Refait (`build/re8/probe_bounds_audio.py`) 
 **Deux sites restent à trancher** (`0x400564cc`, `0x4005617c`), plus le reste de l'OS (interface,
 séquenceur, format de pattern) qui n'est pas encore balayé.
 
+### 3.14 Tri des deux bornes : la garde est une piste, et une **famille par piste inconnue** `[FAIT]` (14/10)
+
+#### a) `0x4005617c` : c'est bien un index de **piste** → 7
+
+```
+40056182  movel %sp@(48),%d2        ; arg1
+4005618a  mvzb %d2,%d0
+4005618c  cmpl %d0,%d1              ; d1 = 5
+4005618e  bccs 0x40056192
+40056190  illegal                   ; assert(index <= 5) : sinon, plantage
+...
+400561b2  movel #722,%d0            ; 722 = le pas du pattern par piste (notes/54 §2.3)
+400561b8  mulsl %d2,%d0             ; d0 = piste x 722
+400561bc  lea %a0@(0,%d0:l),%a1     ; a1 = base + piste x 722
+```
+
+`d2` est multiplié par **722** : c'est l'**index de piste**, et la garde exige `≤ 5`. Elle est appelée
+depuis le **chemin MIDI/note** (`0x40081598`, `0x400818b6`). Pour huit pistes, elle doit passer à
+**7**, sinon la piste 7 ou 8 **plante** (`illegal`).
+
+#### b) Une famille par piste que le census n'avait pas vue
+
+La même fonction indexe des tableaux en `0x422ff1xx` (SDRAM, dans le BSS remis à zéro) :
+
+| Adresse | Ce que le code en fait | Sites |
+|---|---|---|
+| `0x422ff174` | tableau d'**octets indexé par piste** (pas 1 : `mvsb %a1@(0,%d2:l)`) | `0x40054490`, `0x4005538e`, `0x400561de` |
+| `0x422ff17c` | tableau de **pointeurs indexé par piste** (pas 4 : `%a3@(0,%d6:l:4)`, `d6 = piste + 5`) | `0x40054416`, `0x40055394` |
+| `0x422ff168`, `0x422ff16c`, `0x422ff16e`, `0x422ff194` | champs voisins, mêmes appelants | 3, 1, 3, 3 |
+| `0x422ff1ac` | un long (soustraction : `subl 0x422ff1ac,%d0`) | `0x4005463a`, `0x400553f2`, `0x400561fc` |
+
+- Le tableau de pointeurs `0x422ff17c` (6 entrées) **finit exactement** sur `0x422ff194` (qui a 3
+  sites) : l'élargir à 8 entrées **déborderait** sur le champ suivant — il faut donc **reloger la
+  famille**, comme les autres lignes.
+- **Conséquence sur le jalon 1** : le banc ne couvre que la boucle des voix, donc il ne voit pas ce
+  chemin. Aujourd'hui, si une piste 7 ou 8 passe par le chemin MIDI/note, elle **plante** sur l'assert
+  et, même au-delà, écrirait hors des tableaux. **La garde et le relogement de la famille doivent être
+  faits ensemble** : le jalon 1 n'est donc **pas encore sûr pour le chemin MIDI/note**.
+- Le census avait cherché des **lignes** déjà identifiées ; cette famille est dans une autre zone de
+  la SDRAM (`0x422ff1xx`, sous les états de voix). Leçon : après les balayages systématiques, il faut
+  encore **suivre les gardes** — c'est une garde qui a mené ici.
+
+#### c) `0x400564cc` : toujours à trancher
+
+Boucle de 6 tours (`%d6`), pas de **12 o** (`lea %a0@(12),%a0`) dans une grosse fonction de rendu de
+voix (EMAC), atteinte par des adresses **calculées** (aucune référence littérale à `0x40056320`). Le
+pas de 12 o ressemble à une structure par piste (12 o = 6 mots), mais la base n'est pas encore
+identifiée. **À trancher au prochain passage.**
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
@@ -524,6 +573,9 @@ séquenceur, format de pattern) qui n'est pas encore balayé.
 4. Prouver en émulation avec `tools/re/test_load8.py` (pistes 0-5 octet-identiques stock ; 7-8 jouent
    avec machine TONE ; pile impeccable) — plus le banc `0xFF` ; la vérification MIDI/note par piste
    relève de la machine (l'ISR complet ne s'émule pas).
+   **Nouveau (§3.14)** : reloger la **famille par piste de `0x422ff1xx`** (octets et pointeurs
+   indexés par piste) **et** porter la garde `assert(piste <= 5)` de `0x4005617c` à 7 **ensemble** —
+   sans quoi le chemin MIDI/note plante pour les pistes 7-8. Trancher aussi `0x400564cc`.
 5. Chaque jalon publie son SHA-256 du MAIN OS (notes/55 §2bis) ; essai machine par Maxime avec la
    liste du §3.6.
 
