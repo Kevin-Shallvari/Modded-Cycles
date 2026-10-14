@@ -1992,6 +1992,70 @@ corrigée.
    (déplier → **replier** = la sauvegarde) ;
 3. le convertisseur v6 → v7 (banque F), puis la page de pistes.
 
+### 3.42 Le format **rangé** de la queue : une liste d'entrées de 130 o — et une **correction** `[FAIT]` (14/10)
+
+`0x4005b766` (le gestionnaire de queue), seconde moitié : c'est **le format rangé des verrous**.
+
+```
+4005b80a  moveq #80,%d3             ; <<< 80 ENTREES
+4005b810  moveb %a2@,%d0            ; +0 : index de PAS (borne 32)
+4005b812  moveb %a2@(1),%d4         ; +1 : index de PISTE
+4005b84e  movew %a2@(2,%a0:l),%d4   ; +2.. : 64 MOTS (128 o) de valeurs
+4005b86a  cmpal #128,%a0
+4005b878  moveb %d5,%a1@(4352)      ; un drapeau
+4005b87c  subql #1,%d3              ; l'entree suivante
+4005b87e  lea %a2@(130),%a2         ; <<< PAS D'UNE ENTREE : 130 OCTETS
+```
+
+#### a) La structure réelle
+
+| | |
+|---|---|
+| une entrée rangée | **130 o** = 1 o de pas + 1 o de piste + **64 mots** |
+| nombre d'entrées | **80** (`moveq #80`) |
+| donc la queue rangée | `112 + 80 × 130` = **10 512** ✓ (le 112 est un en-tête) |
+| la queue déployée | **26 310** = 6 × 4 385 ✓ — celle-là **est** par piste |
+
+#### b) **La correction** : `1752` par piste était une **coïncidence** `[FAIT]`
+
+Le §3.35.b concluait « queue rangée = 1 752 o par piste » parce que `10512 / 6 = 1752`
+**exactement**. C'est vrai **arithmétiquement** et **faux structurellement** : la queue rangée
+n'est **pas** découpée par piste — c'est une **liste plate d'entrées de 130 o**, chacune portant
+son numéro de piste. Les 1 752 o par piste sont un artefact de la division.
+
+**Conséquences, et elles sont réelles :**
+
+1. la **taille rangée d'un pattern à 8 pistes n'est pas** `4 + 8 × 2474 = 19796` — elle dépend de
+   la **queue rangée**, qui ne grandit **pas** forcément avec le nombre de pistes (elle dépend du
+   **nombre d'entrées**, 80, pas du nombre de pistes) ;
+2. il y a donc **deux grandeurs à revoir** : la taille du bloc rangé et **le nombre d'entrées**
+   (`moveq #80`) — 80 entrées pour 6 pistes ; en faut-il plus pour 8, ou 80 est-il un maximum
+   suffisant ?
+3. **l'arithmétique de la disposition (§3.37) est à refaire** : l'image grandit de 60 768 dans
+   mon calcul, mais ce chiffre reposait sur les 1 976 o par pattern.
+
+#### c) Et **le contrôle C est expliqué** `[FAIT]`
+
+Ma queue rangée synthétique plaçait les verrous « tous les 2 474 o » — alors que l'OS lit des
+**entrées de 130 o** à partir de la base de la queue. Le désaccord était donc **dans mes
+données**, pas dans le patch : c'est la lecture 1 du §3.41.c. Le banc doit fabriquer des entrées
+au **vrai format** (130 o : pas, piste, 64 mots) — et c'est ce que cette lecture vient de rendre
+possible.
+
+#### d) L'état
+
+`57-groove-patterns.json` reste **retiré** et le générateur **refuse d'écrire**. Mais le tableau
+est plus clair qu'avant : le format rangé est **entièrement décodé** (entrée de 130 o, 80 entrées,
+en-tête 112 o), et le contrôle C n'est plus un mystère.
+
+#### e) La suite
+
+1. **décider de la queue rangée à 8 pistes** : le nombre d'entrées (80) suffit-il, ou faut-il
+   l'élargir (une borne de plus au jeu de changements) ?
+2. **refaire l'arithmétique de la disposition** avec la vraie taille rangée ;
+3. **donner au banc des entrées au vrai format** (130 o) et re-prouver A-D ;
+4. l'aller-retour (déplier → replier = la sauvegarde), le convertisseur v6 → v7 (banque F), la page.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
