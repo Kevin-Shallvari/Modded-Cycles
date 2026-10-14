@@ -1027,6 +1027,49 @@ n'existe **aucune plage libre contiguë** de cette taille (la plus grande plage 
 3. **réduire la queue** : les verrous sont stockés sur 66 o par pas alors que le M:C n'en utilise
    peut-être pas autant — reste à mesurer (combien de verrous par pas l'OS écrit-il réellement ?).
 
+### 3.27 Décision : **cinq banques à huit pistes** `[FAIT]` (14/10)
+
+Kevin : « je suis prêt à perdre une banque, ça ne me dérange pas ». Le compromis mémoire est donc
+tranché — **on échange la banque F contre les pistes 7-8** — et il faut le dire précisément :
+
+- **96 = 6 banques (A–F) × 16 patterns**, pas 6 pistes × 16 (le nom de pattern est `%c%02d` en
+  `0x40124aed`, et les lettres `ABCDEF` sont dans l'image ; et l'enregistrement contient **déjà** les
+  6 pistes, donc l'index 0..95 énumère des patterns) ;
+- **ce n'est pas « 16 emplacements jamais utilisés »** : c'est la **banque F** (`F01`..`F16`). Un
+  projet qui a du contenu là-dedans le **perdrait** (ou devrait être remappé) — à traiter par la
+  conversion, c'est le seul point de perte de données du mod.
+
+**Chiffres du choix** (80 patterns = 5 banques) :
+
+| | Aujourd'hui (96 × 6) | Après (80 × 8) | Delta |
+|---|---|---|---|
+| enregistrement de pattern | 30 710 | **40 924** | +10 214 |
+| enregistrement de kit | 7 094 | **7 294** | +200 |
+| **table des patterns** | 2 948 160 | **3 273 920** | **+325 760** |
+| **table des kits** | 681 024 | **583 520** | **−97 504** |
+| **total** | 3 629 184 | **3 857 440** | **+228 256** |
+
+- Les **kits rétrécissent** (80 au lieu de 96) : leur table passe sous sa taille actuelle ✓.
+- Donc : les **patterns grandissent sur place** (2,95 → 3,27 Mo, soit **+326 Ko** dans l'espace que
+  les kits libèrent en partant) ✓, et les **kits déménagent** (583 520 o, plus petits qu'aujourd'hui)
+  — candidate : la plage presque vide de **704 Ko** à `0x43dd0000` ✓.
+- **La mémoire cesse d'être le verrou** ✓ : le total ne grandit que de **228 Ko**, et aucune plage de
+  ~1 Mo n'est nécessaire.
+
+**Ce que la décision change dans le code** (en plus des ~59 sites du §3.23) :
+
+- le **nombre de patterns** : la garde `moveq #95` (`0x400083ba`) passe à **`moveq #79`** — et ses
+  jumelles (les `#96` du code, à recenser) ;
+- les **bases des deux tables** et la **nouvelle disposition** (patterns sur place, kits ailleurs) ;
+- la **conversion** doit décider du sort de la banque F.
+
+**Reste donc, pour finir le jalon « pattern »** :
+1. la **compatibilité des projets** (mécanisme à établir, §3.24.b) — c'est elle qui traitera la
+   banque F et les projets existants ;
+2. le **déménagement des kits** (trouver leur accueil, y compris les 11 références de la plage
+   `0x43dd0000`) ;
+3. l'**implémentation** : ~59 sites + la garde du nombre de patterns + les bases des tables.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
