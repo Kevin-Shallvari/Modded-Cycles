@@ -80,10 +80,14 @@ def make_packed(n):
 
 
 def unpack(engine, deployed, packed):
-    """Appelle le depliage de l'OS et renvoie l'enregistrement deploye."""
+    """Appelle le depliage de l'OS et renvoie l'enregistrement deploye.
+
+    `0x4005b894` prend TROIS arguments : (deploye, range, valeur rangee en +30706). Le
+    troisieme n'est pas lu par le depliage ni par la queue, mais on le fournit proprement.
+    """
     engine.uc.mem_write(PACKED, packed)
     engine.uc.mem_write(DEPLOYED, bytes(DEPLOYED_SIZE))
-    engine.call(UNPACK, DEPLOYED, PACKED)
+    engine.call(UNPACK, DEPLOYED, PACKED, 0)
     return bytes(engine.uc.mem_read(DEPLOYED, DEPLOYED_SIZE))
 
 

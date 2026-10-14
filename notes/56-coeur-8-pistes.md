@@ -1868,6 +1868,76 @@ absent de `BUILD.md`), et le banc **échoue** tant que le troisième argument n'
 4. l'aller-retour complet (déplier puis **replier** = la sauvegarde), puis le convertisseur
    v6 → v7 (banque F), puis la page de pistes.
 
+### 3.40 Le banc a trouvé **deux bornes oubliées** — dont une corrigée, une qui reste `[FAIT]`/`[HYP]` (14/10)
+
+`build/re8/probe_arg3.py`, `probe_gap.py`, `probe_b5.py`.
+
+#### a) Le troisième argument, et le premier trou `[FAIT]`
+
+`0x4005b894` est appelé depuis `0x4000ffe2`, `0x4005d4d2` et `0x4005e2b6`, avec **trois**
+arguments ; le troisième est rangé en `+30706` de l'enregistrement. **Il n'est lu ni par le
+dépliage ni par le gestionnaire de queue** : le banc le fournit désormais explicitement (0), mais
+il n'était pas la cause de l'échec.
+
+La cause, elle, était nette : le **gestionnaire de queue** (`0x4005b766`) parcourt les pistes avec
+
+```
+4005b7be  addil #4385,%d0
+4005b7c4  cmpil #26310,%d0        ; <<< 6 x 4385 = 26310
+...
+4005b802  cmpil #26310,%d3        ; <<< et de nouveau
+```
+
+**`26310` manquait au jeu de changements** ✓ — c'est le trou que le banc soupçonnait. Il a
+**3 sites** (`0x4005b7c6`, `0x4005b804`, `0x40061594`) et devient **35 080 = 8 × 4385**. Vérifié :
+`10512` (la queue **rangée**) n'a **aucun** site — pas de trou de ce côté ✓.
+
+**Après la correction, le banc passe le contrôle B** ✓ : la queue déployée de la **piste 7** est
+désormais remplie (2 076 / 2 176 mots `0xFFFF`), et **rien** en stock ✓✓.
+
+#### b) Le second trou, trouvé en lisant le gestionnaire `[HYP]`
+
+Le gestionnaire **décode aussi** les verrous rangés : il lit les deux premiers octets d'une entrée
+et **valide l'index de piste** qu'elle contient :
+
+```
+4005b810  moveb %a2@,%d0          ; index de PAS (borne 32)
+4005b812  moveb %a2@(1),%d4       ; index de PISTE
+4005b820  moveb #5,%d5
+4005b824  cmpl  %d1,%d5
+4005b826  bcss  0x4005b87c        ; <<< l'index de piste doit etre < 5
+```
+
+**`moveb #5` doit devenir `moveb #7`** ✓ — sinon les verrous des pistes 6-7 sont **rejetés** ✗.
+L'image contient **six** sites `moveb #5,%dN` : `0x400411ee`, `0x400596a0`, `0x4005cde0`,
+`0x40061048`, `0x400aad6c` et celui-ci (`0x4005b820`). **Un seul est identifié** ; les cinq autres
+doivent être revus (certains sont peut-être la même borne dans le chemin de **sauvegarde**).
+
+#### c) Pourquoi C et D échouent encore — et ce n'est pas qu'un trou
+
+Mes **données de test** sont aussi en cause : le gestionnaire lit la queue rangée comme des
+**entrées de verrou** (index de pas < 32, index de piste ✓), et ma queue synthétique contient des
+octets quelconques ✗ — d'où des écritures à des endroits arbitraires (`diag_unpack.py` : 27 octets
+non nuls après la piste 5 **en stock**). Le banc doit donc fabriquer une queue rangée
+**réaliste** (des entrées de verrou valides pour les pistes 0-7) avant que C et D aient un sens.
+
+#### d) L'état — le JSON est **retiré**
+
+`57-groove-patterns.json` **n'est pas versionné** : le jeu de changements est incomplet (borne
+`#5`), donc un firmware construit à partir de lui serait **faux** (les verrous des pistes 6-7
+perdus). Le générateur **refuse à nouveau d'écrire** (`REVIEW_PENDING = True`), avec le motif.
+Ce qui est acquis reste acquis : le générateur reproduit **191 écritures vérifiées**, la disposition
+est arrêtée, et **le banc a fait son travail** — il a trouvé, avant toute machine, deux bornes que
+la lecture statique avait manquées.
+
+#### e) La suite, précise
+
+1. **revoir les six sites `moveb #5`** et appliquer `#5 → #7` là où c'est l'index de piste ;
+2. **rendre la queue rangée du banc réaliste** (entrées de verrou valides, pistes 0-7) ;
+3. régénérer, `--check`, **re-prouver** (B, C, D) ;
+4. l'aller-retour complet (déplier puis **replier** = la sauvegarde) ;
+5. le convertisseur v6 → v7 (banque F), puis la page de pistes.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone

@@ -62,6 +62,7 @@ IMMEDIATES = [
     (7094, 7294, 8, "enregistrement de kit"),
     (600, 800, 7, "borne des kits (6 -> 8 pistes)"),
     (2948160, 3273920, 2, "fin de la table des patterns (96 x 30710 -> 80 x 40924)"),
+    (26310, 35080, 3, "borne de la queue deployee (6 x 4385 -> 8 x 4385) — §3.39.c"),
     (681024, 583520, 1, "fin de la table des kits (96 x 7094 -> 80 x 7294)"),
     (1425408, 1583680, 8, "fin des blocs ranges (96 x 14848 -> 80 x 19796)"),
     (IMAGE_OLD, IMAGE_NEW, 20, "taille de l'image projet"),
@@ -105,12 +106,15 @@ EXCLUDE = {
 # --- la garde du nombre de patterns --------------------------------------
 GUARD_VA = 0x400083BA               # moveq #95 -> moveq #79
 
-# La revue des sites en mode registre a ete faite (notes/56 §3.38) : 7094 et 14848 ont des
-# sites reels a registre (un pas de kit, et les acces au bloc suivant) ; 600 n'en a aucun
-# (que des champs d'objets). Les trois coincidences de la zone de donnees sont ecartees par
-# EXCLUDE. La revue est terminee : l'outil peut ecrire.
-REVIEW_PENDING = False
-PENDING_VALUES = [7094, 600, 14848]
+# La revue des sites en mode registre a ete faite (§3.38) ; mais le BANC a trouve DEUX bornes
+# oubliees (§3.39, §3.40) :
+#   - 26310 = 6 x 4385 (la borne de piste du gestionnaire de queue) : AJOUTEE, le banc passe ;
+#   - `moveb #5,%d5` (0x4005b820) : l'index de piste ENCODE dans les verrous ranges est valide
+#     contre 5. Six sites `moveb #5,%dN` existent dans l'image, dont celui-ci ; les cinq autres
+#     sont a revoir. Tant que ce n'est pas fait, l'outil REFUSE d'ecrire (sauf --draft) : aucun
+#     firmware incomplet ne doit pouvoir etre construit.
+REVIEW_PENDING = True
+PENDING_VALUES = ["borne #5 de l'index de piste encode (6 sites moveb #5 a revoir)"]
 
 _MD = None
 
