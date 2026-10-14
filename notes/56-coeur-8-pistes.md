@@ -895,6 +895,52 @@ coïncidence de pointeur écartée au §3.21, une autre ici). Le fichier grandit
 3. la **place mémoire** : 96 patterns + 96 kits, et la région a-t-elle de quoi grandir de
    (1444 + 200) o par paire.
 
+### 3.24 Marqueur de version (négatif) et **place : la zone suivante est occupée** `[FAIT]` (14/10)
+
+`build/re8/probe_version.py`, `probe_version2.py`.
+
+#### a) Le champ `30706` n'est **pas** un marqueur de version
+
+```
+400541da  moveq #127,%d0
+400541dc  andl %a0@(30706),%d0     ; (pattern@30706) & 127 : une valeur sur 7 bits
+400541e4  cmpl %d1,%d0
+400541e6  beqs 0x40054200
+```
+Masqué à `0x7f` puis comparé à un octet de table : c'est une **donnée** (7 bits — un canal MIDI, une
+gamme…), pas un indicateur de format. **Le marqueur de version reste à trouver ailleurs** (peut-être
+au niveau du *projet*, pas du pattern).
+
+#### b) Les « conversions » de notes/54 §2.3 : lecture à réviser
+
+- `0x4005bba0`, appelée par les fonctions repérées, est un **utilitaire de comparaison**
+  (`cmpl %d1,%d0 ; sne ; negl` → renvoie −1/0/1) ;
+- les corps (`0x4005c00e`…) sont des **boucles d'octets jusqu'à 128** qui **fusionnent/copient**,
+  pas des conversions de version.
+
+Donc `0x4005c040`/`0x4005c1cc` ne sont **pas** les conversions annoncées : le mécanisme de
+compatibilité des projets reste **à établir**. C'est le point ouvert du jalon « pattern », et il
+touche directement la question de Kevin (que devient un projet existant).
+
+#### c) La place : la zone de croissance est **occupée**
+
+Les tables vivent en SDRAM : patterns `0x406fa040` (96 × 30710), kits `0x409c9a00` (96 × 7094) — les
+kits finissent à `0x40a6fe00`. Or **la zone juste après est utilisée** :
+
+| Plage | Littéraux distincts | Ce qu'on y voit |
+|---|---|---|
+| `[0x40a6fe00, 0x40a96640)` (les 157 824 o dont on aurait besoin) | **2 208** | utilisé par le MIDI (`0x40080xxx`) et le séquenceur (`0x40054xxx`) |
+| `[0x40a96640, 0x42308828)` | **3 399** | adresses impaires (`0x40ac4eb9`…) → des **chaînes** (noms de sons) |
+
+**Conséquence** : allonger les tables sur place **écraserait** ce qui suit. Il faut donc, pour la
+mémoire, soit **reloger les tables** (leurs bases ne sont citées que par 6 + 2 littéraux — c'est bon
+marché) dans une zone réellement libre, soit déplacer l'occupant. **Trouver cette zone est un
+sous-chantier neuf** : il faut une **carte du libre en SDRAM**, avec les mêmes balayages que pour les
+accueils du moteur (littéraux **et** accès par décalage calculé).
+
+**Bilan du jalon « pattern »** : le *code* est borné et classé (~59 sites) ; il reste **deux
+inconnues** — le mécanisme de compatibilité des projets, et **où** loger les tables agrandies.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
