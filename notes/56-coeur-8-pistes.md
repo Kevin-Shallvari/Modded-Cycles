@@ -1648,6 +1648,60 @@ Conséquences sur la disposition (§3.29.a) :
 **La place au +Drive reste confortable** : l'image ne prend que +60 768 octets (§3.30 : ~826 Mo de
 marge) ✓.
 
+### 3.36 Triage des sites du « pattern » — l'inventaire avant d'écrire `[FAIT]` (14/10)
+
+`build/re8/probe_triage.py`, `probe_triage2.py`. **Aucune écriture n'a encore été faite** :
+cette étape établit *où* écrire, avec l'instruction de chaque site.
+
+#### a) Les sites d'**immédiat 32 bits** (balayage par valeur, opérande vérifié)
+
+| Constante | Avant → Après | Sites réels | Forme |
+|---|---|---|---|
+| `4332` | → 5776 | **21** | 17 `cmpi.l`, 4 `addi.l` |
+| `14848` | → 19796 | **19** | 15 `addi.l`, 4 `move.l` |
+| `30710` | → 40924 | **12** | 7 `move.l`, 5 `addi.l` |
+| `7094` | → 7294 | **8** | 6 `move.l`, 2 `addi.l` |
+| `600` | → 800 | **7** | 7 `cmpi.l` |
+| taille d'image | 2163716 → 2224484 | **20** | `move.l #…,-(a7)` |
+| base des patterns | `0x406fa040` → +60768 | **6** | 4 `addi.l`, 1 `lea.l` |
+| **en-tête de projet** | `0x406fa024` → +60768 | **7** | 6 `pea.l`, 1 `cmpi.l` |
+| base de l'image | `0x404e9c20` (inchangée) | **9** | 8 `pea.l`, 1 `move.l` |
+| **offset des kits** | `2948188` → à recalculer | **6** | 2 `addi.l`, 3 `adda.l`, 1 `addi.l` |
+
+#### b) Les sites de **déplacement 16 bits** (le balayage 32 bits les rate)
+
+| Déplacement | Avant → Après | Sites | Forme |
+|---|---|---|---|
+| `4336` (queue) | → 5780 | **7** | `pea.l $10f0(aN)` |
+| `30706` (champ 7 bits) | → 40920 | **4** | `move.l $77f2(aN)` |
+| `30642` | → 40856 | **3** | `pea.l $77b2(aN)` |
+| `14736` | → 19684 | **8** | `pea.l`/`lea.l $3990(aN)` |
+| `7094` | → 7294 | **9** | `pea.l $1bb6.w` (dont le `lea` de 0x4005d55a) |
+| `722`, `4385` | **inchangés** | 20 / 10 | pas de changement (par piste) |
+| `2474`, `1752`, `19796` | — | **0** | valeurs *calculées*, jamais écrites ✓ |
+
+#### c) Le triage a évité deux pièges
+
+1. **`600` a 27 sites de déplacement** — mais ce sont des coïncidences (`clr.l $258(a2)`,
+   `move.l $258(a0),d0`, …) : **seuls les 7 `cmpi.l`** sont la borne des kits ✓ ;
+2. **`0x409c9a00` n'a AUCUN site** ✗ — la base des kits n'est pas un littéral. Le code la
+   **calcule** : en `0x4000ea46`, `d2` est une base d'exécution, la boucle fait
+   `addil #30710,%d3` jusqu'à `cmpil #2948160` (96 × 30710) et lit `a3@(0,%d3)` avec
+   `a3 = d2 + 28` ; l'offset des kits est `2948188` **relatif à cette même base**. Comme
+   `d2 + 28` = la table des patterns et `28` = l'en-tête, **la base est l'en-tête de projet**
+   (`0x406fa024`), les patterns suivent à +28 et les kits à +2948188.
+
+**Conséquence, et c'est important** : le déménagement des kits n'est **pas** une réécriture de
+base (il n'y en a pas) mais **une seule valeur d'offset** (`2948188`), répétée 6 fois. Un offset
+de 32 bits peut viser n'importe où ✓ — donc les kits peuvent bien partir vers la plage de 704 Ko
+à `0x43dd0000` ✓, sans toucher aux patterns.
+
+#### d) Ce qui reste à trier avant d'écrire
+
+- le **nombre de patterns** : `moveq #95` (`0x400083ba`) et ses jumelles (`#96`) — non balayés ici,
+  car `96` est une valeur trop commune pour un scan brut : il faut trier par instruction ;
+- les sites de **`14848` en déplacement** (39 relevés, dont des coïncidences à écarter).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
