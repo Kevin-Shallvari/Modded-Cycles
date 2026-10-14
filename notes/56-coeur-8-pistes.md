@@ -1070,6 +1070,62 @@ tranché — **on échange la banque F contre les pistes 7-8** — et il faut le
    `0x43dd0000`) ;
 3. l'**implémentation** : ~59 sites + la garde du nombre de patterns + les bases des tables.
 
+### 3.28 La compatibilité des projets : **un sceau magique et des conversions** `[FAIT]` (14/10)
+
+`build/re8/probe_header.py`, `probe_header2.py`, `probe_header3.py`, `probe_transfer.py`.
+
+#### a) L'en-tête de projet
+
+**`0x406fa024`**, soit **28 octets juste avant la table des patterns** (`0x406fa040`) : cité par
+**7 `pea`** (`0x40006cb0`, `0x4004489e`, `0x400448c4`, `0x40044922`, `0x40044946`, `0x40044974`,
+`0x40044bb8`), toujours passé au **gestionnaire de chargement/sauvegarde** `0x4005deaa` (avec
+`0x404e9c20` et un drapeau). C'est **l'en-tête du projet** — dans le BSS, donc rempli au chargement
+(on ne peut pas le lire dans l'image, seulement son usage).
+
+#### b) Le sceau magique : **`0xBEEFBACE`**
+
+Le gestionnaire de chargement `0x4005d9f6` **teste le premier mot long** de la structure :
+
+```
+4005da28  movel #-1091585330,%d0        ; -1091585330 = 0xBEEFBACE
+4005da2e  cmpl %a2@,%d0
+4005da30  bnew 0x4005de9e               ; sceau absent -> on abandonne
+```
+
+`0xBEEFBACE` (« beef base ») apparaît à **24 sites**, tous dans le chemin de chargement/sauvegarde,
+et le tri par instruction les classe :
+
+| Forme | Nb | Sens |
+|---|---|---|
+| `movel #magic,%aN@` | 6 | **écriture du sceau** dans une structure (`0x4000ef7a`, `0x4000fd82`, `0x4005afbe`, `0x4005b072`, `0x4005d3b4`, `0x400a2f46`) |
+| `movel #magic,%dN` | 12 | sceau chargé dans un registre (comparaison ou écriture différée), dont `0x4005da28` |
+| `cmpil #magic,%d0` | 1 | **comparaison** (`0x400a2acc`) |
+| `.short 0xbeef` | 2 | coïncidences dans des données (`0x40134e21`, `0x4013d3ed`) |
+
+**Donc le format d'un projet est identifié par un sceau**, écrit au début de la structure et
+**vérifié au chargement** ✓✓.
+
+#### c) Et l'OS **a déjà** un mécanisme de conversion
+
+Les sites `movel #magic,%dN` des **`0x4005c30c`, `0x4005c42e`, `0x4005c550`, `0x4005c770`,
+`0x4005c9a8`, `0x4005ce3c`** sont dans la zone `0x4005c0xx..0x4005cexx` — celle des fonctions
+« comparaison + fusion » du §3.24.b. Autrement dit : **ces fonctions construisent des structures
+marquées du sceau**, c'est-à-dire qu'elles **produisent un format** — c'est le mécanisme de
+migration que l'OS utilise déjà entre versions ✓.
+
+**Conséquence pour le mod — et c'est la bonne nouvelle** : le mécanisme existe et il est repéré.
+Un build 8 pistes devrait :
+
+1. écrire un **sceau distinct** pour son format (par exemple `0xBEEFBACF`) ;
+2. **accepter l'ancien sceau** au chargement et **convertir** (6 → 8 pistes), en traitant la
+   **banque F** (perdue ou remappée, §3.27) ;
+3. écrire le nouveau sceau à la sauvegarde, ce qui rend un projet 8 pistes **non lisible par l'OS
+   d'origine** — à documenter pour l'utilisateur.
+
+**Ce qui reste à préciser** : la **liste des sceaux acceptés** (y a-t-il plusieurs valeurs selon les
+versions ? le tri des 24 sites le dira), et le **point d'aiguillage** de la conversion (où l'OS
+choisit la fonction selon le sceau lu).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
