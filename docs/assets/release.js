@@ -3,7 +3,7 @@
  *   { version: "1.1", date: "2026-10-15", changes: [{ en: "…", fr: "…" }] }
  */
 window.MC_RELEASES = [
-  { version: "1.55", date: "2026-10-12", changes: [
+  { version: "1.56", date: "2026-10-14", changes: [
     { en: "New mod, Wave machine: one extra machine after Chord that plays your own wavetables (a mono WAV made of 2048-point frames: Serum, Vital, most packs), kept in /Wavetables. On the Wave track, FUNC + MACHINES opens /Wavetables: pick a table and press YES. The track remembers its table across project reloads and restarts. COLOR moves through the table, SHAPE makes each note start further in and glide back (Env Pos), SWEEP and CONTOUR are the low-pass cutoff and resonance, and FUNC + SWEEP sends the filter envelope up or down (OFF in the middle, -64 to +63 on screen)",
       fr: "Nouveau mod, Machine Wave : une machine ajoutée après Chord qui joue vos propres tables d'ondes (un WAV mono fait de trames de 2048 points : Serum, Vital, la plupart des packs), rangées dans /Wavetables. Sur la piste Wave, FUNC + MACHINES ouvre /Wavetables : choisissez une table et appuyez sur YES. La piste retient sa table quand vous rechargez le projet ou rallumez la machine. COLOR parcourt la table, SHAPE fait partir chaque note plus loin puis revenir (Env Pos), SWEEP et CONTOUR sont la coupure et la résonance du passe-bas, et FUNC + SWEEP envoie l'enveloppe de coupure vers le haut ou vers le bas (OFF au milieu, de -64 à +63 à l'écran)" },
     { en: "Wave goes with the Syntakt engines, MACRO and ACID: tick them together and Wave comes last, after them (up to 14 machines with the 5 engines, MACRO and ACID). The engines' load governor looks after Wave tracks too",
@@ -12,6 +12,12 @@ window.MC_RELEASES = [
       fr: "Nouvelle rubrique Convert : déposez une table d'ondes (ou tout un dossier) et recevez un fichier que Wave lit directement, avec des copies plus douces et plus courtes par octave pour que les aigus ne se replient pas. « Envoyer à la machine » l'écrit dans /Wavetables par USB : la page passe la machine en mode Model:Samples pour l'envoi, puis la remet" },
     { en: "Experimental: checked in the emulator on the OS's own code and tried on a contributor's Model:Cycles; not yet tested by Maxime. Not with Model-TG",
       fr: "Expérimental : vérifiée en émulation sur le code même de l'OS et essayée sur le Model:Cycles d'un contributeur ; pas encore testée par Maxime. Pas avec Model-TG" },
+  ] },
+  { version: "1.55", date: "2026-10-13", changes: [
+    { en: "ACID machine, no more click at the start of notes: each new note now fades in over less than a millisecond, too short to hear as an attack, so the bass line stays punchy without the tick. Slides are unchanged",
+      fr: "Machine ACID, plus de clic au début des notes : chaque nouvelle note monte maintenant en moins d'une milliseconde, trop court pour s'entendre comme une attaque, la ligne de basse garde son mordant sans le clic. Le slide ne change pas" },
+    { en: "Checked in the emulator on the OS's own code with the real sequencer: only the first moment of each new note changes. Applies to every version of ACID (alone, with Model-TG, with MACRO and the Syntakt engines)",
+      fr: "Vérifié en émulation sur le code même de l'OS avec le vrai séquenceur : seul le tout début de chaque nouvelle note change. Vaut pour toutes les versions d'ACID (seule, avec Model-TG, avec MACRO et les moteurs du Syntakt)" },
   ] },
   { version: "1.54", date: "2026-10-12", changes: [
     { en: "MACRO machine, lo-fi fixed: on a MACRO track, hold FUNC and turn PITCH to really set the lo-fi. In 1.46 this still changed the note by semitones, and the lo-fi could not be reached from the knobs. The screen now shows OFF in the middle, the sample rate on the left (46K down to 4K, in kHz) and the bit depth on the right (12B down to 2B, in bits), in large letters, one step per click of the knob",
