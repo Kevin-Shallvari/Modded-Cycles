@@ -390,7 +390,7 @@ Le census des accueils a été refait (`build/re8/probe_homes.py`, `probe_sramga
 
 | Contrôle | Résultat |
 |---|---|
-| A. littéraux relogés (150 écritures, 600 octets) | ok |
+| A. littéraux relogés (179 écritures, 712 octets) | ok |
 | B. pistes 0-5 **octet pour octet identiques** au stock (1 note trk 0 ; 6 notes) | ok |
 | C. les pistes **6 et 7 jouent** | ok (704 valeurs non nulles chacune) |
 | D. pistes 6-7 **muettes** sans trig | ok (0 valeur) |
@@ -606,7 +606,7 @@ garde partiront ensemble.**
 **Implémenté (jalon 1)** : les **quatre bornes** de la famille et le **relogement du bloc**
 `[0x422ff168, 0x422ff1ac)` (0x44 o) — trois tableaux d'octets, une table de pointeurs et un tableau
 de longs, reconstruits à 8 logements. `0x422ff194` a **étendu le bloc** : il est lui aussi par piste.
-Le champ simple suivant (`0x422ff1ac`) ne bouge pas. Total : 150 écritures, 600 octets.
+Le champ simple suivant (`0x422ff1ac`) ne bouge pas. Total : 179 écritures, 712 octets.
 
 **Reste hors du jalon 1, et pourquoi** :
 
@@ -614,6 +614,60 @@ Le champ simple suivant (`0x422ff1ac`) ne bouge pas. Total : 150 écritures, 600
   sans savoir ce qu'elle parcourt serait hasardeux ;
 - `0x4005478e` : un accesseur **avec valeur par défaut** hors bornes — au pire une **valeur fausse**
   pour les pistes 7-8 (pas de corruption), mais il faut d'abord trancher piste/machine.
+
+### 3.17 Les deux derniers points `[FAIT]` (14/10)
+
+#### a) `0x4005478e` : l'index **est** la piste → seconde famille, relogée
+
+L'appelant `0x4006a9a0` :
+
+```
+4006a9ae  clrl %d2
+4006a9b2  lea 0x4005478e,%a3
+4006a9b8  movel %d2,%sp@-          ; l'index passé à l'accesseur est d2
+4006a9ba  jsr %a3@
+4006a9be  cmpl %a2@(72),%d0        ; comparé au champ +72 de l'enregistrement
+4006a9c6  movel %d0,%a2@(72)
+4006a9ca  addql #1,%d2
+4006a9cc  addql #4,%a2             ; a2 avance de 4 o par tour -> une piste par tour
+4006a9ce  moveq #6,%d0             ; borne : 6 -> 8
+```
+
+Donc : la garde de l'accesseur (`0x4005478e` `7205` → `7207`), la boucle appelante
+(`0x4006a9ce` `7006` → `7008`), et le tableau d'octets indexé par piste (`0x40a7886c`) à porter à
+8 logements. Or il est **collé** à ses voisins, et l'accesseur voisin (`0x4005470e`) **efface**
+`0x40a78848` jusqu'à `0x40a78860` par **comparaison absolue** : c'est un tableau de **longs par
+piste**. La zone est donc une seconde famille par piste, `[0x40a78848, 0x40a78872)` (0x2A o) :
+
+```
+0x40a78848  longs[6]   (24 o)   <- effacé jusqu'à 0x40a78860 (comparaison absolue)
+0x40a78860  octets[6]  (6 o)    ┐
+0x40a78866  octets[6]  (6 o)    ├ trois tableaux d'octets PACKÉS
+0x40a7886c  octets[6]  (6 o)    ┘ -> fin 0x40a78872
+```
+
+**Relogée en bloc** à 8 logements (0x38 o) — longs[8] puis octets[8] ×3 — avec ses **quatre
+littéraux** (27 sites), la garde et la borne. Le champ simple suivant (`0x40a78872`) ne bouge pas.
+
+#### b) `0x400564cc` : **non tranché — et on n'y touche pas**
+
+La fonction (`0x400562fc`) n'a **aucune référence littérale** : elle est atteinte par une adresse
+**calculée** (table de pointeurs), son appelant reste donc inconnu. Deux lectures **incompatibles** :
+
+- le **rendu** (`0x400564cc`) : `a0` part de `0x40fe4cd0` et avance de **12 o** par tour, et `d6`
+  indexe un tampon de **128 o** (`lsll #7`) — 128 = la taille d'un tampon de sortie, ce qui suggère
+  que `d6` est la piste ;
+- l'**ISR** (`0x40059130`) : `move.w %d0,(%a0,%d2:l*2)` avec `a0 = 0x40fe4cd0` / `0x40fe4cdc` et
+  `d2` = **piste** (vérifié : `addi.l #$93,%d0` désigne la zone événements) → **deux tableaux de mots
+  de 12 o indexés par piste** (pas 2).
+
+Les deux ne peuvent pas décrire le même octet : soit la zone est réutilisée (union), soit l'un des
+deux index n'est pas la piste. **Trancher demande une trace à l'exécution** (émuler la fonction de
+rendu et comparer `d6` aux tampons de sortie) — hors de portée du banc actuel, qui ne couvre que la
+boucle des voix. **Décision : on ne touche ni la borne `0x400564cc` ni la lecture « enregistrements
+de 12 o » du cluster** — se tromper ici casserait le tableau de mots du mixeur, dont dépend le
+mélange (déjà vérifié à 8). C'est le **seul point laissé ouvert**, et il est **sans risque
+immédiat** : la borne reste à 6, le rendu traite donc 6 éléments, comme le stock.
 
 ## 4. Le chemin menant au premier firmware Groove
 
@@ -631,7 +685,7 @@ Le champ simple suivant (`0x422ff1ac`) ne bouge pas. Total : 150 écritures, 600
    lecture ne sont plus nécessaires (le banc `0xFF` couvre les accueils que la boucle touche) ; le
    stub de démarrage est retiré (§3.10).
 3. **Générateur** `[FAIT — jalon 1]` : `tools/gen_groove_8.py` écrit
-   `tweaks/model-cycles_OS1.13/56-groove-8tracks.json` (150 écritures) : les bornes, les 127 littéraux
+   `tweaks/model-cycles_OS1.13/56-groove-8tracks.json` (179 écritures) : les bornes, les 154 littéraux
    relogés (lignes + deux mini-zones, sites vérifiés par désassemblage), les constructions des
    mini-zones, et une **assertion de non-recouvrement** des accueils. **Tout en DDR** (§3.10).
    Restent, jalon 2 : le **mixeur est déjà à 8** par le relogement du cluster (§3.13) — il reste
@@ -641,14 +695,14 @@ Le champ simple suivant (`0x422ff1ac`) ne bouge pas. Total : 150 écritures, 600
 4. Prouver en émulation avec `tools/re/test_load8.py` (pistes 0-5 octet-identiques stock ; 7-8 jouent
    avec machine TONE ; pile impeccable) — plus le banc `0xFF` ; la vérification MIDI/note par piste
    relève de la machine (l'ISR complet ne s'émule pas).
-   **Fait (§3.16)** : la famille `0x422ff1xx` est relogée et ses quatre bornes portées à 8 (plus la
-   garde de `0x4005617c` à 7). **Restent** : `0x400564cc` (structure de l'enregistrement de 12 o à
-   identifier) et `0x4005478e` (accesseur, piste/machine à trancher).
+   **Fait (§3.16/§3.17)** : la famille `0x422ff1xx` et la famille `0x40a788xx` sont relogées, leurs
+   bornes portées à 8 et leurs gardes à 7. **Seul point laissé ouvert** : `0x400564cc` (deux lectures
+   incompatibles ; décision assumée de ne rien toucher — §3.17.b).
 5. Chaque jalon publie son SHA-256 du MAIN OS (notes/55 §2bis) ; essai machine par Maxime avec la
    liste du §3.6.
 
-**Jalon 1 publié** (13/10) : `56-groove-8tracks.json`, 150 écritures, 600 octets modifiés, MAIN OS
-`09b00014cbd1a9fc8e8783538e75d1323ac66055b6bd242897fcb0077675bb01` (OS d'origine
+**Jalon 1 publié** (13/10) : `56-groove-8tracks.json`, 179 écritures, 712 octets modifiés, MAIN OS
+`d7ea09e22f8ede8e54ce5b5c37fd69fdcf282ccaf2c97cae0052265409986171` (OS d'origine
 `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`). Le générateur passe `--check`.
 
 ## 5. Ce qui compte pour la suite

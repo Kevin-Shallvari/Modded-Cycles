@@ -126,6 +126,19 @@ FAMILY_LAYOUT = [
 ]
 FAMILY_SIZE = 0x5C
 
+# Seconde famille, révélée par l'accesseur `0x4005478e` (§3.17) : [0x40a78848, 0x40a78872) —
+# un tableau de longs par piste (effacé par `0x40054726` jusqu'à `0x40a78860`, comparé en absolu)
+# puis trois tableaux d'octets par piste **packés** (bases à 6 o d'écart).
+FAMILY2_OLD = 0x40A78848
+# (ancien décalage, nouveau décalage, taille pour 6 logements, par piste ?, rôle)
+FAMILY2_LAYOUT = [
+    (0x00, 0x00, 0x18, True, "longs"),
+    (0x18, 0x20, 0x06, True, "octets A"),
+    (0x1E, 0x28, 0x06, True, "octets B"),
+    (0x24, 0x30, 0x06, True, "octets C"),
+]
+FAMILY2_SIZE = 0x38
+
 _MD = None
 
 
@@ -180,11 +193,15 @@ def layout():
     cursor += clus_size
     homes["famille 0x422ff1xx"] = cursor
     cursor += FAMILY_SIZE
+    homes["famille 0x40a788xx"] = cursor
+    cursor += FAMILY2_SIZE
     spans = sorted([(homes[n], homes[n] + ROWS[n][1] * SLOTS, n) for n in ROWS]
                    + [(homes["zone evenements"], homes["zone evenements"] + zone_size, "zone evenements"),
                       (homes["cluster"], homes["cluster"] + clus_size, "cluster"),
                       (homes["famille 0x422ff1xx"], homes["famille 0x422ff1xx"] + FAMILY_SIZE,
-                       "famille 0x422ff1xx")])
+                       "famille 0x422ff1xx"),
+                      (homes["famille 0x40a788xx"], homes["famille 0x40a788xx"] + FAMILY2_SIZE,
+                       "famille 0x40a788xx")])
     return dict(homes=homes, zone_map=zone_map, zone_size=zone_size, clus_map=clus_map,
                 clus_size=clus_size, spans=spans)
 
@@ -306,6 +323,15 @@ def main():
         if coinc:
             print("    (famille %s : %d coïncidence(s) ignorée(s))" % (role, len(coinc)))
 
+    f2 = homes["famille 0x40a788xx"]
+    for old_off, new_off_f, size, per_track, role in FAMILY2_LAYOUT:
+        real, coinc = find_sites(stock, FAMILY2_OLD + old_off)
+        for va in real:
+            sites.append((va, FAMILY2_OLD + old_off, f2 + new_off_f, "famille 0x40a788xx %s" % role))
+        print("  famille 0x40a788xx %-8s %d site(s)" % (role, len(real)))
+        if coinc:
+            print("    (famille 0x40a788xx %s : %d coïncidence(s) ignorée(s))" % (role, len(coinc)))
+
     print("total : %d littéraux relogés" % len(sites))
 
     # constructions et bornes
@@ -329,6 +355,8 @@ def main():
         (0x40055372, "7006", "7008", "famille : boucle au pas du pattern (722)"),
         (0x400553E2, "7c06", "7c08", "famille : boucle d'écriture par piste"),
         (0x4005617C, "7205", "7207", "famille : garde « index de piste <= 5 » -> 7"),
+        (0x4005478E, "7205", "7207", "famille 0x40a788xx : accesseur, garde « piste <= 5 » -> 7"),
+        (0x4006A9CE, "7006", "7008", "famille 0x40a788xx : boucle appelante par piste"),
         (0x4005965C, "7218", "7220", "remise à zéro du cluster : 8 longs"),
         (0x400596F2, "7405", "7407", "cluster : garde dernière piste"),
         (0x40059830, "4878000c", "48780010", "cluster : copie 16 o"),
