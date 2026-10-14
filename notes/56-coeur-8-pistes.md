@@ -850,6 +850,51 @@ queue est relative à un pointeur), mais le second tableau demande son propre re
 pointeur, à retrouver par les `lea %pc@`) ; et la place mémoire (96 × 1444 o de plus pour les pas,
 plus ce que le tableau `7094` demandera).
 
+### 3.23 Le kit, et l'ensemble du changement « pattern » enfin borné `[FAIT]` (14/10)
+
+`build/re8/probe_kit.py`, `probe_kitstride.py`, `probe_kit600.py`.
+
+- **La base du second tableau (le kit)** : `0x406fa040 + 96 × 30710` arrondi à `0x409c9a00` — les
+  patterns puis les kits, **96 × 7094** (`addil #1084005504` en `0x400083dc` = `0x409c9a00`). Dans la
+  **forme fichier**, le même calcul se fait en **décalage** : `addal #2948188` (= 96 × 30710 + 28)
+  en `0x400100aa` — donc le fichier range lui aussi les patterns puis les kits.
+- **Le pas par piste DANS le kit est 100 o** :
+  ```
+  4005b2f2  lea %a3@(28),%fp          ; le kit : bloc par piste à +28
+  4005b2f6  lea %a2@(32),%a5
+  4005b300  pea %fp@(0,%d2:l)
+  4005b304  pea %a5@(0,%d2:l)
+  4005b308  addil #100,%d2            ; <-- pas par piste du kit
+  4005b30e  jsr %a4@
+  4005b314  cmpil #600,%d2            ; <-- 600 = 6 x 100
+  ```
+- **Sa borne est `600` = 6 × 100**, à **7 `cmpil`** : `0x40009aa2`, `0x40009b5a`, `0x4000a546`,
+  `0x4005b314`, `0x4005bea4`, `0x4005cd60`, `0x4005d132` (plus une coïncidence en `0x401081d2`,
+  `btst %d0,%a4@(0)`). `800` (8 × 100) **n'existe pas** dans le code.
+
+#### L'ensemble du changement « pattern » (patterns **et** kits)
+
+| Constante | Sens | Sites | Nouvelle valeur |
+|---|---|---|---|
+| **4332** | bloc des pistes du pattern (6 × 722) | 21 | **5776** |
+| **4336** | base de la queue (bloc + 4 o d'en-tête) | 1 | **5780** |
+| **30710** | taille d'un pattern | ~22 | **32154** |
+| **600** | bloc par piste du kit (6 × 100) | 7 | **800** |
+| **7094** | taille d'un kit | 8 | **7294** |
+
+**~59 sites, tous identifiés et classés** (chaque site vérifié par l'instruction qui le porte, une
+coïncidence de pointeur écartée au §3.21, une autre ici). Le fichier grandit de
+96 × (1444 + 200) = **157 824 o** (≈ 154 Ko) ; la mémoire, d'autant.
+
+**Reste, pour finir le jalon « pattern »** :
+
+1. le **marqueur de version** : le champ à `30706` (fin du pattern − 4) est le candidat — c'est lui
+   qui dira à l'OS qu'un projet est « 6 pistes » (à convertir) ou « 8 pistes » ;
+2. les **conversions** (appelées par `lea %pc@`, à retrouver — les cibles repérées sont
+   `0x4005bfea`, `0x4005c0c6`, `0x4005c15a`, `0x4005c252`) ;
+3. la **place mémoire** : 96 patterns + 96 kits, et la région a-t-elle de quoi grandir de
+   (1444 + 200) o par paire.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
