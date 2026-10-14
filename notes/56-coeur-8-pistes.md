@@ -2056,6 +2056,72 @@ en-tête 112 o), et le contrôle C n'est plus un mystère.
 3. **donner au banc des entrées au vrai format** (130 o) et re-prouver A-D ;
 4. l'aller-retour (déplier → replier = la sauvegarde), le convertisseur v6 → v7 (banque F), la page.
 
+### 3.43 La queue rangée à huit pistes : **le compte d'entrées ne change pas** — et la taille rangée non plus `[FAIT]`/`[HYP]` (14/10)
+
+`build/re8/probe_entries.py` (balayage capstone — **désynchronisé** dans cette zone : il ne trouve
+même pas le `moveq #80` de `0x4005b80a` que je connais ; un balayage **par octets** sera nécessaire
+pour confirmer le chemin d'écriture).
+
+#### a) Le raisonnement, qui décide la question `[FAIT]`
+
+Le gestionnaire de queue lit **au plus 80 entrées** (`moveq #80,%d3`) depuis la **base de la
+queue**, et remplit tout le reste de la queue déployée avec `0xFFFF` (« pas de verrou »). Les
+entrées sont une **liste plate**, chacune portant **son** numéro de piste : le compte de 80 est donc
+un **budget de capacité par pattern**, **pas** une borne de piste.
+
+**Conséquence** : pour huit pistes, **le budget de 80 entrées tient tel quel** — il est simplement
+partagé entre huit pistes au lieu de six. C'est un comportement **d'origine**, inchangé par le mod.
+**Aucune modification du compte d'entrées n'est nécessaire.**
+
+Donc la **queue rangée reste 10 512 o**, et :
+
+| | 6 pistes | 8 pistes |
+|---|---|---|
+| en-tête | 4 | 4 |
+| pas (par piste) | 6 × 722 = 4 332 | **8 × 722 = 5 776** |
+| queue rangée (plate) | **10 512** | **10 512** *(inchangée)* |
+| **bloc rangé** | 14 848 | **16 292** |
+
+#### b) **La correction du §3.35.d** `[FAIT]`
+
+Le §3.35.d donnait un bloc rangé de `4 + 8 × 2474 = 19 796` — **faux**, parce qu'il reposait sur
+la coïncidence « 1 752 o par piste » du §3.35.b. Le bon chiffre est **16 292**.
+
+Ce que ça change :
+
+| | §3.37 (faux) | **corrigé** |
+|---|---|---|
+| bloc rangé | 19 796 | **16 292** |
+| image projet | 2 224 484 (+60 768) | **1 944 164** (−219 552 : elle **rétrécit**) |
+| en-tête | `0x40708d84` | à recalculer (**il descend**) |
+| table des patterns | `0x40708da0` | à recalculer |
+| kits | déménagement | **à revoir** (l'aire totale ne grandit que de **8 704 o**) |
+
+Le total (image + en-tête + patterns + kits) passe de 5 792 928 à **5 801 632**, soit **+8 704
+octets** seulement — les 80 patterns compensant presque tout. **L'arithmétique de la disposition est
+donc à refaire** (§3.37 est périmé), et le déménagement des kits est à réévaluer : il est peut-être
+**petit**, voire inutile.
+
+#### c) Ce qui reste **à vérifier** `[HYP]`
+
+1. le **chemin d'écriture** (la sauvegarde) utilise-t-il le **même** compte (80) et le **même** pas
+   (130 o) ? Un balayage **par octets** le dira (capstone se désynchronise ici) ;
+2. la borne `#5 → #7` du §3.41 : elle est dans le **lecteur** ; y a-t-il l'équivalent dans
+   l'**écrivain** ?
+
+#### d) L'état
+
+`57-groove-patterns.json` reste **retiré** ; le générateur **refuse d'écrire**. Les familles du jeu
+de changements sont bonnes, **sauf** `14848 → 19796` qui doit devenir `14848 → 16292`, et toute la
+disposition qui doit être recalculée.
+
+#### e) La suite
+
+1. balayage **par octets** du chemin d'écriture (compte 80, pas 130, borne de piste) ;
+2. corriger le générateur (`14848 → 16292`) et **recalculer la disposition** ;
+3. donner au banc des **entrées au vrai format** (130 o) et re-prouver A-D ;
+4. l'aller-retour (déplier → replier), le convertisseur v6 → v7 (banque F), la page.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
