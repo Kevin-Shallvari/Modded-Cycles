@@ -2391,6 +2391,67 @@ Le jalon 2 reste **non clos**, le JSON **retiré**, le générateur **refuse d'�
 d'incomplet n'est versionné. **Acquis en plus** : le sceau de version **6** confirmé **dans de la
 vraie donnée utilisateur**, et le `.mcprj` compris (archive ZIP + manifeste + flux de transfert).
 
+### 3.48 **Le jalon 2 est clos** : il manquait **trois sites** `[FAIT]` (14/10)
+
+Le banc a fait exactement ce qu'un banc doit faire : **il a trouvé ce que la lecture statique avait
+manqué**. Les contrôles **A, B, C, D, E** passent tous, et le jalon 2 est **prouvé en émulation**.
+
+#### a) Ce qui manquait — trois déplacements de 16 bits
+
+Le jeu de changements du §3.36 avait trié les **immédiats** de 4332 et les **7 `pea`** de 4336 —
+mais il avait manqué **trois sites en mode déplacement** :
+
+| Site | Instruction | Avant → après |
+|---|---|---|
+| **`0x4005ba70`** | `pea %a3@(4332)` — **le chemin de SAUVEGARDE** | 4332 → **5776** |
+| **`0x4000c62e`** | `lea %a2@(4332),%a2` | 4332 → **5776** |
+| **`0x4005b94a`** | `movel %sp@(44),%a2@(30706)` — **le champ de fin d'enregistrement** | 30706 → **40920** |
+
+Le troisième est le plus parlant : le triage du §3.36 comptait **4** sites pour 30706, et il y en a
+**5** — le cinquième est l'**écriture** faite par le dépliage lui-même. Sans lui, Groove écrivait ce
+champ **dans la queue de la piste 5** au lieu de la fin de l'enregistrement.
+
+#### b) Comment ils ont été trouvés — par **l'aller-retour**, pas par la lecture
+
+C'est le contrôle **E** (« identité du format rangé ») qui les a désignés :
+
+- avant correction, le format rangé de Groove **n'était pas idempotent** (9 039 octets non nuls
+  contre 175 pour le stock) → il lisait/écrivait la queue rangée **au mauvais offset** ;
+- après les trois correctifs : **les deux images sont stables**, avec **175 octets non nuls
+  chacune** — le même volume, donc le même comportement ;
+- et la comparaison des **formes canoniques** (après un cycle) montre les **pistes 0-5 identiques**
+  entre le stock et Groove, **pas et queues**.
+
+#### c) Le banc, état final
+
+```
+A. image, constantes, non-recouvrement ............ ok
+B. le depliage couvre huit pistes ................. ok
+C. pistes 0-5 identiques (pas ET queues) .......... ok
+D. aucune zone de verrous apres la piste 5 ........ ok
+E. aller-retour : format range stable (2 images) .. ok
+   formes canoniques 0-5 .......................... ok
+TOUT OK
+```
+
+#### d) Publication
+
+- `tools/gen_groove_pattern.py` → `57-groove-patterns.json`, **196 écritures** (contre 192 avant les
+  trois correctifs) ;
+- les deux tweaks ensemble : 179 + 196 = **375 écritures**, **intersection 0**, 1 348 octets modifiés ;
+- **MAIN OS (jalons 1+2)** : `ac9c4e33fdbe39e31831f4af6601ab0cc318ce5e5185e7945431dacfaa642af7` ;
+- publié dans `BUILD.md`.
+
+#### e) Ce qui reste pour que Groove soit **jouable**
+
+1. le **convertisseur v6 → v7** et le sort de la **banque F** (§3.29.f, §3.27) — sans lui, un projet
+   d'origine serait mal lu : **c'est le prochain verrou** ;
+2. la **page de pistes** (`[TRACK]`+`[PAGE]`, §3.32) et les 21 bornes d'interface (§3.31, §3.34) ;
+3. la mesure CPU sur la machine (les lignes relogées en DDR).
+
+**Rien n'est « testé sur la machine »** : c'est à Maxime de le faire, et le mod reste
+`experimental` jusqu'à son retour.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone

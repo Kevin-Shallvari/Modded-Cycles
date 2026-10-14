@@ -411,8 +411,10 @@ construction en ligne de commande seulement, jalon par jalon, chacun publiant so
 
 ```sh
 python3 tools/gen_groove_8.py --cycles model-cycles_OS1.13.syx
-python3 tools/build.py --cycles model-cycles_OS1.13.syx --tweaks 56-groove-8tracks
+python3 tools/gen_groove_pattern.py --cycles model-cycles_OS1.13.syx
+python3 tools/build.py --cycles model-cycles_OS1.13.syx --tweaks 56-groove-8tracks,57-groove-patterns
 python3 tools/re/test_groove.py --cycles model-cycles_OS1.13.syx
+python3 tools/re/test_groove_pattern.py --cycles model-cycles_OS1.13.syx
 python3 tools/re/test_load8.py --cycles model-cycles_OS1.13.syx
 ```
 
@@ -423,6 +425,21 @@ remis à zéro au démarrage) ; bornes, 113 littéraux relogés et reconstructio
 pattern et la sélection de piste sont des jalons suivants.
 
 MAIN OS (jalon 1, 712 octets modifiés) : `d7ea09e22f8ede8e54ce5b5c37fd69fdcf282ccaf2c97cae0052265409986171`
+
+Jalon 2 ([note 56](../../notes/56-coeur-8-pistes.md) §3.35–§3.48) : le **format de pattern** passe à
+huit pistes — enregistrement déployé **40 924** octets (`4 + 8×722 + 8×4385 + 64`), bloc rangé
+**16 292** (`4 + 8×722 + 10 512`, la queue rangée étant une liste plate de 80 entrées de 130 o qui
+**ne grandit pas**), kits **7 294** octets, **80 patterns** au lieu de 96 (la banque F est échangée
+contre les pistes 7-8 — c'est le seul point de perte de données du mod, à traiter par la conversion
+des projets). L'image projet **rétrécit** de 219 552 octets, donc l'en-tête et la table des patterns
+descendent (`0x406c4684` / `0x406c46a0`) et les kits vont dans la plage libre de `0x43dd0000`.
+**196 écritures**, chacune vérifiée octet à octet ; **prouvé en émulation** par
+`tools/re/test_groove_pattern.py` (A–E : le dépliage couvre huit pistes, les pistes 0-5 sont
+identiques au stock — pas **et** queues —, et l'aller-retour écrire→relire de l'OS est stable sur
+les deux images). **Pas encore jouable depuis le panneau** : la conversion des projets existants
+(convertisseur v6 → v7) et la page de pistes restent à faire.
+
+MAIN OS (jalons 1+2, 1 348 octets modifiés) : `ac9c4e33fdbe39e31831f4af6601ab0cc318ce5e5185e7945431dacfaa642af7`
 (OS d'origine : `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`).
 
 ## Flasher (rappel)

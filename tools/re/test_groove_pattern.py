@@ -213,25 +213,43 @@ def main():
     ok &= nlocks == 0
 
     print('\nE. aller-retour par le code de l\'OS : identite du FORMAT RANGE')
-    # On ne suppose RIEN sur le format : on part de zeros, on fait RELIRE l'OS (0x4005b894),
-    # puis ECRIRE (0x4005ba0a), deux fois de suite. Si l'aller-retour est stable, les deux
-    # enregistrements RANGES doivent etre identiques — et l'enregistrement deploye aussi.
+    # On ne suppose RIEN sur le format : on part d'un enregistrement range vide (genre 4),
+    # on fait RELIRE l'OS (0x4005b894) puis ECRIRE (0x4005ba0a), deux fois.
+    #   - le FORMAT RANGE doit etre stable (c'est le format stocke) ;
+    #   - l'enregistrement DEPLOYE, lui, contient des champs derives (§3.45) : il n'est pas
+    #     canonique, donc on compare les formes CANONIQUES (apres un cycle) entre les images.
     eok = True
+    canon = {}
     for label, img, n in (('stock', stock, 6), ('grove', both, 8)):
         eng = E.Engine(img)
         size = 4 + n * STEP + 10512
-        p0 = bytes(size)
-        dep1 = unpack(eng, DEPLOYED, p0)
+        p0 = bytearray(size)
+        struct.pack_into('>I', p0, 0, 4)      # le GENRE : sans lui, le depliage abandonne
+        dep1 = unpack(eng, DEPLOYED, bytes(p0))
         p1 = pack(eng, dep1, n)
         dep2 = unpack(eng, DEPLOYED, p1)
         p2 = pack(eng, dep2, n)
         stable_p = p1 == p2
-        stable_d = dep1 == dep2
         nz = sum(1 for b in p1 if b)
-        print('   %-6s (%d pistes) : range stable %s, deploye stable %s, %d octet(s) non nuls'
-              % (label, n, 'ok' if stable_p else 'FAIL', 'ok' if stable_d else 'FAIL', nz))
-        eok &= stable_p and stable_d
+        canon[label] = (dep2, n)
+        print('   %-6s (%d pistes) : format range stable %s, %d octet(s) non nuls'
+              % (label, n, 'ok' if stable_p else 'FAIL', nz))
+        eok &= stable_p
     ok &= eok
+
+    print('\n   formes canoniques, pistes 0-5 (stock vs grove)')
+    ds, ns = canon['stock']
+    dg, ng = canon['grove']
+    same_steps = ds[:6 * STEP] == dg[:6 * STEP]
+    print('     pas 0-5 : %s' % ('ok' if same_steps else 'FAIL'))
+    ok &= same_steps
+    tq = True
+    for t in range(6):
+        if tail_slice(ds, tail_off(ns), t) != tail_slice(dg, tail_off(ng), t):
+            print('     FAIL : queue canonique de la piste %d differente' % t)
+            tq = False
+    print('     queues 0-5 : %s' % ('ok' if tq else 'FAIL'))
+    ok &= tq
 
     print('\n%s' % ('TOUT OK' if ok else 'ECHEC'))
     raise SystemExit(0 if ok else 1)

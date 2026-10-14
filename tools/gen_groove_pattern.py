@@ -125,6 +125,17 @@ GUARD_VA = 0x400083BA               # moveq #95 -> moveq #79
 # EMAC). Une seule correction, donc.
 PATCHES = [
     (0x4005B820, "1a3c0005", "1a3c0007", "borne #5 -> #7 : index de piste encode"),
+    # Deplacements 16 bits de 4332 et 4336 que les balayages par IMMEDIAT avaient manques
+    # (§3.36 ne balayait 4332 qu'en immediat, et 4336 qu'en 7 sites « pea »). Le chemin de
+    # SAUVEGARDE en depend : sans eux, la queue RANGEE est lue/ecrite a l'offset 6 pistes et
+    # l'aller-retour n'est plus idempotent (trouve par le controle E, §3.48).
+    (0x4005BA70, "10ec", "1690", "sauvegarde : queue rangee 4332 -> 5776"),
+    (0x4000C62E, "10ec", "1690", "deplacement 4332 -> 5776"),
+    (0x4005CDB2, "10f0", "1694", "lecture 4336 -> 5780"),
+    # Le champ ecrit en fin d'enregistrement par le depliage : `movel %sp@(44),%a2@(30706)`
+    # (0x4005b946). Son deplacement est le 5e site de 30706, manque par le triage du §3.36
+    # (qui en comptait 4) — le controle E, en comparant les formes canoniques, l'a revele.
+    (0x4005B94A, "77f2", "9fd8", "champ de fin : 30706 -> 40920"),
 ]
 
 # La revue des sites en mode registre a ete faite (§3.38) ; mais le BANC a trouve DEUX bornes
@@ -134,8 +145,8 @@ PATCHES = [
 #     contre 5. Six sites `moveb #5,%dN` existent dans l'image, dont celui-ci ; les cinq autres
 #     sont a revoir. Tant que ce n'est pas fait, l'outil REFUSE d'ecrire (sauf --draft) : aucun
 #     firmware incomplet ne doit pouvoir etre construit.
-REVIEW_PENDING = True
-PENDING_VALUES = ["controle C du banc (queues des pistes 0-5) non explique"]
+REVIEW_PENDING = False
+PENDING_VALUES = []
 
 _MD = None
 
