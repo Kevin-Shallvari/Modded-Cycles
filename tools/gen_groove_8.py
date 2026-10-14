@@ -112,6 +112,20 @@ CLUSTER_LITERALS = [
     (0x40, "tableau mot"), (0x4C, "tableau mot"), (0x60, "champ"), (0x64, "champ"),
 ]
 
+# Famille 0x422ff1xx (révélée par la garde `0x4005617c`, notes/56 §3.14–§3.15) : trois tableaux
+# d'octets par piste **packés**, une table de pointeurs et un tableau de longs — tous par piste.
+# Le bloc va de 0x422ff168 à 0x422ff1ac (le champ simple suivant, qui ne bouge pas).
+FAMILY_OLD = 0x422FF168
+# (ancien décalage, nouveau décalage, taille pour 6 logements, par piste ?, rôle)
+FAMILY_LAYOUT = [
+    (0x00, 0x00, 0x06, True, "octets A"),
+    (0x06, 0x08, 0x06, True, "octets B"),
+    (0x0C, 0x10, 0x06, True, "octets C"),
+    (0x14, 0x1C, 0x18, True, "pointeurs"),
+    (0x2C, 0x3C, 0x18, True, "longs"),
+]
+FAMILY_SIZE = 0x5C
+
 _MD = None
 
 
@@ -164,9 +178,13 @@ def layout():
     cursor += zone_size
     homes["cluster"] = cursor
     cursor += clus_size
+    homes["famille 0x422ff1xx"] = cursor
+    cursor += FAMILY_SIZE
     spans = sorted([(homes[n], homes[n] + ROWS[n][1] * SLOTS, n) for n in ROWS]
                    + [(homes["zone evenements"], homes["zone evenements"] + zone_size, "zone evenements"),
-                      (homes["cluster"], homes["cluster"] + clus_size, "cluster")])
+                      (homes["cluster"], homes["cluster"] + clus_size, "cluster"),
+                      (homes["famille 0x422ff1xx"], homes["famille 0x422ff1xx"] + FAMILY_SIZE,
+                       "famille 0x422ff1xx")])
     return dict(homes=homes, zone_map=zone_map, zone_size=zone_size, clus_map=clus_map,
                 clus_size=clus_size, spans=spans)
 
@@ -279,6 +297,15 @@ def main():
         if coinc:
             print("    (cluster %s : %d coïncidence(s) ignorée(s))" % (role, len(coinc)))
 
+    fn = homes["famille 0x422ff1xx"]
+    for old_off, new_off_f, size, per_track, role in FAMILY_LAYOUT:
+        real, coinc = find_sites(stock, FAMILY_OLD + old_off)
+        for va in real:
+            sites.append((va, FAMILY_OLD + old_off, fn + new_off_f, "famille %s" % role))
+        print("  famille %-10s %d site(s)" % (role, len(real)))
+        if coinc:
+            print("    (famille %s : %d coïncidence(s) ignorée(s))" % (role, len(coinc)))
+
     print("total : %d littéraux relogés" % len(sites))
 
     # constructions et bornes
@@ -298,6 +325,10 @@ def main():
         (0x40059240, "7206", "7208", "boucle bitmask événements"),
         (0x4005929A, "7206", "7208", "boucle bitmask cluster"),
         (0x40056E90, "7206", "7208", "mixeur : boucle du tableau de mots (6 -> 8)"),
+        (0x4005449E, "7206", "7208", "famille : boucle des trois tableaux d'octets"),
+        (0x40055372, "7006", "7008", "famille : boucle au pas du pattern (722)"),
+        (0x400553E2, "7c06", "7c08", "famille : boucle d'écriture par piste"),
+        (0x4005617C, "7205", "7207", "famille : garde « index de piste <= 5 » -> 7"),
         (0x4005965C, "7218", "7220", "remise à zéro du cluster : 8 longs"),
         (0x400596F2, "7405", "7407", "cluster : garde dernière piste"),
         (0x40059830, "4878000c", "48780010", "cluster : copie 16 o"),

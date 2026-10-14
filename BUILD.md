@@ -422,7 +422,7 @@ remis à zéro au démarrage) ; bornes, 113 littéraux relogés et reconstructio
 **Pas encore jouable depuis le panneau** : le mixeur (2 appels), les descripteurs, le format de
 pattern et la sélection de piste sont des jalons suivants.
 
-MAIN OS (jalon 1, 536 octets modifiés) : `bcdd9930a2419ad2b9c1e7c6c1e65169a0fd181b13e8153b3c30ee10538d7a28`
+MAIN OS (jalon 1, 600 octets modifiés) : `09b00014cbd1a9fc8e8783538e75d1323ac66055b6bd242897fcb0077675bb01`
 (OS d'origine : `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`).
 
 ## Flasher (rappel)

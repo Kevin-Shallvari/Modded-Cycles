@@ -390,7 +390,7 @@ Le census des accueils a été refait (`build/re8/probe_homes.py`, `probe_sramga
 
 | Contrôle | Résultat |
 |---|---|
-| A. littéraux relogés (132 écritures, 536 octets) | ok |
+| A. littéraux relogés (150 écritures, 600 octets) | ok |
 | B. pistes 0-5 **octet pour octet identiques** au stock (1 note trk 0 ; 6 notes) | ok |
 | C. les pistes **6 et 7 jouent** | ok (704 valeurs non nulles chacune) |
 | D. pistes 6-7 **muettes** sans trig | ok (0 valeur) |
@@ -590,6 +590,31 @@ Disposition déduite des bases :
 `0x422ff194` décodée. Comme pour la garde, on ne fait pas la moitié : **le relogement, les bornes et la
 garde partiront ensemble.**
 
+### 3.16 Tri terminé : la famille est relogée `[FAIT]` (14/10)
+
+| Site | Valeur | Verdict |
+|---|---|---|
+| `0x40055372` | `7006` #6 | **piste** : `%fp += 722` (pas du pattern) à chaque tour → 8 |
+| `0x400553e2` | `7c06` #6 | **piste** : boucle qui écrit les tableaux d'octets (`%a1@(0,%d0:l)`) → 8 |
+| `0x4005449e` | `7206` #6 | **piste** : boucle des trois tableaux d'octets → 8 |
+| `0x4005617c` | `7205` #5 | **piste** : la garde `assert(index ≤ 5)`, index = piste (× 722) → 7 |
+| `0x4005544e` | `7406` #6 | **non** : `d2` est une **valeur par défaut** posée dans une branche (table `0x4010afa4` indexée par la machine) |
+| `0x422ff194` | — | **tableau de longs par piste** (`moveal %d7,%a1` / `addql #4,%d7` / `movel %d4,%a1@+`) : 24 o (6 × 4), **fin `0x422ff1ac`** |
+| `0x400564cc` | `7606` #6 | base **`0x40fe4cd0`** (2ᵉ tableau de mots du cluster), pas de **12 o**, 6 tours — la structure de l'enregistrement n'est **pas identifiée** |
+| `0x4005478e` | `7205` #5 | **accesseur** `index → octet` (tableau `0x40a7886c`, valeur par défaut au-delà de 5), appelé depuis `0x4006a9b4` — **piste ou machine ?** non tranché |
+
+**Implémenté (jalon 1)** : les **quatre bornes** de la famille et le **relogement du bloc**
+`[0x422ff168, 0x422ff1ac)` (0x44 o) — trois tableaux d'octets, une table de pointeurs et un tableau
+de longs, reconstruits à 8 logements. `0x422ff194` a **étendu le bloc** : il est lui aussi par piste.
+Le champ simple suivant (`0x422ff1ac`) ne bouge pas. Total : 150 écritures, 600 octets.
+
+**Reste hors du jalon 1, et pourquoi** :
+
+- `0x400564cc` : la structure de l'enregistrement de 12 o n'est pas identifiée — toucher la borne
+  sans savoir ce qu'elle parcourt serait hasardeux ;
+- `0x4005478e` : un accesseur **avec valeur par défaut** hors bornes — au pire une **valeur fausse**
+  pour les pistes 7-8 (pas de corruption), mais il faut d'abord trancher piste/machine.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
@@ -606,7 +631,7 @@ garde partiront ensemble.**
    lecture ne sont plus nécessaires (le banc `0xFF` couvre les accueils que la boucle touche) ; le
    stub de démarrage est retiré (§3.10).
 3. **Générateur** `[FAIT — jalon 1]` : `tools/gen_groove_8.py` écrit
-   `tweaks/model-cycles_OS1.13/56-groove-8tracks.json` (132 écritures) : les bornes, les 113 littéraux
+   `tweaks/model-cycles_OS1.13/56-groove-8tracks.json` (150 écritures) : les bornes, les 127 littéraux
    relogés (lignes + deux mini-zones, sites vérifiés par désassemblage), les constructions des
    mini-zones, et une **assertion de non-recouvrement** des accueils. **Tout en DDR** (§3.10).
    Restent, jalon 2 : le **mixeur est déjà à 8** par le relogement du cluster (§3.13) — il reste
@@ -616,14 +641,14 @@ garde partiront ensemble.**
 4. Prouver en émulation avec `tools/re/test_load8.py` (pistes 0-5 octet-identiques stock ; 7-8 jouent
    avec machine TONE ; pile impeccable) — plus le banc `0xFF` ; la vérification MIDI/note par piste
    relève de la machine (l'ISR complet ne s'émule pas).
-   **Nouveau (§3.14)** : reloger la **famille par piste de `0x422ff1xx`** (octets et pointeurs
-   indexés par piste) **et** porter la garde `assert(piste <= 5)` de `0x4005617c` à 7 **ensemble** —
-   sans quoi le chemin MIDI/note plante pour les pistes 7-8. Trancher aussi `0x400564cc`.
+   **Fait (§3.16)** : la famille `0x422ff1xx` est relogée et ses quatre bornes portées à 8 (plus la
+   garde de `0x4005617c` à 7). **Restent** : `0x400564cc` (structure de l'enregistrement de 12 o à
+   identifier) et `0x4005478e` (accesseur, piste/machine à trancher).
 5. Chaque jalon publie son SHA-256 du MAIN OS (notes/55 §2bis) ; essai machine par Maxime avec la
    liste du §3.6.
 
-**Jalon 1 publié** (13/10) : `56-groove-8tracks.json`, 132 écritures, 536 octets modifiés, MAIN OS
-`bcdd9930a2419ad2b9c1e7c6c1e65169a0fd181b13e8153b3c30ee10538d7a28` (OS d'origine
+**Jalon 1 publié** (13/10) : `56-groove-8tracks.json`, 150 écritures, 600 octets modifiés, MAIN OS
+`09b00014cbd1a9fc8e8783538e75d1323ac66055b6bd242897fcb0077675bb01` (OS d'origine
 `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`). Le générateur passe `--check`.
 
 ## 5. Ce qui compte pour la suite
