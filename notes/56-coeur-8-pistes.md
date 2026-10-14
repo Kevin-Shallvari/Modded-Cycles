@@ -1569,6 +1569,85 @@ couches** (le gestionnaire principal `MainScreenView::consumeKeyEvent`, puis les
 rend plus long à lire que le reste. **Il ne bloque pas la conception** : il dit où poser la page,
 pas ce qu'est la page.
 
+### 3.35 Le format **rangé** (packed) décodé — et il simplifie tout `[FAIT]` (14/10)
+
+`build/re8/probe_pack.py`.
+
+#### a) Les deux formes, côte à côte
+
+Les copies par piste le disent :
+
+- **`0x4005b4ec` : rangé → déployé** (A → B), appelée **par piste** ;
+- **`0x4005b642` : déployé → rangé** (B → A) ;
+- appelantes : `0x4005b8e2` (A→B, chargement d'un pattern) et `0x4005ba42` (B→A).
+
+La boucle appelante (`0x4005b8a0`) est explicite :
+
+```
+4005b8de  lea   %a3@(4),%a4          ; les données rangees commencent a +4
+4005b916  addil #722,%d2             ; <<< PAS PAR PISTE : 722
+4005b91c  cmpil #4332,%d2            ; jusqu'a 4332 = 6 x 722
+4005b924  pea   %a3@(4336)           ; la queue (les verrous) a +4336
+4005b946  movel %sp@(44),%a2@(30706) ; le champ a +30706 (valeur 7 bits)
+```
+
+**Le pas par piste est 722 dans les DEUX formes** ✓ — et l'offset de la queue est **4336 dans les
+deux** ✓. La copie A→B ne fait que **permuter les champs à l'intérieur du bloc de 722 octets** :
+
+| rangé | → déployé |
+|---|---|
+| 0..128 (64 **mots**, un par pas) | 0..128 (copie telle quelle) |
+| 128, 192, 256, 320, 384, 448, 512, 576, 640 | 580, 256, 516, 128, 192, 644, 320, 384, 448 |
+
+puis la queue, avec des **bornages** (`min`/`max` sur `a1@(715)`, `a1@(718)`, …) et un tableau de
+64 mots pour le champ de pas.
+
+#### b) Les tailles — et l'arithmétique tombe juste
+
+| | Formule | Valeur |
+|---|---|---|
+| **rangé** | `4 + N × (722 + 1752)` = `4 + N × 2474` | 6 pistes → **14848** |
+| **déployé** | `4 + N×722 + N×4385 + 64` | 6 pistes → **30710** |
+
+`14848 − 4336 = 10512` et **`10512 / 6 = 1752` exactement** ✓ ; **`4 + 6 × 2474 = 14848`** ✓ ;
+`26310 / 6 = 4385` ✓ (`4385 = 64 × 68 + 33`). Les deux formes sont donc **par piste** de bout en
+bout, et **les pas ne changent pas** : seuls les **compteurs** changent.
+
+#### c) Le jeu de changements **révisé** — plus simple que prévu
+
+| Constante | Avant | Après | Note |
+|---|---|---|---|
+| pas par piste | 722 | **722** | **inchangé** ✓ |
+| queue déployée / piste | 4385 | **4385** | **inchangé** ✓ |
+| queue rangée / piste | 1752 | **1752** | **inchangé** ✓ |
+| `4332` (6×722) | 4332 | **5776** | 8×722 |
+| `4336` (offset queue) | 4336 | **5780** | |
+| **`14848`** (bloc rangé) | 14848 | **19796** | `4 + 8 × 2474` — **constante à ajouter au jeu** |
+| `30710` (record déployé) | 30710 | **40924** | |
+| `7094` (kit) | 7094 | **7294** | +2 × 100 |
+| `600` (borne des kits) | 600 | **800** | 8 × 100 |
+| nombre de patterns | 96 | **80** | garde `moveq #95` → `#79` |
+
+#### d) L'image projet **grandit de 60 768 octets** — et c'est tout
+
+L'image contient les patterns rangés **et** les kits :
+
+- rangés : 80 × 19796 = 1 583 680 (au lieu de 96 × 14848 = 1 425 408) → **+158 272** ;
+- kits : 80 × 7294 = 583 520 (au lieu de 96 × 7094 = 681 024) → **−97 504** ;
+- **total : 2 224 484 au lieu de 2 163 716 → +60 768** ✓ (les 80 patterns compensent presque la
+  croissance).
+
+Conséquences sur la disposition (§3.29.a) :
+
+- l'**image** passe à 2 224 484 → **l'en-tête et les patterns se décalent de 60 768** ;
+- la table des patterns (80 × 40924 = 3 273 920) finit **au-delà** de l'ancienne zone des kits →
+  les **kits déménagent** (583 520 o, vers la plage de 704 Ko à `0x43dd0000`) ;
+- les **littéraux de base** changent : en-tête `0x406fa024` → `0x4070b1a4`, patterns `0x406fa040`
+  → `0x4070b1c0` (à recompter précisément dans le générateur).
+
+**La place au +Drive reste confortable** : l'image ne prend que +60 768 octets (§3.30 : ~826 Mo de
+marge) ✓.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
