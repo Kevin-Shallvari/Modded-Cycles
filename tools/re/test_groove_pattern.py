@@ -51,7 +51,7 @@ TAIL = 0x4005B766            # gestionnaire de queue (appele par UNPACK)
 DEPLOYED = 0x406FA040        # la table des patterns (deployee)
 PACKED = 0x404E9C20          # l'image projet (les blocs ranges)
 DEPLOYED_SIZE = 40924        # 4 + 8 x 722 + 8 x 4385 + 64
-PACKED_SIZE = 19796          # 4 + 8 x 2474
+PACKED_SIZE = 16292          # 4 + 8 x 722 + 10512
 STEP = 722
 LOCKS = 4385
 TAIL_OFF = 4332
@@ -69,16 +69,18 @@ def build_images(stock):
 
 
 def make_packed(n):
-    """Un bloc range synthetique : en-tete 4 o (genre = 4) puis n x 2474 o.
+    """Un bloc range synthetique, au VRAI format (§3.42) :
+       [4 o d'en-tete (genre = 4)][n x 722 o de pas, CONTIGUS][la queue : 112 + 80 x 130 o].
 
-    La QUEUE rangee est laissee a ZERO : le gestionnaire la lit comme des entrees de
-    verrou, et des octets quelconques lui feraient ecrire n'importe ou (§3.40.c). A zero,
-    elle signifie « pas de verrou » — ce qui rend les controles C et D significatifs.
+    La queue est laissee a ZERO : le gestionnaire la lit comme des entrees de 130 o
+    (1 o de pas, 1 o de piste, 64 mots), et des octets quelconques lui feraient ecrire
+    n'importe ou. A zero, elle est une entree valide (pas 0, piste 0) et identique dans
+    les deux images — ce qui rend les controles C et D significatifs.
     """
     buf = bytearray(PACKED_SIZE)
     struct.pack_into('>I', buf, 0, 4)                  # le genre attendu par 0x4005b8b0
     for t in range(n):
-        base = 4 + t * (STEP + 1752)
+        base = 4 + t * STEP
         for k in range(STEP):
             buf[base + k] = (t * 7 + k) & 0xFF         # les pas, reconnaissables par piste
     return bytes(buf)
@@ -96,8 +98,16 @@ def unpack(engine, deployed, packed):
     return bytes(engine.uc.mem_read(DEPLOYED, DEPLOYED_SIZE))
 
 
-def tail_slice(dep, track):
-    lo = TAIL_OFF + track * LOCKS
+def tail_off(n):
+    """Offset de la queue DEPLOYEE. Le bloc deploye n'a pas d'en-tete : les pas commencent
+    en +0 (722 o par piste), donc la queue suit — 4 332 a 6 pistes, 5 776 a 8. C'est ce que
+    fait l'appelant de `0x4005b766` : `movel %a2,%d2 / addil #4332,%d2` (le bloc RANGE, lui,
+    a un en-tete de 4 o : sa queue est en `a3@(4336)`)."""
+    return n * STEP
+
+
+def tail_slice(dep, off, track):
+    lo = off + track * LOCKS
     return dep[lo:lo + 64 * 68]
 
 
@@ -131,43 +141,53 @@ def main():
         ok &= good
 
     print('\nB. le depliage couvre huit pistes (queue de la piste 7 remplie)')
-    packed = make_packed(8)
+    # Chaque image recoit un enregistrement RANGE A SON format : 6 pistes pour le stock
+    # (14 848 o), 8 pistes pour Groove (16 292 o). Sinon le stock lit sa queue au milieu
+    # des pas de la piste 6 — ce qui n'a aucun sens et faussait le controle C.
+    packed6 = make_packed(6)
+    packed8 = make_packed(8)
     es = E.Engine(stock)
     eg = E.Engine(both)
-    dep_s = unpack(es, DEPLOYED, packed)
-    dep_g = unpack(eg, DEPLOYED, packed)
-    for label, dep in (('stock', dep_s), ('grove', dep_g)):
-        t7 = tail_slice(dep, 7)
-        filled = sum(1 for i in range(0, len(t7), 2)
-                     if struct.unpack_from('>H', t7, i)[0] == NO_LOCK)
-        t6 = tail_slice(dep, 6)
-        filled6 = sum(1 for i in range(0, len(t6), 2)
-                      if struct.unpack_from('>H', t6, i)[0] == NO_LOCK)
-        print('   %-6s : piste 6 -> %3d/%d mots 0xFFFF, piste 7 -> %3d/%d'
-              % (label, filled6, 64 * 34, filled, 64 * 34))
-    g7 = sum(1 for i in range(0, len(tail_slice(dep_g, 7)), 2)
-             if struct.unpack_from('>H', tail_slice(dep_g, 7), i)[0] == NO_LOCK)
-    s7 = sum(1 for i in range(0, len(tail_slice(dep_s, 7)), 2)
-             if struct.unpack_from('>H', tail_slice(dep_s, 7), i)[0] == NO_LOCK)
+    dep_s = unpack(es, DEPLOYED, packed6)
+    dep_g = unpack(eg, DEPLOYED, packed8)
+    off_s, off_g = tail_off(6), tail_off(8)
+    print('   offset de la queue : stock %d, grove %d' % (off_s, off_g))
+    for label, dep, off in (('stock', dep_s, off_s), ('grove', dep_g, off_g)):
+        line = []
+        for t in (6, 7):
+            sl = tail_slice(dep, off, t)
+            filled = sum(1 for i in range(0, len(sl), 2)
+                         if struct.unpack_from('>H', sl, i)[0] == NO_LOCK)
+            line.append('piste %d -> %3d/%d' % (t, filled, 64 * 34))
+        print('   %-6s : %s' % (label, ', '.join(line)))
+    s7 = sum(1 for i in range(0, len(tail_slice(dep_s, off_s, 7)), 2)
+             if struct.unpack_from('>H', tail_slice(dep_s, off_s, 7), i)[0] == NO_LOCK)
+    g7 = sum(1 for i in range(0, len(tail_slice(dep_g, off_g, 7)), 2)
+             if struct.unpack_from('>H', tail_slice(dep_g, off_g, 7), i)[0] == NO_LOCK)
     ok &= g7 > 0 and s7 == 0
     print('   piste 7 remplie en grove et pas en stock : %s' % ('ok' if (g7 > 0 and s7 == 0) else 'FAIL'))
 
     print('\nC. pistes 0-5 identiques au stock')
-    same = dep_g[:TAIL_OFF] == dep_s[:TAIL_OFF]
-    print('   bloc des pas (0..4332) : %s' % ('ok' if same else 'FAIL'))
+    same = dep_g[:6 * STEP] == dep_s[:6 * STEP]
+    print('   bloc des pas 0-5 (0..%d) : %s' % (6 * STEP, 'ok' if same else 'FAIL'))
     ok &= same
+    qok = True
     for t in range(6):
-        a, b = tail_slice(dep_g, t), tail_slice(dep_s, t)
-        if a != b:
+        if tail_slice(dep_g, off_g, t) != tail_slice(dep_s, off_s, t):
             print('   FAIL : queue de la piste %d differente' % t)
-            ok = False
-    print('   queues des pistes 0-5 : %s' % ('ok' if ok else 'FAIL'))
+            qok = False
+    print('   queues des pistes 0-5 : %s' % ('ok' if qok else 'FAIL'))
+    ok &= qok
 
-    print('\nD. le stock n\'ecrit rien au-dela de six pistes')
-    beyond = dep_s[TAIL_OFF + 6 * LOCKS:]
-    nz = sum(1 for b in beyond if b)
-    print('   octets non nuls apres la piste 5 : %d : %s' % (nz, 'ok' if nz == 0 else 'FAIL'))
-    ok &= nz == 0
+    print('\nD. le stock ne contient aucune zone de verrous apres sa piste 5')
+    # le stock finit sa queue en 4332 + 6x4385 = 30642 ; au-dela il n'y a que la queue de
+    # l'enregistrement (68 o). Aucun mot 0xFFFF ne doit y apparaitre.
+    after = dep_s[off_s + 6 * LOCKS:]
+    nlocks = sum(1 for i in range(0, len(after) - 1, 2)
+                 if struct.unpack_from('>H', after, i)[0] == NO_LOCK)
+    print('   %d mot(s) 0xFFFF sur les %d octets de fin : %s'
+          % (nlocks, len(after), 'ok' if nlocks == 0 else 'FAIL'))
+    ok &= nlocks == 0
 
     print('\n%s' % ('TOUT OK' if ok else 'ECHEC'))
     raise SystemExit(0 if ok else 1)

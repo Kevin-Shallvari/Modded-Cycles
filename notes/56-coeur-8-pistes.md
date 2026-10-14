@@ -2122,6 +2122,87 @@ disposition qui doit être recalculée.
 3. donner au banc des **entrées au vrai format** (130 o) et re-prouver A-D ;
 4. l'aller-retour (déplier → replier), le convertisseur v6 → v7 (banque F), la page.
 
+### 3.44 Le format rangé est **entièrement décodé**, la disposition **recalculée** — et le contrôle C à **4 octets** `[FAIT]`/`[HYP]` (14/10)
+
+`build/re8/probe_bytes.py`, `diag_diff.py`, `probe_bisect.py`, `probe_bisect2.py`, `diag_t5.py`.
+
+#### a) L'écrivain utilise **le même** compte et **le même** pas `[FAIT]`
+
+Balayage **par octets** (capstone se désynchronise dans cette zone) :
+
+```
+4005b98a  cmpil #10400,%d0        ; 80 x 130 : l'aire des entrees (inchangee)
+4005bafe  moveq #80,%d6           ; le chemin d'ecriture : 80 entrees
+4005bb00  lea   %a1@(130),%a1     ; pas de 130 o
+4005cdbc  moveq #80,%d0 / lea %a2@(130),%a2   ; le chemin de conversion aussi
+```
+
+Lecteur et écrivain partagent **80 entrées de 130 o** ✓ — donc **aucune borne à ajouter** de ce
+côté : la queue rangée reste **10 512 o**, et le bloc rangé à 8 pistes est **16 292 o**.
+
+#### b) La disposition, **recalculée** `[FAIT]`
+
+| | valeur |
+|---|---|
+| bloc rangé | **16 292** (4 + 8×722 + 10 512) |
+| image projet | **1 944 164** (elle **rétrécit** de 219 552) |
+| en-tête | **`0x406c4684`** |
+| table des patterns | **`0x406c46a0`** |
+| kits | **`0x43dd0000`** (offset 57 719 164 relatif à l'en-tête) |
+
+Les kits ne tiennent plus juste après les patterns (ils dépasseraient l'ancienne aire de ~10 Ko,
+dans une zone citée par 2208 littéraux) → ils vont dans la **plage libre** de 720 896 o à
+`0x43dd0000` (aucun littéral jusqu'à `0x43e80000`, §3.37.a). Le jeu de changements passe à
+**192 écritures** (dont `14848 → 16292` et `14736 → 16180`).
+
+#### c) Le banc : A, B, D **passent**, C est à **4 octets** `[HYP]`
+
+Le banc a été corrigé sur trois points, tous **de son côté** (le patch n'y était pour rien) :
+
+1. le **pas rangé** : les pas sont **contigus** (722 o par piste à partir de +4), pas espacés de
+   2 474 (§3.35.b était faux) ;
+2. l'**offset de la queue déployée** : `n × 722` — **4 332** à 6 pistes, **5 776** à 8 (le bloc
+   déployé n'a pas d'en-tête ; c'est ce que fait l'appelant : `addil #4332,%d2`) ;
+3. **chaque image reçoit un enregistrement rangé à SON format** (6 pistes pour le stock, 8 pour
+   Groove) : sinon le stock lisait sa queue **au milieu des pas de la piste 6**, ce qui faussait C.
+
+Résultat :
+
+| contrôle | état |
+|---|---|
+| A. image, constantes, non-recouvrement | **ok** |
+| B. le dépliage couvre **huit** pistes (queue de la piste 7 remplie) | **ok** |
+| C. pas 0-5 identiques, queues 0-4 identiques | **ok** |
+| **C. queue de la piste 5** | **4 octets différents** (+3 005..+3 008) |
+| D. aucune zone de verrous après la piste 5 (stock) | **ok** |
+
+Les 4 octets : le stock a `0xFFFF` (« pas de verrou »), Groove a `0x00` — Groove écrit donc
+**un verrou de plus** dans la queue de sa **dernière** piste. La bissection (retirer une écriture
+à la fois) localise la cause dans **les deux écritures qui déplacent la queue** (`0x4005b926` et
+`0x4005b92c`) — c'est-à-dire dans **le changement de format lui-même**.
+
+**Deux lectures, et je ne tranche pas :**
+1. **comportement correct** : à 8 pistes, le gestionnaire parcourt **8** queues au lieu de 6 et
+   écrit légitimement un verrou de plus dans la dernière — les 4 octets seraient alors la
+   *conséquence attendue* du format, pas un défaut ;
+2. **défaut** : une borne manque encore quelque part (par exemple un compteur de verrous lié au
+   nombre de pistes).
+
+**Ce qui rend la question tranchable** : il faut une queue rangée **réelle** (pas mes zéros) —
+c'est-à-dire un pattern **authentique**, qu'on obtiendra en appelant le **chemin d'écriture** de
+l'OS (`0x4005b642`, 4 arguments) plutôt qu'en fabriquant des octets.
+
+#### d) L'état, sans embellissement
+
+**Le jalon 2 n'est pas clos.** Ce qui est acquis : le format rangé **entièrement décodé** (entrée
+de 130 o, 80 entrées, en-tête 112 o, pas contigus), la **disposition recalculée**, **192 écritures
+vérifiées** octet à octet, et **A, B, D verts** avec C à **4 octets** sur 40 924. Le JSON reste
+**retiré** et le générateur **refuse d'écrire**.
+
+**Ce qui reste, en une ligne** : donner au banc une queue rangée **réelle** (ou un pattern
+authentique), trancher les 4 octets, puis publier le hash du jalon 2 et passer à l'aller-retour
+complet (déplier → **replier** = la sauvegarde), au convertisseur v6 → v7 et à la page de pistes.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone

@@ -8,15 +8,17 @@ seulement, jamais dans le flasher.
 Ce que fait ce jalon — le format, la mémoire, et rien d'autre :
 
   1. **le format de pattern** : l'enregistrement déployé passe de 30 710 à **40 924** octets
-     (`4 + 8×722 + 8×4385 + 64`) et le bloc rangé de 14 848 à **19 796** (`4 + 8×2474`). Les
-     **pas par piste ne changent pas** (722, 4385, 1752 — §3.35) : seuls les compteurs bougent ;
+     (`4 + 8×722 + 8×4385 + 64`) et le bloc rangé de 14 848 à **16 292** (`4 + 8×722 + 10 512`).
+     Les **pas par piste** (722, 4385) et la **queue rangée** (10 512 — une liste plate de 80
+     entrées de 130 o, §3.42-§3.43) **ne changent pas** : seuls les compteurs bougent ;
   2. **les kits** : 7 094 → **7 294** octets (100 o par piste) et la borne 600 → **800** ;
   3. **le nombre de patterns** : 96 → **80**. La banque F est échangée contre les pistes 7-8
      (§3.27 : c'est le seul point de perte de données du mod, à traiter par la conversion) ;
-  4. **la disposition** : l'image projet grandit de **60 768** octets (80 patterns à 8 pistes
-     coûtent moins que 96 à 6), donc l'en-tête et la table des patterns se décalent d'autant, et
-     **les kits déménagent** vers la plage libre de `0x43dd0000` (720 896 o sans aucun littéral
-     jusqu'à `0x43e80000` — les littéraux de cette plage sont tous regroupés à sa toute fin).
+  4. **la disposition** : l'image projet **rétrécit** de **219 552** octets (80 patterns à 8 pistes
+     coûtent moins que 96 à 6), donc l'en-tête et la table des patterns **descendent** d'autant. Les
+     kits ne tiennent plus juste après les patterns (ils dépasseraient l'ancienne aire de ~10 Ko,
+     dans une zone citée par 2208 littéraux) : ils vont dans la **plage libre** de 720 896 o à
+     `0x43dd0000` (aucun littéral jusqu'à `0x43e80000`).
 
 Ce que ce jalon ne fait **pas** : la **conversion des projets existants** (le convertisseur
 v6 → v7, §3.29.f) et l'**interface** (la page de pistes, §3.32). Sans la conversion, un projet
@@ -41,30 +43,39 @@ import capstone                    # noqa: E402
 OUT = HERE.parent / "tweaks" / "model-cycles_OS1.13" / "57-groove-patterns.json"
 BASE = build.BASE
 
-# --- la disposition (§3.35.d) ---------------------------------------------
+# --- la disposition (§3.43 : la queue rangee est une liste plate, elle NE grandit pas) ----
+#   bloc range = 4 + 8 x 722 + 10 512 (queue inchangee) = 16 292
+#   image      = 80 x 16292 + 80 x 7294 + 57 284 = 1 944 164  -> elle RETRECIT de 219 552
+#   donc l'en-tete et les patterns DESCENDENT, et tout tient DANS l'ancienne aire :
+#   patterns 0x406c8ce0..0x409c8c60, kits 0x409c8c60..0x40a57560 (l'ancienne fin : 0x40a6fe40).
 IMAGE_OLD = 2163716                 # 96 x 14848 + 96 x 7094 + 57284
-IMAGE_NEW = 2224484                 # 80 x 19796 + 80 x 7294 + 57284
-GROWTH = IMAGE_NEW - IMAGE_OLD      # 60768
+IMAGE_NEW = 1944164                 # 80 x 16292 + 80 x 7294 + 57284
+GROWTH = IMAGE_NEW - IMAGE_OLD      # -219552 (l'image retrecit)
 HEADER_OLD = 0x406FA024
 PATTERNS_OLD = 0x406FA040
 HEADER_NEW = HEADER_OLD + GROWTH
 PATTERNS_NEW = PATTERNS_OLD + GROWTH
+PATTERN_SIZE = 40924                # deploye : 4 + 8 x 722 + 8 x 4385 + 64
+PATTERN_COUNT = 80
+KITS_OLD_OFFSET = 2948188           # offset des kits, relatif a l'en-tete
+# Les kits ne tiennent plus juste apres les patterns (ils depasseraient l'ancienne aire de
+# ~10 Ko, dans une zone citee par 2208 litteraux) : ils vont dans la plage libre de 720 896 o
+# a 0x43dd0000 (aucun litteral jusqu'a 0x43e80000, §3.37.a).
 KITS_NEW = 0x43DD0000
-KITS_OLD_OFFSET = 2948188           # offset des kits, relatif a l'en-tête
 KITS_NEW_OFFSET = KITS_NEW - HEADER_NEW
 
 # --- immediats 32 bits : (avant, apres, sites attendus, role) -------------
 IMMEDIATES = [
     (4332, 5776, 21, "taille des pas : 6 -> 8 pistes"),
     (4336, 5780, 1, "offset de la queue (immediat)"),
-    (14848, 19796, 19, "bloc range d'un pattern"),
+    (14848, 16292, 19, "bloc range d'un pattern (4 + 8x722 + 10512)"),
     (30710, 40924, 12, "enregistrement deploye"),
     (7094, 7294, 8, "enregistrement de kit"),
     (600, 800, 7, "borne des kits (6 -> 8 pistes)"),
     (2948160, 3273920, 2, "fin de la table des patterns (96 x 30710 -> 80 x 40924)"),
     (26310, 35080, 3, "borne de la queue deployee (6 x 4385 -> 8 x 4385) — §3.39.c"),
     (681024, 583520, 1, "fin de la table des kits (96 x 7094 -> 80 x 7294)"),
-    (1425408, 1583680, 8, "fin des blocs ranges (96 x 14848 -> 80 x 19796)"),
+    (1425408, 1303360, 8, "fin des blocs ranges (96 x 14848 -> 80 x 16292)"),
     (IMAGE_OLD, IMAGE_NEW, 20, "taille de l'image projet"),
     (PATTERNS_OLD, PATTERNS_NEW, 6, "base de la table des patterns"),
     (HEADER_OLD, HEADER_NEW, 7, "en-tete de projet"),
@@ -83,11 +94,11 @@ DISPLACEMENTS = [
     (4336, 5780, "registre", 7, "offset de la queue"),
     (30706, 40920, "registre", 4, "champ a la fin de l'enregistrement"),
     (30642, 40856, "registre", 3, "enregistrement - 68"),
-    (14736, 19684, "registre", 8, "bloc range - 112"),
+    (14736, 16180, "registre", 8, "bloc range - 112 (14848 -> 16292)"),
     # tailles absolues, a changer
     (7094, 7294, "tout", 8, "taille de kit (7 absolus + le pas de 0x4005d55a)"),
     (600, 800, "absolu", 6, "taille de kit (copie) — ses 13 sites a registre sont des champs"),
-    (14848, 19796, "tout", 33, "bloc range (30 absolus + 4 vrais a registre)"),
+    (14848, 16292, "tout", 33, "bloc range (30 absolus + 4 vrais a registre)"),
 ]
 
 # Sites ecartes APRES REVUE (§3.38) : la valeur apparait par coincidence dans la ZONE DE
