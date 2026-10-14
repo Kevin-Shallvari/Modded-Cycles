@@ -811,6 +811,45 @@ Balayage (`probe_pattern5.py`) :
 - la **place** : combien de patterns, et la région mémoire a-t-elle de quoi grandir de 1444 o par
   pattern.
 
+### 3.22 Forme fichier, conversions, et une **seconde sorte d'enregistrement** `[FAIT]` (14/10)
+
+`build/re8/probe_file.py`, `probe_pcrel2.py`, `probe_file2.py`, `probe_7094.py`.
+
+- **96 patterns** : `moveq #95,%d1` / `cmpl %d0,%d1` / `bcss` (`0x400083ba`) borne l'index à 95, et
+  l'adresse est `0x406fa040 + index × 30710` ✓ (base confirmée à `0x400083c8`).
+- **La boucle par piste appelle la copie par un pointeur de fonction** :
+  ```
+  4005ba42  lea %pc@(0x4005b642),%a4    ; la copie B->A, prise en adresse RELATIVE
+  4005ba50  pea %a3@(0,%d2:l)           ; source : base + piste x 722
+  4005ba54  pea %a5@(0,%d2:l)           ; destination : base + piste x 722
+  4005ba58  addil #722,%d2
+  4005ba5e  jsr %a4@
+  4005ba64  cmpil #4332,%d2             ; 6 pistes
+  4005ba6a  bnes 0x4005ba46
+  ```
+  D'où l'absence de référence littérale aux copies : elles sont prises en **adresse relative**
+  (`lea %pc@`) — c'est aussi pourquoi les « conversions » semblaient ne pas exister.
+- **La queue du pattern est traitée une fois**, après la boucle, via `%a3@(4336)` et `%a2@(4336)` :
+  le bloc des pistes, puis **4 octets d'en-tête**, puis la queue ✓ — cohérent avec le §3.21 (la base de
+  la queue rangée dans un champ).
+- **Un champ à `30706`** (= fin du pattern − 4) : `movel %a0@(30706),%d0` / `andl %a0@(30706),%d0` —
+  quatre octets de drapeaux en fin de pattern ✓.
+- **Une seconde sorte d'enregistrement : `7094` o** (`movel #7094` / `addil #7094`, 8 sites longs :
+  `0x400083d4`, `0x400100a0`, `0x40010790`, `0x40020196`, `0x400203c0`, `0x4005d360`, `0x400617ae`,
+  `0x400d1bca`) — calculée **juste après** l'adresse du pattern, donc c'est un **second tableau**
+  indexé de la même façon : selon toute vraisemblance le **kit** (les réglages de machine par piste).
+  **Il porte lui aussi des données par piste** — donc il devra grandir pour huit pistes, et son
+  découpage par piste reste à établir (ce n'est pas 722).
+
+**Conséquence sur le plan** : le jalon « pattern » n'est pas seulement trois constantes. Il y a
+**deux tableaux par pattern** — les pas (`30710`, bloc de pistes `4332`) et les réglages (`7094`) — et
+c'est dans le second que vivent les machines des pistes 7-8. La bonne nouvelle du §3.21 tient (la
+queue est relative à un pointeur), mais le second tableau demande son propre relevé.
+
+**Ce qui reste** : le découpage par piste du tableau `7094` ; les conversions de version (appelées par
+pointeur, à retrouver par les `lea %pc@`) ; et la place mémoire (96 × 1444 o de plus pour les pas,
+plus ce que le tableau `7094` demandera).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
