@@ -390,7 +390,7 @@ Le census des accueils a été refait (`build/re8/probe_homes.py`, `probe_sramga
 
 | Contrôle | Résultat |
 |---|---|
-| A. littéraux relogés (131 écritures, 534 octets) | ok |
+| A. littéraux relogés (132 écritures, 536 octets) | ok |
 | B. pistes 0-5 **octet pour octet identiques** au stock (1 note trk 0 ; 6 notes) | ok |
 | C. les pistes **6 et 7 jouent** | ok (704 valeurs non nulles chacune) |
 | D. pistes 6-7 **muettes** sans trig | ok (0 valeur) |
@@ -450,6 +450,54 @@ compte des pistes est **à l'intérieur** d'elles.
   capstone ne sait pas lire) pour trouver le masque/les bornes internes, et traiter le groupe déroulé
   des params comme celui de la zone événements.
 
+### 3.13 Le mixeur est **déjà** à 8 : sa borne est le tableau de mots du cluster `[FAIT]` (14/10)
+
+Le désassemblage **avec les EMAC** (`mcfw.emac_disasm`, objdump `m68k:isa-c:emac`) rend lisible
+`0x40056d9c`, dont capstone ne montrait que des `dc.w`. Le résultat change la taille du jalon 2 :
+
+```
+40056da4  lea 0x40fe4c90,%a2              ; a2 = tableau de mots du cluster
+40056db8  mvsw %a2@+,%d4                  ; un mot par piste, a2 += 2
+40056dca  msacl %d4,%a1,%a0@+,%a1,%acc0   ; le mélange : 4 EMAC par tour
+40056dce  msacl … %acc1
+40056dd2  msacl … %acc2
+40056dd6  msacl … %acc3
+40056de2  moveml %d0-%d3,%a0@(-20)
+40056de8  subql #4,%d5                    ; 32/4 = 8 tours internes (les 32 trames du bloc)
+40056dea  bgts 0x40056dca
+40056dec  cmpal #0x40fe4c9c,%a2           ; ← LA borne des pistes : fin du tableau de mots
+40056df2  bnes 0x40056db8
+```
+
+- La boucle **externe** avance `a2` de 2 en 2 dans le tableau de mots du cluster (`0x40fe4c90`,
+  6 mots) et s'arrête sur une **comparaison à une fin absolue** (`0x40fe4c9c`) — exactement le motif
+  de la zone événements (§3.8.a).
+- Or le générateur **réécrit déjà** ces deux littéraux (`0x40056da6` → nouveau cluster,
+  `0x40056dee` → nouveau cluster + 0x10) et **élargit** le tableau de 12 à 16 o (6 → 8 mots).
+  **La boucle du mixeur tourne donc déjà huit fois** : la part « mixeur » du jalon 2 est faite par le
+  relogement du cluster, **pas** par des appels écrits à la main — correction de notes/54 §2.4.
+- Idem pour la seconde fonction (`0x40056e24`, `lea 0x40fe4cdc,%a2`) : tableau de mots élargi et
+  littéral réécrit.
+
+#### Un trou de balayage, trouvé au passage
+
+Le premier balayage des bornes allait de `0x40058300` à `0x40059a00` : **il excluait la région du
+mixeur** (`0x40056000..0x40058300`). Refait (`build/re8/probe_bounds_audio.py`) et trié
+(`probe_triage.py`, avec les EMAC) :
+
+| Site | Valeur | Verdict |
+|---|---|---|
+| `0x40056e90` | `7206` #6 | **piste** : boucle du tableau de mots du cluster → 8 — **ajouté au générateur** |
+| `0x400564cc` | `7606` #6 | **à trier** : boucle à pas de **12 o** (une structure par piste de 12 o ?) — probablement à porter à 8 |
+| `0x4005617c` | `7205` #5 | **à trier** : garde `assert(d0 <= 5)` sur un octet (piste ou machine ?) |
+| `0x400561ca` | `7e06` #6 | **non** : `d0` est un **octet de donnée** du pattern (clampé à 6, sinon 2) → valeur |
+| `0x40056040` | `7005` #5 | **non** : valeur rangée dans un global (`0x40a78924`) |
+| `0x400a7bfa` | `7205` #5 | **non** : valeur rangée dans l'état de voix (`+664`) |
+| `0x4005649e`, `0x400581fc`, `0x40056dba`, `0x4005691a`, `0x40057204`, `0x40057248` | #0x18 / #0xc | **non** : décalages (`asr`/`lsl`/`lsr`), pas des comptes |
+
+**Deux sites restent à trancher** (`0x400564cc`, `0x4005617c`), plus le reste de l'OS (interface,
+séquenceur, format de pattern) qui n'est pas encore balayé.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
@@ -466,21 +514,21 @@ compte des pistes est **à l'intérieur** d'elles.
    lecture ne sont plus nécessaires (le banc `0xFF` couvre les accueils que la boucle touche) ; le
    stub de démarrage est retiré (§3.10).
 3. **Générateur** `[FAIT — jalon 1]` : `tools/gen_groove_8.py` écrit
-   `tweaks/model-cycles_OS1.13/56-groove-8tracks.json` (131 écritures) : les bornes, les 113 littéraux
+   `tweaks/model-cycles_OS1.13/56-groove-8tracks.json` (132 écritures) : les bornes, les 113 littéraux
    relogés (lignes + deux mini-zones, sites vérifiés par désassemblage), les constructions des
    mini-zones, et une **assertion de non-recouvrement** des accueils. **Tout en DDR** (§3.10).
-   Restent, jalon 2 : le **mixeur** (§3.12 : le compte des pistes est dans ses bornes internes, pas
-   dans six appels écrits à la main — et un **second groupe déroulé de six** dans les params,
-   `0x400597ea`, demandera deux magasins de plus), les 10 entrées de descripteurs, le pas du pattern
-   et la conversion des projets, l'interface (non décodée). La mesure mémoire est faite (§3.11.H).
+   Restent, jalon 2 : le **mixeur est déjà à 8** par le relogement du cluster (§3.13) — il reste
+   **deux bornes à trier** (`0x400564cc`, `0x4005617c`, §3.13), les 10 entrées de descripteurs, le pas
+   du pattern et la conversion des projets, l'interface (non décodée). La mesure mémoire est faite
+   (§3.11.H).
 4. Prouver en émulation avec `tools/re/test_load8.py` (pistes 0-5 octet-identiques stock ; 7-8 jouent
    avec machine TONE ; pile impeccable) — plus le banc `0xFF` ; la vérification MIDI/note par piste
    relève de la machine (l'ISR complet ne s'émule pas).
 5. Chaque jalon publie son SHA-256 du MAIN OS (notes/55 §2bis) ; essai machine par Maxime avec la
    liste du §3.6.
 
-**Jalon 1 publié** (13/10) : `56-groove-8tracks.json`, 131 écritures, 534 octets modifiés, MAIN OS
-`ee0d0c75857061a0f1b7269d787fb5a5527fb445f1e98f54defd2d190970174a` (OS d'origine
+**Jalon 1 publié** (13/10) : `56-groove-8tracks.json`, 132 écritures, 536 octets modifiés, MAIN OS
+`bcdd9930a2419ad2b9c1e7c6c1e65169a0fd181b13e8153b3c30ee10538d7a28` (OS d'origine
 `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`). Le générateur passe `--check`.
 
 ## 5. Ce qui compte pour la suite

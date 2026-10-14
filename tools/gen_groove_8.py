@@ -297,6 +297,7 @@ def main():
         (0x40013A96, "7405", "7407", "quick-mute (3), repli"),
         (0x40059240, "7206", "7208", "boucle bitmask événements"),
         (0x4005929A, "7206", "7208", "boucle bitmask cluster"),
+        (0x40056E90, "7206", "7208", "mixeur : boucle du tableau de mots (6 -> 8)"),
         (0x4005965C, "7218", "7220", "remise à zéro du cluster : 8 longs"),
         (0x400596F2, "7405", "7407", "cluster : garde dernière piste"),
         (0x40059830, "4878000c", "48780010", "cluster : copie 16 o"),
