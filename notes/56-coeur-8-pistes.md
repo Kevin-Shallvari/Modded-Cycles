@@ -972,6 +972,61 @@ chose à décoder, et elle décide si le jalon « pattern » tient en mémoire o
    dans la queue de l'enregistrement** — à confirmer en décodant cette queue ;
 3. la **compatibilité des projets** : mécanisme encore à établir (§3.24.b).
 
+### 3.26 La queue = les **verrous de paramètres**, et elle est par piste aussi `[FAIT]` (14/10)
+
+`build/re8/probe_tail.py` — le gestionnaire `0x4005b766`, appelé au chargement avec `%a3@(4336)` :
+
+```
+4005b796  moveal %d0,%a1
+4005b79e  lea %a1@(0,%d1:l),%a4
+4005b7a4  moveq #66,%d5              ; 33 mots par pas
+4005b7a6  movew %d3,%a4@(0,%a0:l)    ; écrit 0xFFFF (initialisation « pas de verrou »)
+4005b7aa  addql #2,%a0
+4005b7ae  bnes 0x4005b7a2
+4005b7b0  addil #68,%d1              ; <-- pas de 68 o : un PAS
+4005b7b6  cmpil #4352,%d1            ; <-- 4352 = 64 x 68
+4005b7bc  bnes 0x4005b79c
+4005b7be  addil #4385,%d0            ; <-- pas de 4385 o : une PISTE
+4005b7c4  cmpil #26310,%d0           ; <-- 26310 = 6 x 4385
+4005b7ca  bnes 0x4005b796
+```
+
+Trois niveaux imbriqués, sans ambiguïté :
+
+| Niveau | Pas | Borne | Nombre |
+|---|---|---|---|
+| pas (à l'intérieur d'une piste) | 68 o | 4352 | **64** (= les 64 pas du pattern) |
+| piste (à l'intérieur de la queue) | 4385 o | 26310 | **6** (= les 6 pistes) |
+
+Et le contenu : l'innermost écrit `0xFFFF` en 33 mots (66 o) — l'**initialisation à « pas de
+verrou »** ✓. Donc **la queue est la table des verrous de paramètres** : 6 pistes × 64 pas × 68 o,
+chaque pas portant 66 o de verrous (+2 o de marge).
+
+**Composition complète de l'enregistrement de pattern** :
+
+```
+0      .. 4332    les pas        6 pistes x 722
+4332   .. 4336    un en-tête de 4 o
+4336   .. 30646   les verrous    6 pistes x 64 pas x 68   (= 26310)
+30646  .. 30710   reste (64 o)
+```
+
+**Conséquence — et c'est un vrai obstacle** : les **deux** moitiés sont **par piste**. Pour huit
+pistes, l'enregistrement doit passer de 30 710 à **40 924 o** (+1444 pour les pas, +8770 pour les
+verrous), soit **+10 214 o par pattern** — **~1 Mo de plus** au total. Or le §3.25 a montré qu'il
+n'existe **aucune plage libre contiguë** de cette taille (la plus grande plage presque vide fait
+704 Ko). **La mémoire est donc le vrai verrou du jalon « pattern ».**
+
+**Les issues possibles** (à trancher avec Kevin) :
+
+1. **consolider** : reloger quelques structures pour rassembler ~1 Mo libre — lourd, et il faudrait
+   d'abord identifier ce qui occupe le haut de la SDRAM ;
+2. **échanger des patterns contre des pistes** : `72 patterns × 40 924 = 2 946 528`, contre
+   `96 × 30 710 = 2 948 160` — **72 patterns à 8 pistes tiennent exactement dans l'empreinte
+   actuelle** ✓. C'est le compromis le plus simple, mais il change la structure des projets ;
+3. **réduire la queue** : les verrous sont stockés sur 66 o par pas alors que le M:C n'en utilise
+   peut-être pas autant — reste à mesurer (combien de verrous par pas l'OS écrit-il réellement ?).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
