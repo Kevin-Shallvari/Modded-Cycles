@@ -1508,6 +1508,67 @@ de touche en fonctionnement** plutôt que de les deviner. Autres commandes notab
 **La conception n'est pas menacée** : au pire, si la combinaison s'avérait prise, il suffirait de
 lui en préférer une autre (par exemple `[FUNC]`+`[TRACK]`+pad), sans changer la page elle-même.
 
+### 3.34 Le panneau : bornes, gestion des touches, et un piège à éviter `[FAIT]`/`[HYP]` (14/10)
+
+`build/re8/probe_pad.py` .. `probe_pad4.py`.
+
+#### a) Dix bornes de plus dans la zone du panneau (`0x4001b000..0x4001e000`)
+
+| Adresse | Forme | Rôle |
+|---|---|---|
+| `0x4001b086`, `0x4001b092` | boucles `moveq #6` | listes de 6 |
+| `0x4001b52a` | garde `moveq #6` | |
+| **`0x4001b696`** | **bornage ≤ 5** | **PIÈGE : c'est la MACHINE, pas la piste** (voir b) |
+| `0x4001cfb6` | boucle `moveq #6` | le tableau des pads/pistes (§3.31.b) |
+| `0x4001d5d2`, `0x4001d74e` | boucles `moveq #6` | mises à jour par pad |
+
+#### b) **Le piège** : `0x4001b696` n'est pas une borne de piste `[FAIT]`
+
+```
+4001b68c  asrl #8,%d0
+4001b696  moveq #5,%d1
+4001b698  cmpl %d0,%d1
+4001b69a  bges 0x4001b69e
+4001b69c  moveq #5,%d0            ; bornage a 5
+4001b6a0  lsll #2,%d1             ; d1 = d0 * 4
+4001b6a2  lsll #5,%d0             ; d0 = d0 * 32
+4001b6a4  subl %d1,%d0            ; d0 = d0 * 28
+4001b6a6  addl 0x40fe384c,%d0     ; base + index * 28
+```
+
+L'index est multiplié par **28** puis ajouté à une base : c'est le **descripteur de machine**
+(28 octets, §3.29.d), pas une piste. **Il ne faut pas l'élargir** : ce serait une corruption
+silencieuse. C'est exactement le genre de fausse borne qu'il fallait trier — et elle confirme que
+le nombre **6 = machines** est partout mêlé au nombre **6 = pistes**.
+
+#### c) La forme de la gestion des touches `[FAIT]`
+
+- `PadsView` a trois méthodes propres : **`0x4001d506`**, `0x4001d180`, `0x4001d3de`
+  (vtable `0x401001d8`, les autres entrées étant des stubs `0x40075fxx`) ;
+- `0x4001d506` est le gestionnaire d'événements : il appelle `0x4007240c(événement)` et compare
+  le résultat à **2** puis **4** (`0x4001d522`, `0x4001d53c`) — donc le **type d'événement**
+  (appui / relâchement), puis un prédicat `0x400724a0`, et il mémorise un état de maintien en
+  `a2@(112)` ;
+- `0x4001d590` parcourt les **6 pads** et appelle une méthode virtuelle par pad — c'est la mise à
+  jour **par pad** (l'endroit naturel pour l'affichage de page) ;
+- juste avant la vtable, une petite table **`1, 2, 3, 4, 5, 0x1b`** en `0x401001d8`.
+
+#### d) Le bilan du volet « interface » `[FAIT]`
+
+| Élément | État |
+|---|---|
+| Bornes « 6 » recensées | **21** (11 en `0x4002xxxx` §3.31.c, 10 en `0x4001bxxx` §3.34.a) |
+| Pièges identifiés | `0x4001b696` (machine) ; le nombre 6 = machines mêlé partout |
+| Affichage de page | crochet trouvé : `bitset<54>` + `bitset::set` (`0x40023d18`) |
+| Les 6 pads = T1–T6 | confirmé (manuel + tableau `0x404a8ba0`) |
+| Combinaison `[TRACK]`+`[PAGE]` | non documentée → **libre a priori** |
+| Chemin **pad → piste** | **pas encore épinglé** `[HYP]` |
+
+Le chemin pad → piste reste le dernier point : il est **événementiel et réparti sur plusieurs
+couches** (le gestionnaire principal `MainScreenView::consumeKeyEvent`, puis les vues), ce qui le
+rend plus long à lire que le reste. **Il ne bloque pas la conception** : il dit où poser la page,
+pas ce qu'est la page.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
