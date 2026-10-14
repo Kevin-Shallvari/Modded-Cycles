@@ -1236,6 +1236,93 @@ Le mécanisme existe et il est fait exactement pour ça. Groove = **version 7** 
 **refusé** par l'OS d'origine, sans corruption. Reste à traiter la **banque F** dans le convertisseur
 v6 → v7 (§3.27).
 
+### 3.30 La sauvegarde et le +Drive : **verdict, et c'est un oui franc** `[FAIT]` (14/10)
+
+`build/re8/probe_save.py` .. `probe_save5.py`, `probe_wrap.py`.
+
+#### a) L'enregistrement stocké
+
+| Adresse | Quoi | Taille |
+|---|---|---|
+| `0x404e9b10` | **l'enveloppe** du projet stocké | **272** o |
+| `0x404e9c20` | **l'image** (§3.29) | 2 163 716 o |
+| | **l'enregistrement complet** | **2 163 988** = `0x210514` |
+
+`0x404e9c20 - 0x404e9b10 = 0x110 = 272` ✓ : l'image suit immédiatement l'enveloppe. L'enveloppe
+porte **son propre sceau `0x434F4B49` (« COKI »)** en `+0` (3 sites : `0x40044ae4`, `0x40044af8`,
+`0x40044b7c`), un nom, un index, des horodatages. La sauvegarde est `0x400449ce` → `0x4008ec1c`
+(avec `0x53` = 83), et le chemin « projet » est la grappe `0x40042xxx..0x40044xxx`.
+
+#### b) Le +Drive est un **système de fichiers**
+
+Les chaînes de l'image (noms de types C++ laissés par le compilateur) le disent sans ambiguïté :
+
+- `ProjectHandler::register_route` avec les routes **`/projects/`**, **`/projects/*`**,
+  **`/projects/*/.metadata`** ;
+- `Project::loadProjectFromMmc(int, std::function)` — « **Mmc** » : le +Drive est du stockage type
+  carte, présenté par un système de fichiers ;
+- `ProjectManager` : `interactiveLoad`, `interactiveSave`, `interactiveDelete`, `interactiveClear`,
+  `rebuild`, `savePatternToProject` ;
+- `Write project MRAM`, `SaveBackupProject`, `saveProjectToMmc(tempProject)` ;
+- `MidiRpcStorageSpaceRequest` / `Response` — **l'espace libre est interrogeable par MIDI** ;
+- `"Not enough space"`, `"No space left on device"`, `"Could not write to file (file system
+  full?)"`, `"Lock mem full!"` — l'OS **sait** manquer de place et le dit.
+
+**Conséquence majeure** : ce ne sont **pas des emplacements de taille fixe**. Un enregistrement plus
+gros demande **plus de blocs libres**, pas un changement de géométrie → **rien de ce qui est déjà
+stocké n'est bousculé** ✓✓.
+
+#### c) Les formats ont des **noms de types**, et l'OS gère les versions explicitement
+
+```
+ModelSeries::projectStorage_v1_t … projectStorage_v6_t
+ModelSeries::projectSettingsStorage_v1_t … _v3_t
+ModelSeries::patternSettingsStorage_v0_t
+Project::updateMirror(ModelSeries::projectStorage_v6_t&, …)
+"Invalid project version"
+"Project version is newer than what the device supports"
+```
+
+- La famille `projectStorage_v1_t..v6_t` **confirme nommément** la chaîne du §3.29 (versions 1..6 ;
+  le cas « 0 » du `tstl` étant l'absence de version) ;
+- **`projectStorage_v6_t` est le format courant** ✓ — c'est le type à décliner en **v7** ;
+- il existe **d'autres familles versionnées** (réglages de projet v1..v3, réglages de pattern v0) :
+  la chaîne étudiée est celle des **projets**, pas la seule ;
+- et surtout : **« Project version is newer than what the device supports »** est le message
+  exact que l'OS d'origine affichera pour un projet Groove (v7) — **un refus propre, explicite, déjà
+  prévu par Elektron** ✓✓✓. C'est la meilleure réponse possible à la question de Kevin.
+
+#### d) La capacité — et le verdict
+
+- **+Drive : 1 Go**, **96 projets**, 96 patterns par projet (fiche constructeur).
+- **96 × 2 163 988 = 207 742 848 o ≈ 198 Mo** → il reste **≈ 826 Mo**.
+- Budget par projet à 96 projets : **≈ 10,7 Mo**, soit **~5× la taille actuelle** (2,16 Mo).
+
+L'image doit grandir d'environ **0,4 Mo** (patterns rangés : 14 848 → ~19 800 pour 8 pistes) — soit
+**0,05 %** de la marge. **La mémoire du +Drive n'est pas un problème du tout** ✓✓✓.
+
+**Verdict de l'option A** :
+
+| Question | Réponse |
+|---|---|
+| Le +Drive est-il à emplacements fixes ? | **Non** — système de fichiers à arborescence |
+| Faut-il changer la géométrie ? | **Non** |
+| Les projets déjà stockés risquent-ils d'être bousculés ? | **Non** |
+| La place suffit-elle ? | **Oui, très largement** (~826 Mo de marge) |
+| Que voit l'utilisateur avec un projet Groove sur l'OS d'origine ? | **« Project version is newer than what the device supports »** — un refus propre |
+| Les projets stockés sont-ils mis à niveau ? | **Oui** — « UPGRADING ACTIVE PROJECT… », « UPGRADING FACTORY PROJECT… » |
+
+**Le volet stockage est clos, et sans mauvaise surprise.** Reste au programme : la banque F dans le
+convertisseur v6 → v7, le déménagement des kits, l'implémentation, et l'interface de sélection des
+pistes.
+
+#### e) Bonus pour la suite
+
+Les **noms de types C++** sont restés dans l'image (`Project`, `ProjectManager`, `ProjectHandler`,
+`ProjectCache`, `MemoryStreamReader/Writer`, `BackupFileHeader`, `DataChangeInfo`,
+`ValueWithMirror<…>`, …). C'est une **carte de l'architecture** utilisable pour les prochaines
+recherches : on peut nommer les objets au lieu de les décrire par leur adresse.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
