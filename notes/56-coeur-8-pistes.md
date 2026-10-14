@@ -941,6 +941,37 @@ accueils du moteur (littéraux **et** accès par décalage calculé).
 **Bilan du jalon « pattern »** : le *code* est borné et classé (~59 sites) ; il reste **deux
 inconnues** — le mécanisme de compatibilité des projets, et **où** loger les tables agrandies.
 
+### 3.25 Carte du libre en SDRAM : dense et fragmentée — la croissance ne peut pas être **relogée** `[FAIT]` (14/10)
+
+`build/re8/probe_sdram.py`, `probe_sdram2.py`. SDRAM = 64 Mo (`0x40000000..0x44000000`).
+
+- **27 324 adresses** de la SDRAM sont citées par un littéral (24 131 sous la fin du BSS, 3 193
+  au-dessus) : la mémoire est **dense**.
+- Le découpage en blocs de 64 Ko le dit mieux que les « trous » (un seul littéral au milieu d'une
+  grande zone libre coupe un trou en deux) : **166 blocs sur 1024 sont totalement vides**, soit
+  ~10,6 Mo libres **mais éparpillés**.
+- Plus grande plage **totalement** vide : **262 144 o** (`0x43a30000..0x43a70000`).
+- Plus grandes plages **presque** vides (≤ 2 littéraux par bloc) : **720 896 o** (`0x43dd0000`),
+  655 360 o (`0x43350000`), 589 824 o (`0x43b10000`), 524 288 o (`0x43a10000`), 524 288 o
+  (`0x43d00000`) — toutes dans le **haut de la SDRAM** (`0x4335xxxx..0x43e8xxxx`).
+
+**Conséquence — le point important** : les tables demandent, agrandies,
+96 × 32154 + 96 × 7294 ≈ **3,8 Mo contigus**. Il n'existe **aucune** plage libre de cette taille
+(la plus grande est 256 Ko). **Reloger les tables est donc exclu.**
+
+**Ce que ça impose** : la croissance doit se faire **à l'intérieur** des enregistrements existants.
+Or un enregistrement de pattern fait **30 710 o** dont les pistes n'occupent que **4 332** : les
+**26 378 o restants** (la « queue ») sont l'endroit à regarder — si elle a de la marge, les deux
+pistes de plus y tiennent **sans mémoire neuve**. C'est aussi ce que suggérait le §3.21 (la queue est
+atteinte relativement à un pointeur rangé dans un champ) : sa disposition interne est la prochaine
+chose à décoder, et elle décide si le jalon « pattern » tient en mémoire ou non.
+
+**Ce qui est donc établi pour le jalon « pattern »** :
+1. le **code** : ~59 sites, bornés et classés `[FAIT]` ;
+2. la **mémoire** : pas de relogement possible ; il faut **loger les 1 644 o de plus par pattern
+   dans la queue de l'enregistrement** — à confirmer en décodant cette queue ;
+3. la **compatibilité des projets** : mécanisme encore à établir (§3.24.b).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
