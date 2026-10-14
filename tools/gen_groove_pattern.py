@@ -84,20 +84,32 @@ DISPLACEMENTS = [
     (30642, 40856, "registre", 3, "enregistrement - 68"),
     (14736, 19684, "registre", 8, "bloc range - 112"),
     # tailles absolues, a changer
-    (7094, 7294, "absolu", 7, "taille de kit"),
-    (600, 800, "absolu", 6, "taille de kit (copie)"),
-    (14848, 19796, "absolu", 30, "bloc range"),
+    (7094, 7294, "tout", 8, "taille de kit (7 absolus + le pas de 0x4005d55a)"),
+    (600, 800, "absolu", 6, "taille de kit (copie) — ses 13 sites a registre sont des champs"),
+    (14848, 19796, "tout", 33, "bloc range (30 absolus + 4 vrais a registre)"),
 ]
+
+# Sites ecartes APRES REVUE (§3.38) : la valeur apparait par coincidence dans la ZONE DE
+# DONNEES de l'image (chaines, tables), jamais du code. Verifie un par un : les octets
+# voisins sont des `.short` (donnee desassemblee comme du code).
+EXCLUDE = {
+    0x4011AB70: "7094 : donnee (move.b -$4925(a5),$1bb6(a5))",
+    0x40139F70: "14848 : donnee (move.b (a5),$3a00(a0))",
+    0x4013C276: "14848 : donnee (move.w d0,d5)",
+    0x4019D936: "14848 : donnee (move.w d0,d5)",
+    0x401A10F6: "14848 : donnee (cmpil #...,d0)",
+    0x401A17DE: "14848 : donnee (move.l d7,$3a00(a7))",
+    0x401A8C5E: "14848 : donnee (subl d4,fp@(14848))",
+}
 
 # --- la garde du nombre de patterns --------------------------------------
 GUARD_VA = 0x400083BA               # moveq #95 -> moveq #79
 
-# Le tri « absolu / registre » est un PREMIER filtre, pas une preuve : pour 7094, 600 et
-# 14848, les sites en mode REGISTRE doivent etre revus un par un (notes/56 §3.37) — au moins
-# `lea.l $1bb6(a4),a4` (0x4005d55a) ressemble a un pas de kit a changer. Tant que cette revue
-# n'est pas faite, l'outil REFUSE d'ecrire le JSON (sauf --draft), pour qu'aucun firmware
-# incomplet ne puisse etre construit a partir de ce fichier.
-REVIEW_PENDING = True
+# La revue des sites en mode registre a ete faite (notes/56 §3.38) : 7094 et 14848 ont des
+# sites reels a registre (un pas de kit, et les acces au bloc suivant) ; 600 n'en a aucun
+# (que des champs d'objets). Les trois coincidences de la zone de donnees sont ecartees par
+# EXCLUDE. La revue est terminee : l'outil peut ecrire.
+REVIEW_PENDING = False
 PENDING_VALUES = [7094, 600, 14848]
 
 _MD = None
@@ -196,7 +208,7 @@ def main():
         print("  immediat %-52s %2d site(s)" % (role, len(sites)))
 
     for old, new, mode, expect, role in DISPLACEMENTS:
-        sites = find_disp_sites(stock, old, mode)
+        sites = [va for va in find_disp_sites(stock, old, mode) if va not in EXCLUDE]
         if len(sites) != expect:
             bad.append("%s (%s) : %d site(s) au lieu de %d" % (role, mode, len(sites), expect))
         for va in sites:

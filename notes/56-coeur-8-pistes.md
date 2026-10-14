@@ -1762,6 +1762,59 @@ preuve manquante arrête la ligne, elle ne la contourne pas.
 3. le **convertisseur v6 → v7** (§3.29.f) et le sort de la **banque F** (§3.27) ;
 4. l'**interface** : la page de pistes (§3.32).
 
+### 3.38 La revue des sites en mode registre — faite, et le JSON écrit `[FAIT]` (14/10)
+
+`build/re8/probe_review.py`, `probe_review2.py`.
+
+#### a) Le verdict, site par site (21 sites en mode registre)
+
+| Valeur | Sites | Verdict |
+|---|---|---|
+| **7094** | 2 | **1 vrai** : `lea.l $1bb6(a4),a4` (`0x4005d55a`) — une **boucle qui avance de 7 094** (`moveq #$60`/`addq` autour) = **le pas des kits, à changer** ; 1 coïncidence de données |
+| **600** | 13 | **aucun vrai** : tous des **champs d'objets** (`clr.l $250/254/258/25c(a2)` en série, `move.l $258(a0),d0`, …) → **à laisser** |
+| **14848** | 9 | **4 vrais** : `cmp.l $3a00(a2),d0` (`0x4005e268`, compare le **pattern suivant**), `pea.l $3a00(a2)` (`0x4005e2be`) et `pea.l $3a00(a5)` (`0x4005ee5c`, poussent le **bloc suivant**), `lea.l $3a00(a4),a4` (`0x4008db14`, boucle bornée par `moveq #$60` = 96) ; 5 coïncidences |
+
+Les **7 coïncidences** (1 pour 7094, 6 pour 14848) sont toutes dans la **zone de données** de
+l'image, et vérifiées une par une : leurs octets voisins sont des `.short` (de la donnée que le
+désassembleur décode comme du code). Elles sont écartées nommément dans le générateur
+(`EXCLUDE`), avec leur raison.
+
+**Compteurs finaux** : 7094 → **8** sites, 600 → **6**, 14848 → **33**. `REVIEW_PENDING` est levé.
+
+#### b) Le JSON est écrit, et il est vérifié `[FAIT]`
+
+```
+python3 tools/gen_groove_pattern.py --cycles model-cycles_OS1.13.syx
+python3 tools/gen_groove_pattern.py --cycles model-cycles_OS1.13.syx --check
+```
+
+**188 écritures**, `--check` vert. Chaque site est vérifié octet à octet contre l'image
+d'origine, et le générateur **refuse** d'écrire si un compteur de famille ne correspond pas à la
+revue (c'est ce qui a attrapé mes deux erreurs d'adresse pendant cette étape).
+
+#### c) Les deux tweaks Groove ensemble `[FAIT]`
+
+`build/re8/check_both.py` :
+
+| | |
+|---|---|
+| `56-groove-8tracks.json` | 179 écritures |
+| `57-groove-patterns.json` | 188 écritures |
+| **intersection** | **0** ✓ |
+| octets modifiés | 1 324 |
+| **MAIN OS Groove (56 + 57)** | **`3dd3ddb7c7ea6073999d9ddaa2e5881909f3074219e6a2a58918ace6c60b861d`** |
+
+**Ce hash n'est PAS publié comme jalon** : le jalon 2 est **construit**, pas encore **prouvé en
+émulation** — et la règle du projet est qu'un jalon ne publie son hash qu'une fois prouvé. Il
+n'entre donc pas encore dans `BUILD.md`.
+
+#### d) La suite immédiate
+
+**Prouver le jalon 2 en émulation** : `tools/re/test_groove_pattern.py` — charger un pattern à
+huit pistes, le jouer, le **sauvegarder**, le **relire** et vérifier que les pistes 7-8
+reviennent intactes, avec les pistes 1-6 identiques à l'origine (le même esprit que le banc du
+jalon 1). Ensuite : le convertisseur v6 → v7 et la banque F, puis la page de pistes.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
