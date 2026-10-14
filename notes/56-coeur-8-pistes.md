@@ -669,6 +669,40 @@ de 12 o » du cluster** — se tromper ici casserait le tableau de mots du mixeu
 mélange (déjà vérifié à 8). C'est le **seul point laissé ouvert**, et il est **sans risque
 immédiat** : la borne reste à 6, le rendu traite donc 6 éléments, comme le stock.
 
+### 3.18 La table des descripteurs est par **machine**, pas par piste `[FAIT]` (14/10)
+
+`build/re8/probe_descs.py` (`--desc`) décode `0x4010dce0` : 76 entrées de `0x38` o, **14 mots
+longs** chacune. Une entrée :
+
+| Champ | Où | Exemple (entrée 46) |
+|---|---|---|
+| index (0..5) | mot long 0, moitié basse | `0` |
+| identifiant d'encodeur (0x0b..0x0e) | mot long 1, moitié basse | `0x0b` |
+| **index d'encodeur** (0x10..0x13) | mot long 6, moitié **haute** | `0x10` |
+| **nom** du paramètre | mot long 11 | `0x4012999c` |
+| **groupe** | mot long 12 | `0x4012996f` |
+| **nom court** | mot long 13 | `0x401299a7` |
+
+Et les chaînes visées le disent : `Drum`, `ALG`, `Pitch`, `PTCH`, `FTUN`, `Punch`, `PAW`, `Gate`,
+`GATE`, **`Kick Color`**, `COLR`, **`Kick Shape`**, `SHPE`, **`Kick Sweep`**, `SWEP`,
+**`Kick Contour`**, `CONT`, **`Snare Color`**, **`Snare Shape`**, **`Snare Sweep`**,
+**`Snare Contour`**, **`Metal …`**, **`Perc …`**, **`Tone …`**, **`Chord …`**.
+
+- L'index 0..5 est donc l'index de **machine** (KICK, SNARE, METAL, PERC, TONE, CHORD), pas de piste :
+  les six groupes de 4 entrées (encodeurs `0x0b..0x0e`) portent les noms **propres à chaque
+  machine**, suivis d'une entrée séparatrice (`idx 0x0007`, `+0x18 = 0x50`). C'est la **correction de
+  notes/54 §2.5**, qui lisait « par piste » (l'index croît de la même façon dans les deux cas, d'où
+  la confusion — ce sont les chaînes qui tranchent).
+- **Conséquence : la table des descripteurs ne demande AUCUN changement pour huit pistes.** Les
+  machines ne changent pas ; l'interface lit `(machine de la piste, encodeur)`. Le poste
+  « + 10 entrées de descripteurs » du jalon 2 **tombe**.
+- Note de méthode : c'est exactement le genre d'erreur que le projet redoute — un index qui croît
+  mécaniquement ressemble à un compte de pistes. Ici, seule la **lecture des chaînes** a tranché.
+
+Au passage, la plus longue plage de zéros de l'image (`0x40000400..0x4019b590`) fait **2 837 octets à
+`0x4019a4ec`** — candidate pour loger de la donnée neuve (à vérifier par les mêmes balayages que les
+autres accueils avant tout usage).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone

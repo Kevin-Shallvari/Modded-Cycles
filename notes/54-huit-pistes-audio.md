@@ -96,6 +96,10 @@ au format de projet.
   colonne en colonne tout au long de la table. Les entrées 0x11/0x12 (LFO/trig params, note 14 §2.1) et les
   machines spéciales 0xA/0xB/0x13 ne portent pas d'index de piste.
 - Huit pistes ⇒ **10 entrées de plus** = 560 o de table, plus les bornes d'accès à reprendre.
+  **CORRECTION (note 56 §3.18)** : cette lecture est **fausse** — l'index 0..5 de la table des
+  descripteurs est l'index de **machine**, pas de piste (les chaînes visées disent « Kick Color »,
+  « Snare Shape », « Metal Sweep », « Chord Contour »…, une série par machine). La table **ne demande
+  donc aucun changement** pour huit pistes.
 - La même entité tabulaire pour les **machines** a déjà été étendue (notes 18/19/43) ; pour les **pistes**, rien
   n'a jamais été fait.
 
