@@ -1126,6 +1126,116 @@ Un build 8 pistes devrait :
 versions ? le tri des 24 sites le dira), et le **point d'aiguillage** de la conversion (où l'OS
 choisit la fonction selon le sceau lu).
 
+### 3.29 La compatibilité des projets : **le mécanisme complet, et il est rassurant** `[FAIT]` (14/10)
+
+`build/re8/probe_magic.py`, `probe_conv.py`, `probe_dispatch.py`, `probe_load.py`, `probe_class.py`,
+`probe_map.py`, `probe_magic2.py`.
+
+#### a) La carte mémoire du projet — vérifiée par l'arithmétique
+
+| Adresse | Quoi | Taille |
+|---|---|---|
+| `0x404e9c20` | **l'image du projet** (le format rangé) | **2 163 716** = `0x210404` |
+| `+0` | sceau **`0xBEEFBACE`** | |
+| `+4` | **le numéro de version** | |
+| `+0x210400` | sceau de clôture **`0xBACEF00C`** (les 4 derniers octets) | |
+| `0x406fa024` | **l'en-tête de projet** (28 o) | |
+| `0x406fa040` | table des patterns (96 × 30 710) | 2 948 160 |
+| `0x409c9a00` | table des kits (96 × 7 094) | 681 024 |
+
+**`0x404e9c20 + 2 163 716 = 0x406fa024`** ✓✓ — l'image **finit exactement** là où commence
+l'en-tête, lui-même juste avant les patterns. C'est **une seule plage contiguë** : image → en-tête →
+patterns → kits. Le décalage des images des anciennes versions (v0 finit en `0x40660424`, v1/v2 en
+`0x4065e024`, v3 en `0x4066a024`) est **du vide** : l'image est dimensionnée pour la version
+courante, et c'est pourquoi la chaîne **recopie le résultat dans l'image** à la fin.
+
+#### b) Le chemin de chargement : `0x4008d8e6`
+
+```
+4008d92e  movel #2163716,%sp@-      ; la taille de l'image
+4008d934  jsr 0x400802e0            ; allocation
+4008d948  pea 0x404e9c20            ; <- l'adresse FIXE de l'image
+4008d950  lea 0x4008f1f0,%a4
+4008d956  jsr %a4@                  ; memcpy(0x404e9c20, tampon, 2163716)
+4008d972  jsr 0x4005d9f6            ; <- LA CHAINE DE CONVERSION
+4008d986  jsr %a5@                  ; liberation du tampon
+4008d98a  tstb %d7
+4008d98c  beqs 0x4008d9f4           ; conversion ratee -> on abandonne
+```
+
+Le projet stocké est donc **copié à l'adresse fixe `0x404e9c20`** puis **mis à niveau sur place**
+par la chaîne. Si la mise à niveau échoue, le chargement est abandonné ✓.
+
+#### c) La chaîne de conversion : `0x4005d9f6`
+
+Six blocs de **198 octets** (0xC6), un par version, chacun :
+
+1. alloue le tampon de la version suivante (sa taille en littéral) ;
+2. fabrique un objet de 16 octets : `[+0 descripteur de classe][+4 = 1][+8 = 1][+12 tampon]` ;
+3. appelle **le convertisseur de la version** ;
+4. recopie le résultat dans l'image (`memcpy` + `a3@ = 1`).
+
+| Version | Convertisseur | Tampon alloué |
+|---|---|---|
+| 0 | `0x4005c748` | 1 524 740 |
+| 1 | `0x4005c97e` | 1 524 740 |
+| 2 | `0x4005c2e2` | 1 573 892 |
+| 3 | `0x4005c404` | 2 163 716 |
+| 4 | `0x4005ce12` | 2 163 716 |
+| 5 | `0x4005c526` | 2 163 716 |
+
+**Fin de chaîne, explicite** :
+
+```
+4005de74  movel %a2@(4),%d0          ; le champ version de l'objet
+4005de78  moveal #-1091585330,%a0    ; 0xBEEFBACE
+4005de7e  cmpal %a2@,%a0
+4005de80  bnes 0x4005de9e
+4005de82  movel #2163712,%d1         ; 0x210400
+4005de88  moveal #-1160843252,%a0    ; 0xBACEF00C
+4005de8e  cmpal %a2@(0,%d1:l),%a0
+4005de92  bnes 0x4005de9e
+4005de94  moveq #6,%d1               ; <<< LA VERSION COURANTE EST 6
+4005de96  cmpl %d0,%d1
+4005de98  seq %d0
+```
+
+Chaque convertisseur vérifie lui-même la **version de la source** (`cmpl %a2@(4),%d0` avec 0, 1, 2,
+3, 4, 5), le sceau `0xBEEFBACE` **et** le sceau de clôture `0xBACEF00C` à la position de sa version.
+
+**Conséquence directe et importante** : une image dont la version n'est pas 0..6 **échoue
+proprement** (le contrôle final est `== 6`) → **l'OS d'origine refuse un projet Groove au lieu de le
+mal lire** ✓✓. C'est exactement la garantie qu'on voulait : pas de corruption silencieuse.
+
+#### d) Les descripteurs de classe
+
+Table à **`0x4010eff4`**, **28 octets par entrée**, 5 pointeurs de méthodes + 0 + un pointeur vers
+une sous-table. `0x4010f160 - 0x4010eff4 = 364 = 13 × 28` : **une seule table indexée**. La chaîne
+utilise les entrées **13 à 18** (une par version : `0x4010f160`, `f17c`, `f198`, `f1b4`, `f1d0`,
+`f1ec`) ; les fonctions d'emballage de `0x400e24xx` utilisent les entrées 0 à 7. C'est **la table à
+étendre** pour une version 7.
+
+#### e) Le sceau n'est pas propre à l'image
+
+`0xBEEFBACE` marque aussi des enregistrements de **100 octets** (`0x4005afbe`) et de **112 octets**
+(lecteur `0x400a2axx`, qui accepte en plus un sceau alternatif **`0xABCDEF12`**, 2 sites). Le format
+est donc identifié par **sceau + version**, pas par le sceau seul.
+
+#### f) Ce que ça donne pour le mod — **version 7**
+
+Le mécanisme existe et il est fait exactement pour ça. Groove = **version 7** :
+
+1. un **convertisseur v6 → v7** (6 pistes → 8) ;
+2. **un bloc de 198 octets de plus** dans la chaîne `0x4005d9f6` ;
+3. **une entrée de classe** (28 o) de plus dans la table `0x4010eff4`, avec la nouvelle taille ;
+4. l'image grandit (elle contient les patterns rangés) → **l'en-tête et les tables se décalent**,
+   donc les littéraux de base (`0x406fa040`, `0x409c9a00`) changent — ce qu'on savait déjà.
+
+**Et la question de Kevin a maintenant une réponse précise** : un projet d'origine (version ≤ 6) est
+**converti au chargement** par la chaîne ; un projet **sauvegardé** par Groove (version 7) est
+**refusé** par l'OS d'origine, sans corruption. Reste à traiter la **banque F** dans le convertisseur
+v6 → v7 (§3.27).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
