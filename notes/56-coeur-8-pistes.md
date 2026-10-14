@@ -1404,6 +1404,58 @@ l'affichage (nom « Track %d », LEDs — le plan de LEDs est un `bitset<54>`). 
 pourquoi il valait la peine de la regarder **avant** d'écrire les ~59 sites du moteur : le
 geste de sélection est une décision de conception, et elle appartient à Maxime.
 
+### 3.32 Décision de conception : **une seconde page de pistes** `[FAIT]` (14/10)
+
+`build/re8/probe_ui11.py` .. `probe_ui14.py`.
+
+#### a) La décision de Kevin
+
+> « une combinaison **bouton TRACK + bouton PAGE** ne bascule que **T1 et T2** en pistes
+> **7-8** ; la même combinaison **allume les 6 LEDs de piste**, ce qui montre la **page 1 et la
+> page 2** »
+
+Traduction en conception :
+
+| | Page 1 | Page 2 |
+|---|---|---|
+| Pads actifs | **T1–T6** | **T1–T2** |
+| Pistes atteintes | 1–6 | **7–8** |
+| LEDs de piste | 1–6 allumées | **1–2 allumées** (donc on *voit* la page) |
+| Bascule | **`[TRACK]` + `[PAGE]`** | idem |
+
+C'est l'option **(b)** du §3.31.e : elle respecte le matériel (6 pads), ne crée aucun bouton, et
+les **LEDs servent d'indicateur de page** — donc l'utilisateur sait toujours où il est.
+
+#### b) Ce que la RE a établi sur le geste actuel `[FAIT]`
+
+- **La sélection de piste est aujourd'hui un MENU**, pas un pad : `TrackSelectionView` est
+  construite en `0x4001bb06` (constructeur `0x40023a7a`, vtable **`0x40100edc`**), et sa méthode
+  `0x40023d94` fabrique **une entrée par piste**, gardée par `moveq #5` (`0x40023d98`), avec la
+  chaîne `0x4012691c`.
+- **La carte des LEDs est un `bitset<54>`** : la méthode `0x40023d18` fait exactement un
+  `bitset::set` (`moveq #53,%d2` borne le bit, `orl %d1,%a2@(0,%d2:l:4)` pose le bit ; la chaîne
+  « bitset::set » est en `0x40125ed9`). **C'est le point d'accroche de l'affichage de page** :
+  allumer 1–2 au lieu de 1–6 sur la page 2.
+- Le **tableau des pads** (`0x404a8ba0`) et la **table de recherche de LED** (`0x404a8c68`) sont
+  en **BSS** (nuls dans l'image, remplis à l'exécution) — donc leur *contenu* ne se lit pas
+  statiquement, seulement leur *usage*.
+- **Le mot « Page » existe déjà dans l'interface** : la chaîne `0x4012691c` dit
+  « Undo Paste / **Paste Page** / Paste %d Trig%s / Undo Clear », et `[PAGE]` seul fait déjà
+  défiler les **64 pas** (4 pages de 16). La « page de pistes » est donc une **seconde notion de
+  page**, à ne pas confondre avec celle des pas — à garder clair dans le code et dans le guide.
+- La chaîne `0x40125ed9` contient aussi « **Erase all locks** » / « **Erase locks** » — les
+  actions d'effacement des verrous de paramètres, utiles au volet « pattern » (§3.26).
+
+#### c) Ce qui reste à décoder pour poser le geste `[HYP]`
+
+1. **Les codes de touche** de `[TRACK]` et de `[PAGE]`, et donc **si `[TRACK]`+`[PAGE]` est
+   libre** — c'est la vérification indispensable avant d'y accrocher la bascule de page ;
+2. le **`consumeKeyEvent`** de la vue (dans la vtable `0x40100edc`) pour voir la forme exacte du
+   traitement des combinaisons ;
+3. la **correspondance pad → piste** (probablement une table en BSS) à rendre dépendante de la page.
+
+**Aucun de ces trois points ne remet en cause la conception** : ils disent *où* écrire, pas *quoi*.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
