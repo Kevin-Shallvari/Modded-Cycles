@@ -45,7 +45,8 @@ import mcfw                                         # noqa: E402
 mcfw.bridge_emac()
 
 TW = HERE.parent.parent / 'tweaks' / 'model-cycles_OS1.13'
-UNPACK = 0x4005B894          # depliage d'un pattern : (deploye, range)
+UNPACK = 0x4005B894          # depliage d'un pattern : (deploye, range, champ)
+SAVE = 0x4005BA0A            # emballage d'un pattern : (range, deploye, drapeau)
 TAIL = 0x4005B766            # gestionnaire de queue (appele par UNPACK)
 
 DEPLOYED = 0x406FA040        # la table des patterns (deployee)
@@ -104,6 +105,28 @@ def tail_off(n):
     fait l'appelant de `0x4005b766` : `movel %a2,%d2 / addil #4332,%d2` (le bloc RANGE, lui,
     a un en-tete de 4 o : sa queue est en `a3@(4336)`)."""
     return n * STEP
+
+
+def deployed_from_steps(n):
+    """Un enregistrement DEPLOYE minimal : les pas (722 o par piste, contigus) puis une queue
+    entierement a 0xFFFF (« pas de verrou ») — la representation d'un pattern sans verrou.
+    C'est l'entree que le chemin d'ECRITURE de l'OS (`0x4005ba0a`) sait emballer."""
+    size = 4 + n * STEP + n * LOCKS + 64
+    buf = bytearray(b'\xff' * size)
+    for t in range(n):
+        base = t * STEP
+        for k in range(STEP):
+            buf[base + k] = (t * 7 + k) & 0xFF
+    return bytes(buf)
+
+
+def pack(engine, deployed, n):
+    """Appelle l'ECRITURE de l'OS et renvoie l'enregistrement range produit."""
+    size = 4 + n * STEP + 10512
+    engine.uc.mem_write(PACKED, bytes(size))
+    engine.uc.mem_write(DEPLOYED, deployed)
+    engine.call(SAVE, PACKED, DEPLOYED, 0)
+    return bytes(engine.uc.mem_read(PACKED, size))
 
 
 def tail_slice(dep, off, track):
@@ -188,6 +211,25 @@ def main():
     print('   %d mot(s) 0xFFFF sur les %d octets de fin : %s'
           % (nlocks, len(after), 'ok' if nlocks == 0 else 'FAIL'))
     ok &= nlocks == 0
+
+    print('\nE. aller-retour par le code de l\'OS : ecrire puis relire')
+    # Le banc ne fabrique plus la queue rangee : il fait ECRIRE l'OS (0x4005ba0a), puis
+    # RELIRE (0x4005b894), et compare. Aucune connaissance synthetique du format n'entre ici.
+    eok = True
+    for label, img, n in (('stock', stock, 6), ('grove', both, 8)):
+        eng = E.Engine(img)
+        src = deployed_from_steps(n)
+        packed_rt = pack(eng, src, n)
+        back = unpack(eng, DEPLOYED, packed_rt)
+        # la comparaison porte sur la partie commune a toutes les pistes
+        same = back[:n * STEP] == src[:n * STEP]
+        tq = all(back[n * STEP + t * LOCKS: n * STEP + t * LOCKS + 64 * 68]
+                 == src[n * STEP + t * LOCKS: n * STEP + t * LOCKS + 64 * 68]
+                 for t in range(n))
+        print('   %-6s (%d pistes) : pas %s, queues %s'
+              % (label, n, 'ok' if same else 'FAIL', 'ok' if tq else 'FAIL'))
+        eok &= same and tq
+    ok &= eok
 
     print('\n%s' % ('TOUT OK' if ok else 'ECHEC'))
     raise SystemExit(0 if ok else 1)

@@ -2203,6 +2203,71 @@ vérifiées** octet à octet, et **A, B, D verts** avec C à **4 octets** sur 40
 authentique), trancher les 4 octets, puis publier le hash du jalon 2 et passer à l'aller-retour
 complet (déplier → **replier** = la sauvegarde), au convertisseur v6 → v7 et à la page de pistes.
 
+### 3.45 Le chemin d'écriture décodé — et le contrôle E qui **innocente le patch** `[FAIT]`/`[HYP]` (14/10)
+
+#### a) Le chemin de sauvegarde `[FAIT]`
+
+`0x4005ba0a(packed, deployed, drapeau)` : il copie la queue de l'enregistrement (64 o, `a3@(30642)`
+→ `a2@(14736)` — **les deux constantes sont déjà dans le jeu de changements** ✓), puis appelle
+`0x4005b642` **par piste** (722 o de pas) avec **cinq** arguments
+`(rangé, déployé, drapeau, -1, -1)`, et finit par la queue (`a3@(4332)` / `a2@(4336)`).
+
+#### b) Le contrôle **E** : écrire puis relire, **par le code de l'OS** `[FAIT]`
+
+Le banc ne fabrique plus la queue rangée : il fait **écrire** l'OS (`0x4005ba0a`), puis **relire**
+(`0x4005b894`), et compare. **Aucune connaissance synthétique du format n'entre dans ce contrôle.**
+
+Résultat :
+
+```
+stock  (6 pistes) : pas FAIL, queues FAIL
+grove  (8 pistes) : pas FAIL, queues FAIL
+```
+
+**Et c'est le point capital** : E échoue **aussi sur le stock** — l'OS **non modifié**. Le patch ne
+peut donc **pas** être la cause de cet échec : ce sont **les entrées du banc** qui ne sont pas
+fidèles. Autrement dit, **l'aller-retour écrire→relire de l'OS n'est pas une identité octet à octet**
+sur l'enregistrement déployé — certains champs sont **dérivés ou ignorés** par le format.
+
+#### c) Ce que cela change pour le contrôle C `[HYP]`
+
+Si le format ne préserve pas tous les octets, alors comparer les **octets déployés** stock contre
+Groove est **trop strict** : les **4 octets** du §3.44 (queue de la piste 5, `+3005..+3008`) peuvent
+être exactement un de ces champs dérivés — et non un défaut du patch. **La question reste ouverte**,
+mais elle n'est plus « le patch est-il faux ? » : elle est « **quels octets le format préserve-t-il ?** »
+
+#### d) Ce qui est **solidement** établi `[FAIT]`
+
+| | |
+|---|---|
+| la géométrie | record déployé **40 924** (4 + 8×722 + 8×4385 + 64), rangé **16 292** (4 + 8×722 + 10 512) |
+| le dépliage | couvre **8 pistes** (queue de la piste 7 remplie) — contrôle **B vert** |
+| les constantes | toutes vérifiées octet à octet (**192 écritures**) |
+| les pistes 0-5 | **pas identiques** au stock, **queues 0-4 identiques** |
+| le stock | ne contient aucune zone de verrous après sa piste 5 — contrôle **D vert** |
+
+#### e) L'obstacle, nommé
+
+**Les entrées du banc sont synthétiques**, et chaque correction en a révélé une autre (pas contigus,
+offset de queue, enregistrement par format, champs non préservés). La sortie de ce cercle n'est pas
+un correctif de plus : c'est un **pattern authentique** — obtenu
+
+- soit **depuis la machine** (Maxime enregistre un projet, on en extrait un pattern) ;
+- soit depuis le **contenu d'usine** de l'OS, s'il est accessible.
+
+Tant qu'on ne l'a pas, le banc ne peut pas distinguer « le patch est faux » de « l'entrée est
+fausse » — et **le contrôle E vient de montrer que c'est la seconde branche qui est en jeu**.
+
+#### f) L'état
+
+**Le jalon 2 n'est pas clos** ; le JSON reste **retiré** et le générateur **refuse d'écrire**.
+Mais le bilan est plus clair qu'il n'y paraît : le **format** est entièrement décodé, la
+**disposition** recalculée, **192 écritures** vérifiées, la **géométrie prouvée** (B, D), et
+l'échec restant est **attribué au banc**, pas au patch.
+
+**La suite, en une ligne** : un **pattern authentique** comme entrée du banc, puis trancher C,
+publier le hash du jalon 2, et enchaîner l'aller-retour, le convertisseur v6 → v7 et la page.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
