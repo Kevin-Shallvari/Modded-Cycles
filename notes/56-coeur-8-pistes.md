@@ -777,6 +777,40 @@ Balayage (`probe_pattern5.py`) :
   donc la conversion et la compatibilité des projets se jouent là. Le **30710** est la taille du
   pattern en mémoire ; reste à voir si la forme fichier a la sienne.
 
+### 3.21 Tri des 33 sites du pattern : tout est à changer, sauf une coïncidence `[FAIT]` (14/10)
+
+`build/re8/probe_pattern6.py` donne, pour chaque site, **l'instruction qui le porte** :
+
+| Constante | Instruction | Nb | Verdict |
+|---|---|---|---|
+| **4332** | `cmpil #4332,%dN` (fin de bloc) | 17 | **à changer** → 5776 |
+| **4332** | `addil #4332,%dN` (pas) | 4 | **à changer** → 5776 |
+| **4332** | `pea 0x40a710ec` | 1 | **coïncidence** : la valeur `0x10ec` = 4332 est la moitié basse d'un **pointeur** → **ne pas toucher** |
+| **4336** | `addil #4336,%d2` | 1 | **à changer** → 5780 |
+| **30710** | `movel #30710,%dN` / `pea 0x77f6` / `addil` / `lea %aN@(30710)` | ~22 | **à changer** → 32154 |
+
+- **21 sites réels pour 4332** (17 comparaisons de fin de bloc + 4 pas) — et **une coïncidence** que
+  seul le désassemblage révèle : `pea 0x40a710ec` n'est pas « 4332 » mais un pointeur dont la moitié
+  basse vaut 4332. Un remplacement « à l'aveugle » de 4332 casserait ce pointeur — c'est exactement
+  le genre de piège que le tri par instruction évite.
+- **Le mécanisme de la queue de pattern est identifié** : juste après la boucle des pistes,
+  `addil #4336,%d2` puis `movel %d2,%a2@(672)` : la base de la **queue** du pattern
+  (`pattern + 4336`, soit le bloc des pistes + 4 o d'en-tête) est **calculée une fois et rangée dans
+  un champ** (672). Les champs de la queue sont donc atteints **relativement à ce pointeur**, pas par
+  des décalages figés depuis la base du pattern — **c'est ce qui rend l'extension bornée** : allonger
+  le bloc des pistes déplace la queue toute seule, par le seul changement de `4336`.
+- **Ensemble du changement** : `4332 → 5776` (21 sites), `4336 → 5780` (1 site), `30710 → 32154`
+  (~22 sites) — et **rien d'autre** dans le code : les enregistrements de piste (708 o) sont
+  autonomes, et la queue est relative à son pointeur.
+
+**Reste à trancher** :
+- la **forme fichier** : la même constante 4332 y apparaît (`0x4005b91e`, `0x4005b92c`, `0x4005ba66`,
+  `0x4005bfb0`, `0x4005c2a2`) — donc le format de fichier a son propre bloc de pistes, et c'est là que
+  se joue la **compatibilité des projets** ;
+- les **conversions** (`0x4005c040`, `0x4005c1cc`, appelées indirectement) ;
+- la **place** : combien de patterns, et la région mémoire a-t-elle de quoi grandir de 1444 o par
+  pattern.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
