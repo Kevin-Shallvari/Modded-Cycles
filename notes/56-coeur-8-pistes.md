@@ -1456,6 +1456,58 @@ les **LEDs servent d'indicateur de page** — donc l'utilisateur sait toujours o
 
 **Aucun de ces trois points ne remet en cause la conception** : ils disent *où* écrire, pas *quoi*.
 
+### 3.33 `[TRACK]`+`[PAGE]` : la combinaison semble **libre** `[FAIT]`/`[HYP]` (14/10)
+
+`build/re8/probe_key.py` .. `probe_key7.py`.
+
+#### a) Le panneau, d'après le manuel (source externe, à confirmer sur la machine)
+
+| Combinaison | Fonction documentée |
+|---|---|
+| `[FUNC]` + **`[TRACK]`** | ouvre le menu **TRACK SETUP** |
+| `[FUNC]` + **`[PAGE]`** | ouvre le menu **SCALE** (pattern / track) |
+| `[FUNC]` + `[RETRIG]` | ouvre le menu RETRIG SETUP |
+| **`[TRACK]` + `[T1]`..`[T6]`** | **sélectionne la piste** |
+| `[PAGE]` seul | défile les 64 pas (4 pages de 16) |
+
+Et — **correction utile au §3.31** : **les six pads SONT les boutons de piste `T1`–`T6`** ✓.
+Le tableau de pads de `0x404a8ba0` et la boucle `moveq #6` de `0x4001cf8c` sont donc bien
+**le tableau des pistes**, et la conception de Kevin (« T1 et T2 ») porte exactement sur eux.
+
+**`[TRACK]` + `[PAGE]` n'apparaît dans aucune combinaison documentée** → la bascule de page de
+Kevin ne devrait **rien écraser**. C'est une bonne nouvelle, mais ce n'est **pas encore prouvé
+dans le code** (voir d).
+
+#### b) Ce que le code confirme
+
+- Le menu **Track Setup** est construit par **`0x4003e020`** (titre « Track Setup » en
+  `0x4012774d`, vue `TrackMenuView`) ;
+- il est appelé depuis **`0x4001c510`**, dans la **zone du panneau** (`0x4001cxxx`, celle de
+  `PadsView`) — c'est donc le chemin `[FUNC]`+`[TRACK]` ;
+- le menu **Scale Setup** est construit en **`0x4002f350`** (« Scale Setup » en `0x40126fc3`,
+  `ScaleMenuView`) — le chemin `[FUNC]`+`[PAGE]` ;
+- la **répartition des touches est pilotée par des prédicats** (`0x40072490`, `0x400724a0`)
+  appelés avec l'événement : les **codes de touche ne sont donc pas des littéraux** dans le
+  gestionnaire, ils sont lus dans la structure `KeyEvent`.
+
+#### c) L'automate d'interface — utile pour la suite
+
+L'image contient des commandes `#UI_AUTOMATOR_*`, dont **`#UI_AUTOMATOR_EVENT_STREAM_ON`** : le
+flux d'événements du panneau peut être **diffusé**, ce qui donne un moyen d'**observer les codes
+de touche en fonctionnement** plutôt que de les deviner. Autres commandes notables :
+`#MMC_RECONFIGURE`, `#FORMAT_FILE_SYSTEM` (le +Drive est bien de l'**MMC**), `#CONTENT_UPLOAD`,
+`#MRV_DUMP`/`#MRAM_DUMP`, `#READ_FIRMWARE_MODEL`.
+
+#### d) Ce qui reste pour **prouver** que la combinaison est libre `[HYP]`
+
+1. lire le champ « code de touche » de `KeyEvent` (et donc les codes de `[TRACK]` et `[PAGE]`) ;
+2. suivre le chemin `[TRACK]` **maintenu** + pad (la sélection de piste actuelle) : c'est là que
+   la **page** devra s'insérer ;
+3. vérifier qu'aucun prédicat ne traite déjà `[TRACK]`+`[PAGE]`.
+
+**La conception n'est pas menacée** : au pire, si la combinaison s'avérait prise, il suffirait de
+lui en préférer une autre (par exemple `[FUNC]`+`[TRACK]`+pad), sans changer la page elle-même.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
