@@ -1815,6 +1815,59 @@ huit pistes, le jouer, le **sauvegarder**, le **relire** et vérifier que les pi
 reviennent intactes, avec les pistes 1-6 identiques à l'origine (le même esprit que le banc du
 jalon 1). Ensuite : le convertisseur v6 → v7 et la banque F, puis la page de pistes.
 
+### 3.39 Le banc du jalon 2 — et ce qu'il a trouvé tout de suite `[FAIT]`/`[HYP]` (14/10)
+
+`tools/re/test_groove_pattern.py`, `build/re8/diag_unpack.py`.
+
+Le banc appelle le **vrai code de l'OS** : `0x4005b894(a2 = enregistrement déployé, a3 = enregistrement
+rangé)` — la boucle de dépliage d'un pattern, celle dont le générateur change le **pas** (722,
+inchangé) et la **borne** (4332 → 5776), plus le gestionnaire de queue `0x4005b766`. Trois images :
+stock, jalon 1 seul, **les deux**.
+
+#### a) Ce que le banc **établit déjà** `[FAIT]`
+
+- les deux tweaks **ne se recouvrent pas** (intersection 0) et les constantes du format sont bien
+  celles du tweak — relues dans l'image : `4332 → 5776` ✓, `4336 → 5780` ✓ ;
+- **le bloc des pas (0..4332) se déplie à l'identique dans le stock et dans Groove** ✓✓ : les pas
+  des pistes 0-5 sont **inchangés** par le jalon 2 — c'est le contrôle le plus important pour ne
+  pas casser l'existant, et il passe.
+
+#### b) Ce qu'il a **trouvé** — une vraie information `[FAIT]`
+
+`0x4005b894` prend un **troisième argument**, qu'il range en `+30706` de l'enregistrement :
+
+```
+4005b946  movel %sp@(44),%a2@(30706)
+```
+
+Je l'ai passé en bouillie (le banc n'empile que deux arguments), donc **tout le volet « queue » du
+banc n'est pas encore significatif**. Le diagnostic (`diag_unpack.py`) le montre crûment : les
+écritures s'arrêtent à l'offset **4135**, c'est-à-dire dans le **bloc des pas**, et l'étendue de
+la queue varie d'une image à l'autre sans logique lisible.
+
+#### c) Une **suspicion** à lever, et elle compte `[HYP]`
+
+Le **nombre de pistes du gestionnaire de queue** (`0x4005b766`) n'apparaît **pas** dans le jeu de
+changements du §3.35.c : la queue est par piste (pas 4385, **inchangé**), mais **combien de pistes**
+le gestionnaire parcourt-il ? Le banc, dans son état actuel, donne une queue Groove d'environ
+**sept** pistes avec la piste 7 **vide** — ce qui est exactement le symptôme d'une **borne de
+comptage non élargie**. Ce n'est pas une conclusion (le troisième argument manque), mais c'est une
+piste sérieuse, et elle irait dans le sens d'un **trou** dans le jeu de changements.
+
+#### d) L'état, sans embellissement
+
+**Le jalon 2 est construit, pas prouvé** — et il pourrait être **incomplet**. Le JSON de
+`57-groove-patterns.json` est donc versionné **avec sa mise en garde** (§3.38.c : hash non publié,
+absent de `BUILD.md`), et le banc **échoue** tant que le troisième argument n'est pas fourni.
+
+**La suite, dans l'ordre :**
+1. trouver le **troisième argument** de `0x4005b894` (son appelant : `0x4005b924` appelle le
+   gestionnaire de queue, mais qui appelle `0x4005b894` ?) et ce que `+30706` signifie ;
+2. lever la suspicion du §c en lisant la **borne de comptage du gestionnaire de queue** ;
+3. compléter le jeu de changements si elle manque, régénérer, et **re-prouver** ;
+4. l'aller-retour complet (déplier puis **replier** = la sauvegarde), puis le convertisseur
+   v6 → v7 (banque F), puis la page de pistes.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
