@@ -703,6 +703,47 @@ Au passage, la plus longue plage de zéros de l'image (`0x40000400..0x4019b590`)
 `0x4019a4ec`** — candidate pour loger de la donnée neuve (à vérifier par les mêmes balayages que les
 autres accueils avant tout usage).
 
+### 3.19 Le pattern : premiers relevés `[EN COURS]` (14/10)
+
+**Les constantes** (`build/re8/probe_pattern.py`) :
+
+- pas par piste **722** : en clair à `0x4000c5a8`, `0x4000c618`, `0x4000cfb8`, `0x4000d154`,
+  `0x4000d1a2`, et dans la zone des **accesseurs de champ** `0x400173bb`, `0x4001829e`,
+  `0x40018864`, `0x40018d02`, `0x40019136`, `0x400192ee`, `0x40019418` ;
+- taille de pattern **30710** : `0x4000eaa6`, `0x4000ec92`, `0x4000feb0`, `0x4000ffd4`, `0x4002017e`,
+  `0x400203ac`, `0x4005d2dc`, `0x4005d4f8`, `0x4008152c`, … ;
+- base mémoire **0x406fa040** : `0x400083ca`, `0x4002018c`, `0x400203b6`, `0x40055e08`, `0x40081536`,
+  `0x4008178a`.
+
+**La copie A→B (`0x4005b4ec`) est une traduction champ à champ écrite à la main :**
+
+```
+4005b50e  moveb %a3@(128),%a2@(580)     ; A+128 -> B+580
+4005b526  movew %a4@,%a0@(0,%d0:l)      ; une copie indexée par d0
+4005b52a  addql #2,%d0
+4005b52c  moveb %a3@(191),%a2@(128)
+4005b53e  moveb %a3@(511),%a2@(320)
+4005b552  cmpil #128,%d0                 ; 64 tours de 2 : les 64 pas du pattern
+4005b558  bnes 0x4005b50e
+```
+
+Par tour : **1 mot** (le pas) + **8 octets** à décalages figés. Côté B, **six** de ces octets sont
+consécutifs à pas de **64** (`128, 192, 256, 320, 384, 448`) — la signature des **6 pistes** ; côté A
+ils sont à `191 + 64k`. Les deux formes (fichier et mémoire) ont donc des **décalages différents**, et
+la traduction est manuelle : deux pistes de plus demandent **deux champs de plus dans la copie**, pas
+seulement un compteur.
+
+**Les bornes candidates** (`probe_pattern2.py`) : le séquenceur en contient **~24** (`#5`/`#6`) —
+`0x4000cb2c`, `0x4000cb72`, `0x4000cb78`, `0x4000cd2e`, `0x4000cfd6`, `0x4000cfdc`, `0x4000d02c`,
+`0x4000d032`, `0x4000d094`, `0x4000d09a`, `0x4000d5f0`, `0x4000d728`, `0x4000ef6e`, `0x4000f174`,
+`0x4000f280`, `0x4000f286`, `0x4000f5a0`, `0x4000f5f2`, `0x4000fd7c`, `0x4000fe7c`, `0x4000ff66`,
+`0x4001006c`, `0x40020a42`, `0x40020dce` (dont un `#7`).
+
+**Échelle, honnêtement** : c'est le sous-chantier le plus lourd du projet — ~24 bornes à trier **une
+par une** (la méthode a montré que ~40 % des candidates sont des valeurs étrangères), les champs de
+copie A↔B à étendre, le format fichier, et la conversion des projets existants. À mener **par lots**,
+comme le reste : triage → extensions → preuve. Le prochain lot utile est le triage de ces 24 bornes.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
