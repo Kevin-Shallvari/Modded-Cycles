@@ -1323,6 +1323,87 @@ Les **noms de types C++** sont restés dans l'image (`Project`, `ProjectManager`
 `ValueWithMirror<…>`, …). C'est une **carte de l'architecture** utilisable pour les prochaines
 recherches : on peut nommer les objets au lieu de les décrire par leur adresse.
 
+### 3.31 L'interface : ce qui est établi, et la vraie question qui reste `[FAIT]`/`[HYP]` (14/10)
+
+`build/re8/probe_ui.py` .. `probe_ui10.py`.
+
+#### a) Les classes, par leurs noms de types
+
+`TrackSelectionView`, `TrackMenuView`, `PadsView`, `PatternGridView`
+(`produceLedData(const std::bitset<54>&, std::bitset<54>&)`), `LedManager`, `LedHandler`,
+`DrumSelect`, `TransportView`, `NoteSetupMenuView`, `QuickMuteMenuView`, `PatternAndBankSelectView`.
+L'interface utilise **« TRK »** comme abréviation de piste (« Copy TRK %d Sound »,
+« Paste TRK %d Sound », « Clear TRK %d Sound ») et affiche « **Track %d** ».
+
+#### b) **Six pads, en dur** `[FAIT]`
+
+`0x4001cf8c`, une méthode de `PadsView` :
+
+```
+4001cf98  moveal 0x404a8ba0,%a0       ; le tableau des pads
+4001cfa2  movel  %a0@(0,%d2:l:4),%d0  ; pad[d2]
+4001cfa6  btst   %d2,%d1              ; le pad d2 est-il enfonce ?
+4001cfb6  moveq  #6,%d0               ; <<< 6 PADS
+4001cfb8  cmpl   %d2,%d0
+4001cfba  bnes   0x4001cf98
+```
+
+Le panneau a **six pads** et le code le suppose. C'est **la contrainte matérielle** de
+l'interface.
+
+#### c) **Onze bornes « 6 » dans l'interface** `[FAIT]`
+
+Balayage de `0x40020000..0x40030000` (objdump, fiable — capstone désynchronise ici) :
+
+| Adresse | Forme | Rôle probable |
+|---|---|---|
+| `0x40020a42` | boucle `moveq #6` | liste de 6 |
+| `0x40022ec2` | comparaison `== 6` | test |
+| `0x400231c2` | boucle `moveq #6` | liste de 6 |
+| `0x4002399a` | garde « ≤ 5 » | action de piste (Copy/Paste/Clear TRK) |
+| `0x40023ca2` | bornage ≤ 5 | indice de piste |
+| `0x40023efa` | garde « ≤ 5 » | action de piste |
+| `0x40024960` | garde ≤ 5 | |
+| `0x40028ee2` | boucle `moveq #6` | **liste des 6 pistes** (avec « Track %d ») |
+| `0x4002b9b4` | bornage ≤ 5 | |
+| `0x4002fa10` | boucle `moveq #6` | |
+| `0x4002fade` | boucle `moveq #6` | |
+
+**Attention** : 6 est aussi le nombre de **machines** (Kick, Snare, Metal, Perc, Tone, Chord) —
+certaines de ces bornes peuvent porter sur la machine, pas sur la piste. Celles de `0x4002399a`
+et `0x40023efa` sont bien des pistes : leurs appelants (`0x4002415e`, `0x4002417e`) construisent
+les entrées « Copy/Paste/Clear TRK %d Sound ».
+
+#### d) Le panneau est assemblé de façon déclarative
+
+`0x4001bxxx` alloue chaque vue et l'attache à un **emplacement fixe** (`%a2@(164)`, `%a2@(172)`,
+…). `TrackSelectionView` est créée en `0x4001bb06` (constructeur `0x40023a7a`, **vtable
+`0x40100edc`**, 7 méthodes) — donc **toujours présente**, pas une fenêtre déclenchée par un
+bouton.
+
+#### e) La vraie question — et c'est de la **conception**, pas de la RE `[HYP]`
+
+**Le panneau n'a que six pads.** Comment l'utilisateur atteint-il les pistes 7 et 8 ?
+Les candidats :
+
+| Option | Principe | Remarque |
+|---|---|---|
+| **a** | `[FUNC]` + pad = pistes 7-8 | réutilise le matériel existant, aucun bouton neuf |
+| **b** | une seconde « page » de pistes | suppose un geste de bascule |
+| **c** | les 16 boutons de pas | 16 emplacements libres, mais change l'ergonomie |
+| **d** | une entrée de menu | le plus sûr, le moins direct |
+
+Le **geste actuel** de sélection de piste n'est **pas encore décodé** : il est dans le
+`consumeKeyEvent` de la vue, atteignable par la vtable `0x40100edc` (7 pointeurs de méthodes).
+C'est le dernier point de RE de l'interface.
+
+#### f) Conséquence pour le plan
+
+L'interface **n'est pas gratuite** : onze bornes à élargir, **un geste à concevoir**, et
+l'affichage (nom « Track %d », LEDs — le plan de LEDs est un `bitset<54>`). C'est précisément
+pourquoi il valait la peine de la regarder **avant** d'écrire les ~59 sites du moteur : le
+geste de sélection est une décision de conception, et elle appartient à Maxime.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
