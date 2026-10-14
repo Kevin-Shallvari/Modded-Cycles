@@ -212,23 +212,25 @@ def main():
           % (nlocks, len(after), 'ok' if nlocks == 0 else 'FAIL'))
     ok &= nlocks == 0
 
-    print('\nE. aller-retour par le code de l\'OS : ecrire puis relire')
-    # Le banc ne fabrique plus la queue rangee : il fait ECRIRE l'OS (0x4005ba0a), puis
-    # RELIRE (0x4005b894), et compare. Aucune connaissance synthetique du format n'entre ici.
+    print('\nE. aller-retour par le code de l\'OS : identite du FORMAT RANGE')
+    # On ne suppose RIEN sur le format : on part de zeros, on fait RELIRE l'OS (0x4005b894),
+    # puis ECRIRE (0x4005ba0a), deux fois de suite. Si l'aller-retour est stable, les deux
+    # enregistrements RANGES doivent etre identiques — et l'enregistrement deploye aussi.
     eok = True
     for label, img, n in (('stock', stock, 6), ('grove', both, 8)):
         eng = E.Engine(img)
-        src = deployed_from_steps(n)
-        packed_rt = pack(eng, src, n)
-        back = unpack(eng, DEPLOYED, packed_rt)
-        # la comparaison porte sur la partie commune a toutes les pistes
-        same = back[:n * STEP] == src[:n * STEP]
-        tq = all(back[n * STEP + t * LOCKS: n * STEP + t * LOCKS + 64 * 68]
-                 == src[n * STEP + t * LOCKS: n * STEP + t * LOCKS + 64 * 68]
-                 for t in range(n))
-        print('   %-6s (%d pistes) : pas %s, queues %s'
-              % (label, n, 'ok' if same else 'FAIL', 'ok' if tq else 'FAIL'))
-        eok &= same and tq
+        size = 4 + n * STEP + 10512
+        p0 = bytes(size)
+        dep1 = unpack(eng, DEPLOYED, p0)
+        p1 = pack(eng, dep1, n)
+        dep2 = unpack(eng, DEPLOYED, p1)
+        p2 = pack(eng, dep2, n)
+        stable_p = p1 == p2
+        stable_d = dep1 == dep2
+        nz = sum(1 for b in p1 if b)
+        print('   %-6s (%d pistes) : range stable %s, deploye stable %s, %d octet(s) non nuls'
+              % (label, n, 'ok' if stable_p else 'FAIL', 'ok' if stable_d else 'FAIL', nz))
+        eok &= stable_p and stable_d
     ok &= eok
 
     print('\n%s' % ('TOUT OK' if ok else 'ECHEC'))

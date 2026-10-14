@@ -2268,6 +2268,62 @@ l'échec restant est **attribué au banc**, pas au patch.
 **La suite, en une ligne** : un **pattern authentique** comme entrée du banc, puis trancher C,
 publier le hash du jalon 2, et enchaîner l'aller-retour, le convertisseur v6 → v7 et la page.
 
+### 3.46 Le banc ne peut pas **fabriquer** un pattern valide — c'est la limite, et elle est nommée `[FAIT]`/`[HYP]` (14/10)
+
+#### a) L'idempotence échoue **sur le stock aussi** `[FAIT]`
+
+Contrôle **E**, version « identité du format rangé » : partir de zéros, faire **relire** l'OS
+(`0x4005b894`) puis **écrire** (`0x4005ba0a`), deux fois, et comparer.
+
+```
+stock  (6 pistes) : range stable FAIL, deploye stable FAIL, 161 octet(s) non nuls
+grove  (8 pistes) : range stable FAIL, deploye stable FAIL, 161 octet(s) non nuls
+```
+
+**Les deux images échouent identiquement**, avec le **même** nombre d'octets non nuls (161) : le
+patch n'y est pour rien, c'est **l'entrée** qui est en cause — un enregistrement rangé **tout à
+zéro n'est pas un pattern valide**, et le chemin d'écriture **abandonne** (il n'écrit que
+l'en-tête).
+
+#### b) La limite, et pourquoi elle est **structurelle** `[FAIT]`
+
+Le banc a besoin d'un pattern **valide** (une machine, des pas, un genre) pour que le code de l'OS
+le traite. Or **le construire à la main est exactement ce qui échoue depuis le §3.39** : chaque
+entrée synthétique a révélé une hypothèse fausse de plus (pas contigus, offset de queue,
+enregistrement par format, champs non préservés, et maintenant validité). **Ce n'est pas un
+correctif de plus qu'il faut : c'est une entrée vraie.**
+
+**Ce qui est prouvé reste prouvé** (et c'est l'essentiel) :
+
+| | |
+|---|---|
+| le **format** | entièrement décodé (entrée de 130 o, 80 entrées, en-tête 112 o, pas contigus) |
+| la **disposition** | recalculée (image 1 944 164, en-tête `0x406c4684`, patterns `0x406c46a0`, kits `0x43dd0000`) |
+| les **192 écritures** | vérifiées octet à octet contre l'image d'origine |
+| la **géométrie** | record déployé 40 924, rangé 16 292 — et le dépliage **couvre 8 pistes** (contrôle B) |
+| le **stock** | ne contient aucune zone de verrous après sa piste 5 (contrôle D) |
+| les **pistes 0-5** | pas **identiques**, queues 0-4 **identiques** |
+
+#### c) Ce qu'il faut pour finir — une demande précise
+
+Un **pattern authentique**, c'est-à-dire **un projet sorti de la machine** :
+
+- **Elektron Transfer** sait **dumper un projet** : Maxime enregistre un projet sur son
+  Model:Cycles, le transfère, et le fichier obtenu (dans `firmware/`, **jamais versionné**)
+  fournit l'entrée vraie du banc ;
+- à défaut, le **contenu d'usine** de l'OS, s'il est accessible.
+
+Avec cette entrée, le banc peut **trancher** : les 4 octets du §3.44 et l'aller-retour. **Sans
+elle, il ne peut pas distinguer « le patch est faux » de « l'entrée est fausse » — et les deux
+contrôles E viennent de montrer que c'est la seconde branche.**
+
+#### d) L'état final de ce cycle
+
+**Le jalon 2 n'est pas clos**, et il ne peut pas l'être avec des entrées fabriquées. Le JSON reste
+**retiré**, le générateur **refuse d'écrire**, et **rien d'incomplet n'est versionné**. Le travail
+laisse une base nette : format décodé, disposition recalculée, écritures vérifiées, géométrie
+prouvée — et **une demande précise** pour la suite.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
