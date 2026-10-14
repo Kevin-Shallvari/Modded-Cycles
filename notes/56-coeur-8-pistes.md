@@ -397,6 +397,7 @@ Le census des accueils a été refait (`build/re8/probe_homes.py`, `probe_sramga
 | E. **isolement** : 6 seule vs 6+7 (idem 7) | ok — aucun recouvrement entre les pistes neuves |
 | F. banc **`0xFF` vs `0`**, accueil par accueil | ok sur les 8 accueils |
 | G. **appels de machine par piste** | 24 par piste (0-7) ; index comparé `d4` = 4 |
+| H. **lignes de cache de 16 o** (6 blocs) | code +0, DDR data **+194**, SRAM **−70** (§3.11.H) |
 
 - **F, subtilité qui a failli tromper** : la première version comparait **tous** les blocs de sortie,
   y compris ceux des pistes non rendues — qui gardent la valeur de remplissage (`0xFF` vs `0`) et
@@ -408,6 +409,46 @@ Le census des accueils a été refait (`build/re8/probe_homes.py`, `probe_sramga
 - **Limite assumée** : l'ISR complet ne s'émule pas (notes/27 §3.4) ; les lignes que la boucle des
   voix ne touche pas (params, retrig, zone, cluster) ne sont donc **pas** couvertes par F — c'est
   l'objet de la liste machine (§3.6 point 5).
+
+#### H. Le coût mémoire du relogement, mesuré `[FAIT]` (14/10)
+
+L'émulateur **ne chronomètre pas** les défauts de cache (notes/23 §4) : la mesure du dépôt est le
+nombre de **lignes de cache de 16 o distinctes** touchées pendant des blocs (notes/23 §4, notes/27 §3).
+
+| Scénario (6 blocs, 1 note par piste) | code | données DDR | SRAM | autre |
+|---|---|---|---|---|
+| stock : 6 voix | 12 | 311 | 211 | 16 |
+| groove : 8 voix | 12 | **505** | **141** | 16 |
+| delta | **+0** | **+194** | **−70** | 0 |
+
+Lecture : le code ne bouge pas (+0 — les patchs ne coûtent aucune ligne). Les **+194 lignes DDR**
+se décomposent en **~106 lignes pour les deux voix de plus** (inévitables : c'est le but du mod) et
+**~90 lignes déplacées de la SRAM vers la DDR** (tampons de sortie, tampons de travail, pmod) — les
+−70 lignes SRAM. Ces ~90 lignes passent d'un accès SRAM à **un cycle** à un accès DDR **en cache
+copyback**. À retenir : les **états de voix** (la ligne la plus lue du moteur) sont **déjà en DDR**
+dans le stock — la DDR n'est donc pas un mode d'accès nouveau pour cette boucle. Le temps réel, lui,
+se mesure sur la machine (notes/23 §4) : c'est le seul point que ce banc ne peut pas trancher.
+
+### 3.12 Reconnaissance du mixeur `[FAIT — à poursuivre]` (14/10)
+
+Le mixeur n'est pas « six appels écrits à la main » comme le disait la note 54 §2.4 : le chemin audio
+appelle **deux fonctions** en leur passant la **ligne des tampons de sortie** comme argument, et le
+compte des pistes est **à l'intérieur** d'elles.
+
+- `0x40059818` : `pea.l $80001858.l` → `jsr 0x400a7d4a` — la **boucle des voix** (déjà portée à 8,
+  §3.8.f) reçoit la ligne en argument ;
+- `0x40059824` : `pea.l $80001858.l` → `jsr 0x40056d9c` — le **mixeur** reçoit la même ligne ;
+- `0x40056d9c` : boucle interne de **8** tours (`d5 = 0x20`, pas de 4 → 8 × 4 = les 32 trames du bloc),
+  boucle externe sur les entrées du cluster (`a2` de `0x40fe4c90` jusqu'à `0x40fe4c9c`, soit 3 tours —
+  L / R / multi ?). Le mixeur semble donc **déjà générique** sur la ligne ; c'est le **masque/bornes**
+  internes qui fixent le nombre de pistes, pas six appels.
+- **Trouvaille au passage** : un **second groupe déroulé de six** (comme celui de la zone événements,
+  §3.8.a) dans le chemin audio, `0x400597ea..0x40059806` : `move.w d0,$32(a2)` puis `+0x42` six fois
+  (les **params** des 6 pistes), suivi de **deux champs isolés** (`$1b0(a2)`, `$1ae(a2)`). Huit pistes
+  demandent **deux magasins de plus** (`$1be(a2)`, `$200(a2)`) — donc **du code neuf**, à loger.
+- **Prochaine étape du mixeur** : désassembler `0x40056d9c` **avec les EMAC** (`mcfw.emac_disasm`, que
+  capstone ne sait pas lire) pour trouver le masque/les bornes internes, et traiter le groupe déroulé
+  des params comme celui de la zone événements.
 
 ## 4. Le chemin menant au premier firmware Groove
 
@@ -428,9 +469,10 @@ Le census des accueils a été refait (`build/re8/probe_homes.py`, `probe_sramga
    `tweaks/model-cycles_OS1.13/56-groove-8tracks.json` (131 écritures) : les bornes, les 113 littéraux
    relogés (lignes + deux mini-zones, sites vérifiés par désassemblage), les constructions des
    mini-zones, et une **assertion de non-recouvrement** des accueils. **Tout en DDR** (§3.10).
-   Restent, jalon 2 : les 2 appels du mixeur et les 2 tableaux de gains, les 10 entrées de
-   descripteurs, le pas du pattern et la conversion des projets, l'interface (non décodée) — et la
-   remesure CPU des lignes chaudes en DDR.
+   Restent, jalon 2 : le **mixeur** (§3.12 : le compte des pistes est dans ses bornes internes, pas
+   dans six appels écrits à la main — et un **second groupe déroulé de six** dans les params,
+   `0x400597ea`, demandera deux magasins de plus), les 10 entrées de descripteurs, le pas du pattern
+   et la conversion des projets, l'interface (non décodée). La mesure mémoire est faite (§3.11.H).
 4. Prouver en émulation avec `tools/re/test_load8.py` (pistes 0-5 octet-identiques stock ; 7-8 jouent
    avec machine TONE ; pile impeccable) — plus le banc `0xFF` ; la vérification MIDI/note par piste
    relève de la machine (l'ISR complet ne s'émule pas).

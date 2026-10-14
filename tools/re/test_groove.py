@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from unicorn import UC_HOOK_CODE
+from unicorn import UC_HOOK_CODE, UC_HOOK_MEM_READ, UC_HOOK_MEM_WRITE
 from unicorn import m68k_const as mk
 
 HERE = Path(__file__).resolve().parent
@@ -94,25 +94,57 @@ class GrooveEngine(E.Engine):
         return np.frombuffer(bytes(raw), dtype='>i4').reshape(self.n, 32).astype(np.int64)
 
 
-def prepare(stock, lay, active, ntracks=None, engine=None, blocks=BLOCKS, fill=None, only=None):
-    """Une note TONE soutenue sur chaque piste active ; renvoie les blocs de sortie."""
+def make_engine(stock, lay, active, engine=None, fill=None, only=None):
+    """Construit et configure un moteur (sans jouer) : une note TONE sur chaque piste active."""
     cls = engine or GrooveEngine
     if cls is E.Engine:
-        ntracks = ntracks or 6
         e = cls(stock)
     else:
-        ntracks = ntracks or NTRACKS
-        e = cls(stock, lay, fill=fill, only=only, ntracks=ntracks)
+        e = cls(stock, lay, fill=fill, only=only, ntracks=NTRACKS)
     v0 = getattr(e, 'VOICE0', E.VOICE0)
     kw = dict(pitch=64, color=30, shape=0, sweep=90, contour=100, punch=0, gate=0, finetune=64, decay=50)
-    for t in range(ntracks):
+    for t in range(len(e.trk)):
         e.set(t, machine=OFF, **kw)
     for t in active:
         e.set(t, machine=TONE, **dict(kw, note=36))
         e.uc.mem_write(v0 + t * E.VSTRIDE, struct.pack('>I', TONE))
-    for t in range(ntracks):
+    for t in range(len(e.trk)):
         if t not in active:
             e.uc.mem_write(v0 + t * E.VSTRIDE, struct.pack('>I', OFF))
+    return e
+
+
+def prepare(stock, lay, active, ntracks=None, engine=None, blocks=BLOCKS, fill=None, only=None):
+    """Une note TONE soutenue sur chaque piste active ; renvoie les blocs de sortie."""
+    e = make_engine(stock, lay, active, engine=engine, fill=fill, only=only)
+    trig = sum(1 << t for t in active)
+    out = []
+    for b in range(blocks):
+        out.append(e.block(trig if b == 1 else 0, 0))
+    return np.array(out)
+
+
+def line_stats(stock, lay, active, engine=None, blocks=6):
+    """Lignes de cache de 16 o distinctes touchées pendant des blocs (notes/23 §4, notes/27 §3).
+
+    L'émulateur ne chronomètre pas les attentes de la SDRAM : la mesure du dépôt est le nombre de
+    lignes distinctes touchées, par région (la DDR est en cache copyback, la SRAM interne non).
+    """
+    e = make_engine(stock, lay, active, engine=engine)
+    seen = {'code': set(), 'DDR data': set(), 'SRAM': set(), 'autre': set()}
+
+    def hk(uc, access, addr, size, value, ud):
+        for a in range(addr, addr + size):
+            key = ('code' if 0x40000400 <= a < 0x4019B590
+                   else 'DDR data' if 0x4019B590 <= a < 0x48000000
+                   else 'SRAM' if 0x80000000 <= a < 0x80020000 else 'autre')
+            seen[key].add(a >> 4)
+
+    e.uc.hook_add(UC_HOOK_MEM_READ | UC_HOOK_MEM_WRITE, hk)
+    trig = sum(1 << t for t in active)
+    for b in range(blocks):
+        e.block(trig if b == 1 else 0, 0)
+    return {k: len(v) for k, v in seen.items()}
     trig = sum(1 << t for t in active)
     out = []
     for b in range(blocks):
@@ -219,6 +251,18 @@ def main():
     ok &= not miss and d4s == {TONE}
     if miss:
         print('   FAIL : piste(s) sans appel : %s' % miss)
+
+    print('\nH. lignes de cache de 16 o touchées (6 blocs, 1 note par piste)')
+    print('   %-28s %7s %9s %7s %6s' % ('scénario', 'code', 'DDR data', 'SRAM', 'autre'))
+    ls6 = line_stats(stock, lay, list(range(6)), engine=E.Engine)
+    ls8 = line_stats(groove, lay, list(range(NTRACKS)))
+    for label, ls in (('stock : 6 voix', ls6), ('groove : 8 voix', ls8)):
+        print('   %-28s %7d %9d %7d %6d' % (label, ls['code'], ls['DDR data'], ls['SRAM'], ls['autre']))
+    print('   delta  : code %+d, DDR data %+d, SRAM %+d'
+          % (ls8['code'] - ls6['code'], ls8['DDR data'] - ls6['DDR data'], ls8['SRAM'] - ls6['SRAM']))
+    print('   La DDR est en cache copyback, la SRAM interne à un cycle (notes/23 §4, notes/27 §3) ;')
+    print("   l'émulateur ne chronomètre pas les défauts de cache : ces lignes sont un indicateur,")
+    print('   pas un temps — le temps réel se mesure sur la machine (notes/23 §4).')
 
     print('\n%s' % ('TOUT OK' if ok else 'ÉCHEC'))
     raise SystemExit(0 if ok else 1)
