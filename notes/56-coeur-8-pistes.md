@@ -2324,6 +2324,73 @@ contrôles E viennent de montrer que c'est la seconde branche.**
 laisse une base nette : format décodé, disposition recalculée, écritures vérifiées, géométrie
 prouvée — et **une demande précise** pour la suite.
 
+### 3.47 Le projet `.mcprj` de Kevin : **confirmation du sceau v6**, mais pas l'entrée du banc `[FAIT]`/`[HYP]` (14/10)
+
+`build/re8/probe_mcprj*.py`, `probe_payload.py`, `probe_payload2.py`. Donnée utilisateur : une
+copie du payload est dans `firmware/` (**ignoré par git**, vérifié : `.gitignore:2:firmware/`).
+
+#### a) Ce qu'est un `.mcprj` `[FAIT]`
+
+C'est une **archive ZIP** (`PK\x03\x04`) de deux entrées :
+
+```
+manifest.json   143 o  {"FormatVersion":"1.0","ProductType":["47"],
+                        "Payload":"New","FileType":"Project","FirmwareVersion":"1.13"}
+New           14054 o  la charge utile
+```
+
+`ProductType 47` = Model:Cycles, `FirmwareVersion 1.13` ✓.
+
+#### b) **Le sceau de version 6, dans de la vraie donnée** `[FAIT]`
+
+La charge utile commence par un en-tête puis, en **`0x24`** :
+
+```
+be ef ba ce 00 00 00 06 4e 65 77 ...      <- sceau, VERSION 6, "New"
+```
+
+**C'est la confirmation indépendante du §3.29** : le sceau `0xBEEFBACE` suivi du **champ de
+version**, ici **6** — la version courante — dans un projet réellement produit par la machine
+(OS 1.13). On trouve **8 sceaux** (`0x24`, `0x23e8`, `0x295c`, `0x2c17`, `0x2d80`, `0x2ed9`,
+`0x31f9`, `0x349e`) et **6 sceaux de clôture** `0xBACEF00C` : la charge utile contient
+**plusieurs enregistrements estampillés**.
+
+#### c) Mais **ce n'est pas** l'image du projet `[FAIT]`
+
+| | |
+|---|---|
+| `00 00 00 04` (le genre attendu par le dépliage de pattern) | **aucun site** |
+| pas des remplissages `0xFF` | **irrégulier** (165, 95, 58, 112, 143, 69, …) |
+| taille | 14 054 o (l'image projet en fait 2 163 716) |
+
+C'est donc un **flux de transfert à longueur variable** — le format **d'Elektron Transfer**, pas
+l'image brute ni un pattern rangé. Passé au dépliage de l'OS (`0x4005b894`), à six offsets
+différents, il ne produit **rien** (le contrôle de genre échoue partout).
+
+**Conséquence** : l'entrée authentique existe, mais **dans un format non décodé** — le décoder est
+un **nouveau chantier de RE** (le chemin d'import, `/projects/`, `#CONTENT_UPLOAD`).
+
+#### d) Ce qui débloquerait vraiment le banc `[HYP]`
+
+Deux voies, par ordre de coût :
+
+1. **`#MMCDUMP`** : l'automate d'interface de l'OS sait **dumper le +Drive** (§3.33.c). Maxime peut
+   le lancer par MIDI : on obtiendrait **l'image projet brute** (2,16 Mo, celle que la chaîne de
+   version traite) — l'entrée exacte du banc ;
+2. **faire initialiser un projet par l'OS lui-même** : l'image contient
+   `Project::initializeNewProject` (RTTI, §3.30.c). La faire tourner donnerait un pattern
+   **canonique**, donc une entrée valide **sans aucun fichier** — c'est une étape de RE, mais
+   bornée.
+
+**La voie 2 est la plus propre** : elle ne dépend d'aucune donnée extérieure et donne exactement ce
+qui manque au §3.46 (un pattern **valide** pour que l'aller-retour ait un sens).
+
+#### e) L'état
+
+Le jalon 2 reste **non clos**, le JSON **retiré**, le générateur **refuse d'écrire**, rien
+d'incomplet n'est versionné. **Acquis en plus** : le sceau de version **6** confirmé **dans de la
+vraie donnée utilisateur**, et le `.mcprj` compris (archive ZIP + manifeste + flux de transfert).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
