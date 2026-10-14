@@ -547,6 +547,49 @@ voix (EMAC), atteinte par des adresses **calculées** (aucune référence litté
 pas de 12 o ressemble à une structure par piste (12 o = 6 mots), mais la base n'est pas encore
 identifiée. **À trancher au prochain passage.**
 
+### 3.15 La famille `0x422ff1xx` cartographiée `[FAIT]` (14/10)
+
+La garde du §3.14.a a mené à une famille par piste en SDRAM. Cartographie par désassemblage de
+**chaque** site d'usage (`build/re8/probe_family_map.py`, avec les EMAC) :
+
+| Adresse | Nature | Pas | Preuve |
+|---|---|---|---|
+| `0x422ff158` | **champ simple** (un pointeur sauvegardé puis relu) | — | `movel 0x422ff158,%d1` / `movel %a2,0x422ff158` |
+| `0x422ff15c` | **masque 32 bits** | — | `orl %d1,0x422ff15c` avec `%d1 = 1 << n` |
+| `0x422ff160` | **champ simple** (compteur lu d'un registre matériel `0xfc094014`) | — | `movel %d0,0x422ff160` |
+| `0x422ff164` | **champ simple** (registre `0xfc094016`) | — | `movel %d0,0x422ff164` |
+| `0x422ff168` | **tableau d'octets par piste** | 1 | `moveb %d3,%fp@(0,%d0:l)` |
+| `0x422ff16e` | **tableau d'octets par piste** | 1 | `moveb %a0@+,%fp@(0,%d0:l)` (`0x422ff16c` n'est que `a1@(2,%d2:l)`) |
+| `0x422ff174` | **tableau d'octets par piste** | 1 | `mvsb %a1@(0,%d2:l),%d3` |
+| `0x422ff17c` | **table de pointeurs par piste** | 4 | `%a3@(0,%d6:l:4)` avec `d6 = piste + 5` : la table commence bien à `0x422ff17c` |
+| `0x422ff194` | **structure suivante** (juste après la table) | ? | `lea 0x422ff194,%a4` — **pas encore décodée** |
+| `0x422ff1ac` | **champ simple** | — | `movel %a0@,0x422ff1ac` |
+
+Disposition déduite des bases :
+
+```
+0x422ff168  octets[6]  (6 o)   ┐
+0x422ff16e  octets[6]  (6 o)   ├ trois tableaux d'octets PACKÉS (bases à 6 o d'écart)
+0x422ff174  octets[6]  (6 o)   ┘ -> fin 0x422ff17a
+0x422ff17a  2 o non référencés
+0x422ff17c  pointeurs[6] (24 o)  -> fin 0x422ff194   <- finit EXACTEMENT sur la structure suivante
+```
+
+- **Les trois tableaux d'octets sont collés** : les élargir à 8 o ferait **déborder** l'un sur l'autre.
+  La table de pointeurs **finit exactement** sur `0x422ff194`. → la famille doit être **relogée en
+  bloc** `[0x422ff168, 0x422ff194)` (0x2C o), reconstruite à 8 logements (octets[8] ×3 puis
+  pointeurs[8], alignés) et ses **quatre littéraux** réécrits — même méthode que le cluster (§3.8.c).
+- **Bornes dans les fonctions de la famille** : `0x4005449e` `7206` #6 **confirmé** (la boucle qui
+  écrit les trois tableaux d'octets : `cmpl %d0,%d1` en `0x400544b0`) ; `0x4005617c` `7205` #5
+  **confirmé** (la garde, §3.14.a) ; `0x400561ca` `7e06` #6 **non** (valeur de donnée, §3.13).
+  **À trier** : `0x4005478e` #5, `0x40055372` #6, `0x400553e2` #6, `0x4005544e` #6.
+- **Pas encore décodée** : `0x422ff194` (la structure juste après la table de pointeurs, peut-être
+  par piste elle aussi) — à décoder avant de figer le relogement.
+
+**Donc** : la famille est cartographiée, mais son traitement demande encore **quatre bornes triées** et
+`0x422ff194` décodée. Comme pour la garde, on ne fait pas la moitié : **le relogement, les bornes et la
+garde partiront ensemble.**
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
