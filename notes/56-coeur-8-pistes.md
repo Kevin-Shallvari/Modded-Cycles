@@ -1702,6 +1702,66 @@ de 32 bits peut viser n'importe où ✓ — donc les kits peuvent bien partir ve
   car `96` est une valeur trop commune pour un scan brut : il faut trier par instruction ;
 - les sites de **`14848` en déplacement** (39 relevés, dont des coïncidences à écarter).
 
+### 3.37 Le générateur du jalon « pattern » — et un arrêt net là où la preuve manque `[FAIT]`/`[HYP]` (14/10)
+
+`tools/gen_groove_pattern.py` → `tweaks/model-cycles_OS1.13/57-groove-patterns.json`.
+C'est un **fichier de jalon distinct** de `56-groove-8tracks.json`, pour que l'artefact prouvé du
+jalon 1 reste intact ; les deux s'appliquent dans l'ordre (56 puis 57).
+
+#### a) La disposition est **arrêtée** `[FAIT]`
+
+| | Avant | Après |
+|---|---|---|
+| image projet | 2 163 716 | **2 224 484** (+60 768) |
+| en-tête de projet | `0x406fa024` | **`0x40708d84`** |
+| table des patterns | `0x406fa040` | **`0x40708da0`** |
+| kits | en-tête + 2 948 188 | **`0x43dd0000`**, offset **57 438 844** |
+
+Le générateur calcule ces valeurs ; elles remplacent mes estimations à la main du §3.35.d
+(l'arithmétique de l'outil fait foi).
+
+**Le logement des kits est justifié** : dans la plage de 720 896 o à `0x43dd0000`, **tous** les
+littéraux sont regroupés à la toute fin (`0x43e80001..0x43e8ffff`) — donc
+`0x43dd0000..0x43e80000` est **entièrement sans littéral**, et les kits (583 520 o) y tiennent
+avec ~137 Ko de reste ✓.
+
+#### b) Les familles de sites, et les compteurs contrôlés `[FAIT]`
+
+13 familles d'**immédiats** (21, 1, 19, 12, 8, 7, 2, 1, 8, 20, 6, 7, 6 sites — conformes au
+triage du §3.36) et 7 familles de **déplacements** : 4 en mode *registre* (4336 : 7, 30706 : 4,
+30642 : 3, 14736 : 8) et 3 en mode *absolu* (7094 : 7, 600 : 6, 14848 : 30) → **184 écritures**.
+
+#### c) **L'arrêt net** : le tri n'est pas une preuve `[HYP]`
+
+Le partage « absolu / registre » est un **premier filtre**, pas une démonstration : il suppose
+qu'une taille est toujours poussée en absolu et qu'un décalage d'enregistrement est toujours à
+registre. Or :
+
+- `lea.l $1bb6(a4),a4` (`0x4005d55a`) ressemble à un **pas de kit** (7 094) qui devrait changer ;
+- `pea.l $3a00(a2)` (`0x4005e2be`) et `pea.l $3a00(a5)` (`0x4005ee5c`) poussent `a2 + 14848`,
+  c'est-à-dire peut-être **le bloc suivant** — à changer aussi ;
+- à l'inverse, les déplacements de `600` sont pour la plupart des **coïncidences**
+  (`clr.l $258(a2)`) qu'il ne faut **pas** toucher.
+
+Les compteurs « conformes » du §b sont donc **partiellement circulaires** : je les ai fixés à
+partir du même filtre. Il reste **~11 sites en mode registre** à revoir un par un pour `7094`,
+`600` et `14848`.
+
+**En conséquence, l'outil refuse d'écrire** : `REVIEW_PENDING = True` fait échouer
+`gen_groove_pattern.py` (code 1, aucun fichier écrit) tant que la revue n'est pas faite ; un
+`--draft` explicite est nécessaire pour écrire malgré tout. **Aucun firmware incomplet ne peut
+donc être construit à partir de ce JSON.** C'est le même principe que la règle du dépôt : une
+preuve manquante arrête la ligne, elle ne la contourne pas.
+
+#### d) La suite, dans l'ordre
+
+1. **revoir les ~11 sites en mode registre** (§c), ajuster les compteurs, puis lever
+   `REVIEW_PENDING` ;
+2. écrire le JSON, `--check`, et **prouver en émulation** (`tools/re/test_groove_pattern.py` :
+   pattern 8 pistes chargé, joué, sauvegardé, relu) ;
+3. le **convertisseur v6 → v7** (§3.29.f) et le sort de la **banque F** (§3.27) ;
+4. l'**interface** : la page de pistes (§3.32).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
