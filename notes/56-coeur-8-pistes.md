@@ -2545,6 +2545,61 @@ trancher en écrivant le générateur.
 **Puis** la page de pistes (§3.32) et les 21 bornes d'interface (§3.31, §3.34) : là seulement
 Groove sera **jouable**, et c'est à ce moment qu'une PR aura un sens.
 
+### 3.50 Jalon 3, étape **3a** : le convertisseur d'élément — écrit et **prouvé** `[FAIT]` (15/10)
+
+`tools/machines/groove/convert_v7.S`, `tools/re/test_groove_convert.py`.
+
+#### a) Le code `[FAIT]`
+
+`groove_elem(dst, src)` — le repack d'**un** pattern rangé, **58 octets** de ColdFire :
+
+```
+206f 0004   moveal %sp@(4),%a0      ; dst
+226f 0008   moveal %sp@(8),%a1      ; src
+2019 20c0   movel %a1@+,%d0 / movel %d0,%a0@+     ; [0,4)
+223c 0000 043b   movel #1083,%d1                  ; 4 332 o = les 6 pistes
+223c 0000 0169   movel #361,%d1                   ; 1 444 o = ZERO (pistes 6-7)
+223c 0000 0a44   movel #2628,%d1                  ; 10 512 o = la queue, telle quelle
+7001 4e75   moveq #1,%d0 / rts
+```
+
+Les trois longueurs et les trois offsets sont divisibles par 4, et les adresses alignées : tout se
+copie en **mots longs**. L'outil est le **m68k-linux-gnu-gcc de WSL** (`-mcpu=54418`), comme le
+font les mods du dépôt ; le banc essaie le compilateur **natif** d'abord, puis WSL.
+
+#### b) Les trois contrôles `[FAIT]`
+
+| | |
+|---|---|
+| **A** | le code s'assemble (58 o) et **tient dans la cave** `0x40147f22` (182 o, remplie de `0xFF` dans l'image d'origine) |
+| **B** | le repack produit par le **code** est **identique octet à octet** à la **référence Python** (16 292 o comparés) |
+| **C** | **à travers l'OS** : le pattern v6 déplié par le **stock** et le pattern v7 produit par le convertisseur puis déplié par **Groove** donnent les **mêmes pistes 0-5** — pas **et** queues — et **aucun verrou sur les pistes 6-7** |
+
+**Le jalon 2 est donc vu à travers le convertisseur** : la conversion ne perd rien des pistes 0-5
+et n'invente rien sur les pistes 6-7.
+
+#### c) Trois pièges rencontrés, notés pour la suite `[FAIT]`
+
+1. **Un script shell écrit par Python sous Windows sort en CRLF**, et `bash` l'exécute en
+   *échouant silencieusement* (la dernière commande du tuyau réussit) : `write_text(..., newline='\n')`
+   est obligatoire. C'est ce qui a produit « 0 octets assemblés » ;
+2. **le remplissage de la queue couvre 66 octets par pas, pas 68** (§3.44) : le **34e mot** d'un pas
+   n'est jamais rempli — un contrôle qui exige `0xFFFF` partout sur une queue trouve donc 64 mots
+   par piste qui ne le sont pas, **sans qu'aucun verrou n'existe**. Le contrôle utile porte sur les
+   **33 mots remplis** ;
+3. **la queue rangée synthétique doit être valide** (une entrée = 1 o de pas, 1 o de piste,
+   64 mots) : des octets quelconques font écrire des verrous sur n'importe quelle piste. C'est le
+   piège du §3.46, rencontré **une troisième fois** — la queue est donc mise à **zéro** dans le
+   banc.
+
+#### d) La suite du jalon 3
+
+**3b** — le code de chaîne : les deux boucles (80 patterns au pas 14 848 → 16 292, 80 kits au pas
+7 094 → 7 294), le `memcpy` final, le contrôle de fin (`== 7`, sceau de clôture à `+1944160`), et
+la **redirection en `0x4005de74`**. **3c** le générateur (`58-groove-convert.json`). **3d** la
+preuve sur une **image entière** : une image v6 convertie en v7 puis **relue**. Ensuite la page de
+pistes.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
