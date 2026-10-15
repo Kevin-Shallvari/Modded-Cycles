@@ -2758,6 +2758,53 @@ Pour ces quatre valeurs, **le balayage par valeur ne suffit pas** : il faut **li
 courantes** (une liste blanche) plutôt que d'exclure la chaîne (une liste noire). C'est la forme à
 donner au générateur quand f et g seront cartographiés.
 
+### 3.53 Les deux champs de kit **cartographiés** — et la leçon confirmée `[FAIT]`/`[HYP]` (15/10)
+
+`build/re8/map_kitfields.py`, `map_kitfields2.py`.
+
+#### a) Ce que sont `f` et `g` `[FAIT]`
+
+Les deux sous-convertisseurs que l'élément de déroulement appelle (`0x4005b266` pour `f`,
+`0x4005b178` pour `g`) disent tout :
+
+| | taille | structure |
+|---|---|---|
+| **`f`** | **66 o** | piloté par une **table** (`0x4010ee04` → `0x4010ee38`) : des mots écrits à des offsets choisis, puis 8 octets remis à zéro à `a2@(68)` |
+| **`g`** | **6 400 o** | **64 morceaux de 100 o** (`cmpil #6400`, pas de 100) — **par PAS**, pas par piste |
+
+**Aucun des deux ne dépend du nombre de pistes.** L'aire par piste (100 o × 6 → 8) grandit, donc
+`f` et `g` **décalent de +200** — mais leur **contenu** est inchangé.
+
+#### b) Les sous-convertisseurs n'ont pas besoin d'être touchés `[FAIT]`
+
+`g` travaille sur `a4 = a2@(4)` et `f` écrit à `a2@(68)` : leurs décalages internes sont
+**relatifs au morceau**, donc ils suivent le pointeur. **Seul celui qui calcule les offsets
+absolus** (628/694/632/708) doit bouger.
+
+#### c) Où sont les offsets absolus `[FAIT]`/`[HYP]`
+
+Le balayage par valeur en rend 36, 6, 54 et 27 — mais regroupés par région, la vérité apparaît :
+
+| | sites réels | où |
+|---|---|---|
+| **694** (base de `g`) | **4** | les 2 de l'élément de déroulement, `0x40009ac0`, `0x400613f4` |
+| **628** (base de `f`) | **~10** | l'élément de déroulement, `0x40009ab4`, `0x40009b76`, `0x4000a562`, `0x400332ec`, `0x400613ea` |
+| **632 / 708** (rangés) | **8** | l'emballeur (`0x4005d13c`, `0x4005d15e`), l'élément de déroulement, `0x4005bdda` |
+
+Le reste est **coïncidence** : `cmp.w $2b6.w,d0` dans de la donnée, `andi.l #$2b602c0`,
+`pea 0x274` (une **adresse**, pas un décalage), et des `clrl` en série sur un tampon quelconque
+(`0x400333dc` efface 620, 624, 628, 632, 636). **Le moteur audio proprement dit est net** : les
+huit fonctions qui indexent les kits par 7 094 n'ont **aucun** offset absolu de `f` ou `g` dans
+±512 octets — donc il lit la fiche par **pointeur**, comme le fait le format d'origine.
+
+#### d) Deux choses restent `[HYP]`
+
+1. **un troisième élément v5 → v6** en `0x4005bdda` utilise `632` et n'est **pas** dans les plages
+   `LEGACY` (qui commence à `0x4005be32`) → la plage doit être élargie ;
+2. il faut trancher **un par un** les ~10 sites de `628` hors codec : certains manipulent la
+   **fiche de kit**, d'autres un **tampon de pattern** (`clrl` en série). C'est le prix de la
+   leçon : **pour ces quatre valeurs, le balayage par valeur ne suffit pas.**
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
