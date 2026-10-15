@@ -2452,6 +2452,99 @@ TOUT OK
 **Rien n'est « testé sur la machine »** : c'est à Maxime de le faire, et le mod reste
 `experimental` jusqu'à son retour.
 
+### 3.49 Jalon 3 : le convertisseur **v6 → v7** — la conception, arrêtée `[FAIT]`/`[HYP]` (15/10)
+
+Le jalon 2 est clos (§3.48) mais Groove **n'est pas utilisable** : sans ce convertisseur, un projet
+d'origine (version 6) serait **mal lu** par un OS qui attend la version 7 — c'est le verrou qui
+protège les données de l'utilisateur. La **page de pistes** (§3.32) vient après.
+
+#### a) La chaîne existante, et le point d'insertion `[FAIT]`
+
+`0x4005d9f6` contient **six blocs de 198 octets** (0xC6), un par version 0..5. Le dernier (v5) :
+
+```
+4005ddde  movel #2163716,%sp@-      ; alloue le tampon de la version SUIVANTE
+4005dde4  jsr %fp@                  ; l'allocateur
+4005ddee  pea #0x10                 ; alloue l'objet de 16 o
+4005ddf4  jsr %fp@
+4005de02  movel #1074852332,%a0@    ; le descripteur de CLASSE (0x4010f1ec)
+4005de08  movel %a4,%a0@(12)        ; le tampon
+4005de1c  jsr %pc@(0x4005c526)      ; LE CONVERTISSEUR de la version
+4005de52  movel #2163716,%sp@-      ; puis memcpy(a2, resultat, taille)
+4005de5c  jsr 0x4008f1f0
+4005de6a  moveb #1,%a3@             ; drapeau « converti »
+4005de6e  movel %d2,%sp@- / jsr %a5@ ; libere
+4005de74  movel %a2@(4),%d0         ; <<< LE CONTROLE DE FIN DE CHAINE
+4005de78  moveal #0xBEEFBACE,%a0
+4005de7e  cmpal %a2@,%a0            ; sceau
+4005de82  movel #2163712,%d1        ; offset du sceau de CLOTURE
+4005de8e  cmpal %a2@(0,%d1:l),%a0
+4005de94  moveq #6,%d1              ; <<< LA VERSION COURANTE
+4005de96  cmpl %d0,%d1
+4005de98  seq %d0
+```
+
+**Le point d'insertion est donc `0x4005de74`** : les ~42 octets du contrôle de fin (`0x4005de74` →
+`0x4005de9e`) deviennent un **`jsr`** vers le nouveau code, qui fait **l'étape v7** puis **le
+contrôle de fin** (`== 7`, sceau de clôture à `1944160`) et renvoie le résultat.
+
+#### b) Ce que le convertisseur v6 → v7 doit faire `[FAIT]`
+
+| | v6 (source) | v7 (destination) |
+|---|---|---|
+| image | 2 163 716 | **1 944 164** |
+| patterns | 96 × 14 848 | **80 × 16 292** |
+| kits | 96 × 7 094 | **80 × 7 294** |
+| sceau de clôture | `+2163712` | **`+1944160`** |
+
+Le **repacking d'un pattern** : `[4][6×722 = 4 332][10 512]` → `[4][8×722 = 5 776][10 512]`, c'est-à-dire
+**copier 4, copier 4 332, mettre à zéro 1 444 (les pas des pistes 6-7), copier 10 512** — la queue
+rangée (une liste plate de 80 entrées de 130 o, §3.42) est **copiée telle quelle** : ses entrées
+portent leur numéro de piste (0..5), donc elles restent valides, et les pistes 6-7 n'ont aucun
+verrou. Les **kits** : copier 7 094, mettre à zéro 200.
+
+**La banque F est perdue** : le convertisseur ne garde que les **80 premiers** patterns (décision de
+Kevin, §3.27). C'est le seul point de perte de données du mod, et il sera **documenté** — le
+convertisseur ne peut pas avertir l'utilisateur.
+
+#### c) La forme du code à écrire `[FAIT]`
+
+L'élément existant ne peut pas être réutilisé tel quel : la boucle des convertisseurs avance la
+**source et la destination du même pas** (14 848), alors qu'ici les pas **diffèrent** (14 848 → 16 292).
+Le nouveau code est donc :
+
+1. `memcpy(dst+8, src+8, 16)` (l'en-tête du record) et la copie de champ `a3@(24) = a2@(24)` ;
+2. **une boucle de 80 patterns** : source `src + 512 + p×14848`, destination `dst + 512 + p×16292`,
+   appelant un **convertisseur d'élément** qui repacke un pattern (4 + 4 332 + 1 444 zéros + 10 512) ;
+3. **une boucle de 80 kits** : `7094` copiés + `200` mis à zéro, aux nouveaux offsets ;
+4. `memcpy(a2, resultat, 1944164)`, le drapeau, la libération ;
+5. le **contrôle de fin** : sceau, sceau de clôture à `+1944160`, version `== 7`.
+
+Soit **~400 à 600 octets** d'assembleur ColdFire, en deux fonctions.
+
+#### d) Où loger ce code `[HYP]`
+
+`tools/sprites.py` recense **neuf masques de sprite libérables** (376 à 1 024 o, `0x4015c044`,
+`0x4016cae8`, `0x4018a788`, `0x40189930`, `0x4018a220`, `0x40183118`, `0x40185018`, `0x40185968`,
+`0x40185c58`) : les mods du dépôt les réutilisent en **redirigeant leur constructeur**. **Groove
+n'utilise aucun de ces mods**, donc les masques sont libres — au prix de la même redirection (sinon
+le sprite de l'OS est corrompu). L'autre voie est un **cave** du code sans aucune référence ; à
+trancher en écrivant le générateur.
+
+#### e) Les étapes du jalon 3
+
+1. **3a** — le convertisseur d'élément (le repack d'un pattern) et sa preuve isolée ;
+2. **3b** — le code de chaîne (les deux boucles, le memcpy, le contrôle de fin) et la redirection
+   en `0x4005de74` ;
+3. **3c** — le générateur (`tools/gen_groove_convert.py` → `58-groove-convert.json`) : les octets,
+   la taille de l'image v7, l'offset du sceau de clôture, la version de fin `7`, et le logement ;
+4. **3d** — la **preuve en émulation** : une image v6 réelle (le `.mcprj` de Kevin en donne un
+   exemple, §3.47) convertie en v7, puis **relue** — les pistes 0-5 et les kits doivent revenir
+   identiques, et les pistes 6-7 vides.
+
+**Puis** la page de pistes (§3.32) et les 21 bornes d'interface (§3.31, §3.34) : là seulement
+Groove sera **jouable**, et c'est à ce moment qu'une PR aura un sens.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
