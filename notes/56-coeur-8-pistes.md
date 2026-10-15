@@ -2594,11 +2594,169 @@ et n'invente rien sur les pistes 6-7.
 
 #### d) La suite du jalon 3
 
-**3b** — le code de chaîne : les deux boucles (80 patterns au pas 14 848 → 16 292, 80 kits au pas
-7 094 → 7 294), le `memcpy` final, le contrôle de fin (`== 7`, sceau de clôture à `+1944160`), et
-la **redirection en `0x4005de74`**. **3c** le générateur (`58-groove-convert.json`). **3d** la
-preuve sur une **image entière** : une image v6 convertie en v7 puis **relue**. Ensuite la page de
-pistes.
+**3b** — le code de chaîne : les deux boucles, le `memcpy` final, le contrôle de fin (`== 7`), et la
+**redirection en `0x4005de74`**. **3c** le générateur (`58-groove-convert.json`). **3d** la preuve
+sur une **image entière** : une image v6 convertie en v7 puis **relue**. Ensuite la page de pistes.
+
+### 3.51 Jalon 3 : le **conteneur** de l'image — le jalon 2 est **incomplet**, et le chiffre publié est faux `[FAIT]` (15/10)
+
+`build/re8/dis_v5conv.py`, `dis_unpack.py`, `dis_kitelem.py`, `dis_save.py`, `dis_7094.py`.
+
+En écrivant 3b il a fallu **relire le conteneur** plutôt que de reprendre les chiffres du §3.43.b —
+et le §3.43.b **se trompait**. Voici ce que le code dit, et il le dit trois fois.
+
+#### a) Le blob de la chaîne, mesuré `[FAIT]`
+
+Le convertisseur **v5 → v6** (`0x4005c526`) est le modèle exact de ce que 3b doit faire. Il traite
+`a2` = le blob source et `a3` = le blob destination :
+
+```
+4005c588  addil #512,%d4               ; patterns a +512
+4005c5bc  cmpil #1425408,%d2           ; borne : 96 x 14848
+4005c5c4  moveal #1425920,%fp          ; kits a +1425920
+4005c5f6  cmpil #737280,%d2            ; borne : 96 x 7680   <<< 7 680, pas 7 094
+4005c5fe  pea 0x200 ... +2163200       ; copie 512 octets de queue
+4005c61c  movel %a2@,%a3@              ; le sceau
+4005c626  movel %a2@,%a3@(0,%d0:l)     ; sceau de CLOTURE a +2163712
+4005c62a  moveq #6,%d0 / movel %d0,%a3@(4)   ; version
+```
+
+Donc le blob de la chaîne (v6) : **`[512][96 × 14 848][96 × 7 680][512][4]` = 2 163 716** ✓.
+
+**Le pas rangé d'un kit est 7 680, pas 7 094.** Le dérouleur le redit, et la sauvegarde aussi :
+
+| site | ce qu'il avance |
+|---|---|
+| dérouleur `0x4005d358` | `addil #7680,%d7` (rangé) **et** `addil #7094,%d5` (déployé) |
+| sauvegarde `0x4008db0a` | `addil #7680,%d7` |
+| sauvegarde `0x4008d92e` | l'image allouée : 2 163 716 = 512 + 1425408 + 737280 + 516 ✓ |
+
+**7 680 = le creneau rangé** (dans le fichier et dans l'image), **7 094 = l'enregistrement déployé**
+(la table SDRAM). Les deux sont avancés **au même endroit** par le dérouleur, à des pas différents :
+c'est la preuve.
+
+#### b) Le kit, dans les deux sens `[FAIT]`
+
+L'élément de kit du dérouleur (`0x4005b2ae`, rangé → déployé) donne les deux dispositions d'un coup
+(`a2` = rangé, `a3` = déployé) :
+
+| | rangé | déployé |
+|---|---|---|
+| en-tête | +4 (16 o), +14 (12 o) | +0 (16 o), +10 (12 o) |
+| **par piste** | +32, **6 × 100 o** → 632 | +28, **6 × 100 o** → 628 |
+| champ f | +632 | +628 |
+| champ g | +708 (6 656 o) | +694 (6 400 o) |
+| total | 7 364 (creneau 7 680) | **7 094** ✓ |
+
+Le déployé est le rangé **décalé de 4** ✓. Et pour huit pistes, l'aire par piste passe à **800** :
+**tout ce qui la suit se décale de +200** — rangé f/g : 632 → **832**, 708 → **908** ; déployé :
+628 → **828**, 694 → **894**. D'où le kit déployé = 894 + 6 400 = **7 294** ✓ — **le chiffre du
+générateur est donc juste**, et il ne l'est que si le décalage est réel : c'est une confirmation.
+
+Le kit **rangé** à huit pistes = 908 + 6 656 = **7 564 ≤ 7 680** ✓ : **le creneau rangé ne change
+pas.** (Il a été dimensionné avec cette marge.)
+
+#### c) Ce qui est faux, et ce qui manque `[FAIT]`
+
+| | publié (§3.43.b, §3.44.b, générateur) | **correct** |
+|---|---|---|
+| taille du blob | 2 163 716 → **1 944 164** | → **1 918 788** |
+| sceau de clôture | `+1 944 160` | **`+1 918 784`** |
+| base des kits, fichier | 1 425 920 (non touchée) | **1 303 872** |
+| base des kits, image | 1 426 192 (non touchée) | **1 304 144** |
+| compte des patterns, sauvegarde | `moveq #96` (non touché) | **80** |
+| décalages internes du kit | non touchés | **+200** (628/694/632/708) |
+
+Le 1 944 164 publié vient de `80 × 16 292 + 80 × 7 294 + 57 284` : il met la taille **déployée** du
+kit (7 294) là où va le **creneau rangé** (7 680), et traite les 57 284 comme une constante. Le
+calcul juste est une **différence** : 2 163 716 − **122 048** (patterns : 96 × 14 848 → 80 × 16 292)
+− **122 880** (kits : 96 × 7 680 → 80 × 7 680) = **1 918 788** ✓. Vérification croisée : l'image
+`[784][80 × 16 292][80 × 7 680][244]` donne le **même** total ✓ (784 + 244 = 1 028 = 512 + 516).
+
+#### d) Et le firmware de jalon 2 **déborde son tampon** `[FAIT]`
+
+Le littéral d'allocation a été abaissé à 1 944 164, mais :
+
+- la **sauvegarde** empile 96 patterns et 96 kits depuis 1 426 192 / 1 425 920 → elle écrit jusqu'à
+  **2 163 472**, soit **219 308 octets après la fin** du tampon ;
+- le **dérouleur** lit 80 kits au pas 7 680 depuis 1 425 920 → jusqu'à **2 040 320**, soit
+  **121 532 octets après la fin**.
+
+Les bancs du jalon 2 sont **au niveau des éléments** (déplier/replier un pattern) : ils ne peuvent
+pas voir un débordement du **conteneur**. C'est le genre de défaut que la discipline « prouver en
+émulation » doit attraper au niveau de l'image entière — c'est-à-dire exactement **3d**.
+
+**Conséquence** : le jalon 3 ne peut pas se contenter d'écrire le convertisseur. Il doit d'abord
+**rendre le conteneur cohérent** (les six lignes du tableau c), ce qui est une **correction du
+jalon 2** (générateur + JSON + hash publié + note), puis écrire le convertisseur contre ce
+conteneur-là. Tant que ce n'est pas fait, un convertisseur juste produirait un blob que l'OS
+lirait **hors de son tampon**.
+
+### 3.52 Jalon 3, partie 1 : le conteneur corrigé — et la **chaîne de versions mise de côté** `[FAIT]` (15/10)
+
+`tools/gen_groove_pattern.py` réécrit, `build/re8/sweep_container.py`, `sweep_unknown.py`.
+
+#### a) La cause réelle : deux choses confondues `[FAIT]`
+
+Le balayage de toutes les constantes de disposition (immediats 32 bits **et** déplacements 16 bits)
+montre que le jalon 2 a réécrit **~100 sites uniformément** — alors que **~60 d'entre eux
+appartiennent à la chaîne des convertisseurs de version** (les six `v0…v5 → v6`, leurs éléments, et
+les six blocs de `0x4005d9f6`). Or **leur sortie est un bloc v6** : ils doivent garder la géométrie
+d'origine. Deux choses différentes étaient traitées comme une seule :
+
+| | décrit | géométrie |
+|---|---|---|
+| sauvegarde, chargements, création, matérialisation, marcheurs, dérouleur/emballeur | **le bloc courant** | **v7** |
+| les six convertisseurs, leurs éléments, les six blocs | **un bloc v6** (leur sortie) | **origine — à ne pas toucher** |
+
+C'est ce qui rendait le conteneur incohérent : le bloc courant gardait les bases v6
+(1 425 920 / 1 426 192 jamais touchées) pendant que les convertisseurs recevaient la géométrie v7.
+Et cela avait une conséquence de sûreté : **la chaîne débordait son propre tampon** (le convertisseur
+v5 → v6 copiait 96 patterns au pas v7 dans un tampon rabaissé à 1 944 164, jusqu'à 2 302 340).
+
+#### b) Le générateur sait maintenant le prouver `[FAIT]`
+
+`LEGACY` liste les plages de la chaîne, et le générateur **vérifie** que le jeu de changements ne
+les touche pas : il applique ses écritures et compare ces plages au stock. Résultat :
+
+```
+controle : les 5 plages de la chaine de versions sont identiques au stock
+total : 167 ecriture(s)
+```
+
+Les compteurs tombent **exactement** sur le triage : taille du bloc 14 sites (dont **6** dans la
+chaîne), sceau de clôture 4 (dont **5**), base des kits 9 (dont **12**), fin des blocs rangés 2
+(dont **6**), créneau rangé 12 (dont **7**), et les déplacements 5 / 4 / 3 / 6 / 31. La somme
+retrouve les compteurs revus du §3.37.
+
+**Une île courante dans la zone des convertisseurs** : `0x4005cd9e..0x4005cdde` est un aide du bloc
+**courant** — le marcheur de la queue rangée, qui lit le pas d'une entrée à `+4336` (→ `+5780`).
+C'est le contrôle du découpage qui l'a révélé : il a nommé `0x4005cdb2`, le site même que le §3.48
+avait prouvé nécessaire par l'aller-retour. La plage est donc coupée en deux.
+
+#### c) Le dernier point ouvert : les deux champs de kit `[HYP]`
+
+L'aire par piste du kit passe de 600 à 800 octets, donc **les deux champs qui la suivent décalent de
++200** : `628 → 828` et `694 → 894` (déployés), `632 → 832` et `708 → 908` (rangés). C'est ce qui
+rend le kit déployé égal à `894 + 6 400 = 7 294` — le chiffre du jalon 2, qui n'est juste **que** si
+ce décalage est réel.
+
+**Mais ces quatre valeurs ne peuvent pas être trouvées par valeur** : le balayage en rend **35, 5,
+47 et 19** sites, dont l'immense majorité sont des coïncidences (`632` et `708` sont des
+déplacements banals). Les sites **certains** sont les quatre de l'élément de déroulement
+(`0x4005b2ae`) et les deux de l'élément v5 → v6 (`0x4005be32`, dans `LEGACY`). Les autres — **les
+lecteurs des champs f et g de l'enregistrement déployé** — doivent être identifiés **par fonction**,
+un par un. C'est le dernier point ouvert du jalon 2.
+
+**En attendant, le générateur REFUSE d'écrire** (`KIT_FIELDS_PENDING`) : passer 600 à 800 sans ce
+décalage ferait écrire les pistes 7-8 **par-dessus** f et g. Aucun firmware incomplet ne doit
+pouvoir être construit — c'est la règle du §3.36, appliquée au cas présent.
+
+#### d) La leçon de méthode `[FAIT]`
+
+Pour ces quatre valeurs, **le balayage par valeur ne suffit pas** : il faut **lister les fonctions
+courantes** (une liste blanche) plutôt que d'exclure la chaîne (une liste noire). C'est la forme à
+donner au générateur quand f et g seront cartographiés.
 
 ## 4. Le chemin menant au premier firmware Groove
 

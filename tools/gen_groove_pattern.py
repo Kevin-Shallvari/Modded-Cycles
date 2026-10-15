@@ -1,30 +1,34 @@
 #!/usr/bin/env python3
-"""Génère tweaks/model-cycles_OS1.13/57-groove-patterns.json : le format de pattern à 8 pistes.
+"""Génère tweaks/model-cycles_OS1.13/57-groove-patterns.json : le format de pattern à 8 pistes
+ET le conteneur de l'image projet.
 
 Projet dérivé **Model:Groove** (notes/55). **Jalon 2** (notes/56 §3.27 à §3.36), à appliquer
 **après** `56-groove-8tracks.json` (jalon 1, le moteur audio). Construit en ligne de commande
 seulement, jamais dans le flasher.
 
-Ce que fait ce jalon — le format, la mémoire, et rien d'autre :
+Ce que fait ce jalon :
 
   1. **le format de pattern** : l'enregistrement déployé passe de 30 710 à **40 924** octets
-     (`4 + 8×722 + 8×4385 + 64`) et le bloc rangé de 14 848 à **16 292** (`4 + 8×722 + 10 512`).
-     Les **pas par piste** (722, 4385) et la **queue rangée** (10 512 — une liste plate de 80
-     entrées de 130 o, §3.42-§3.43) **ne changent pas** : seuls les compteurs bougent ;
-  2. **les kits** : 7 094 → **7 294** octets (100 o par piste) et la borne 600 → **800** ;
-  3. **le nombre de patterns** : 96 → **80**. La banque F est échangée contre les pistes 7-8
-     (§3.27 : c'est le seul point de perte de données du mod, à traiter par la conversion) ;
-  4. **la disposition** : l'image projet **rétrécit** de **219 552** octets (80 patterns à 8 pistes
-     coûtent moins que 96 à 6), donc l'en-tête et la table des patterns **descendent** d'autant. Les
-     kits ne tiennent plus juste après les patterns (ils dépasseraient l'ancienne aire de ~10 Ko,
-     dans une zone citée par 2208 littéraux) : ils vont dans la **plage libre** de 720 896 o à
-     `0x43dd0000` (aucun littéral jusqu'à `0x43e80000`).
+     (`4 + 8×722 + 8×4385 + 64`) et le bloc rangé de 14 848 à **16 292** (`4 + 8×722 + 10 512`) ;
+  2. **les kits** : l'enregistrement **déployé** passe de 7 094 à **7 294** (100 o par piste) et
+     l'aire par piste de 600 à **800** — ce qui **décale de +200** les deux champs qui la suivent
+     (628 → 828, 694 → 894 déployés ; 632 → 832, 708 → 908 rangés). Le **creneau rangé** d'un kit
+     (7 680) **ne change pas** : il a été dimensionné avec la marge (7 564 à huit pistes) ;
+  3. **le nombre de patterns** : 96 → **80** (la banque F est échangée contre les pistes 7-8) ;
+  4. **le conteneur du bloc courant** (§3.51) : la taille du bloc projet passe de 2 163 716 à
+     **1 918 788** et le sceau de clôture de +2 163 712 à **+1 918 784**, parce que les patterns
+     rangés passent à 16 292 et le nombre à 80 :
+         `[512][80 × 16 292][80 × 7 680][512][4]`
+     d'où la base des kits : 1 303 872 dans le fichier (512 + 80×16 292) et 1 304 144 dans l'image.
 
-Ce que ce jalon ne fait **pas** : la **conversion des projets existants** (le convertisseur
-v6 → v7, §3.29.f) et l'**interface** (la page de pistes, §3.32). Sans la conversion, un projet
-d'origine serait mal lu : ce jalon est un jalon de format, à prouver en émulation.
+**Le point capital de ce générateur** : la **chaîne des convertisseurs de version** (les six
+`v0…v5 → v6`, leurs éléments, et les six blocs de `0x4005d9f6`) décrit **un bloc v6** — sa sortie.
+Elle doit donc garder la **géométrie d'origine**, et le balayage par valeur doit l'**exclure**.
+Le jalon 2 la réécrivait comme le reste : c'est ce qui rendait le conteneur incohérent, et ce qui
+faisait **déborder** la chaîne (elle copiait 96 patterns au pas v7 dans un tampon rabaissé à
+1 944 164 octets). Voir `LEGACY` ci-dessous.
 
-    python3 tools/gen_groove_pattern.py --cycles model-cycles_OS1.13.syx [--check]
+    python3 tools/gen_groove_pattern.py --cycles model-cycles_OS1.13.syx [--check] [--audit]
 """
 import argparse
 import json
@@ -43,14 +47,12 @@ import capstone                    # noqa: E402
 OUT = HERE.parent / "tweaks" / "model-cycles_OS1.13" / "57-groove-patterns.json"
 BASE = build.BASE
 
-# --- la disposition (§3.43 : la queue rangee est une liste plate, elle NE grandit pas) ----
-#   bloc range = 4 + 8 x 722 + 10 512 (queue inchangee) = 16 292
-#   image      = 80 x 16292 + 80 x 7294 + 57 284 = 1 944 164  -> elle RETRECIT de 219 552
-#   donc l'en-tete et les patterns DESCENDENT, et tout tient DANS l'ancienne aire :
-#   patterns 0x406c8ce0..0x409c8c60, kits 0x409c8c60..0x40a57560 (l'ancienne fin : 0x40a6fe40).
-IMAGE_OLD = 2163716                 # 96 x 14848 + 96 x 7094 + 57284
-IMAGE_NEW = 1944164                 # 80 x 16292 + 80 x 7294 + 57284
-GROWTH = IMAGE_NEW - IMAGE_OLD      # -219552 (l'image retrecit)
+# --- le bloc courant (ce que Groove ecrit et lit) ----------------------------------------
+#   bloc = [512][80 x 16292][80 x 7680][512][4] = 1 918 788
+#   patterns 0x406c8ce0.., kits 0x43dd0000 (l'aire totale RETRECIT de 16672, §3.51)
+IMAGE_OLD = 2163716
+IMAGE_NEW = 1918788                 # 512 + 80x16292 + 80x7680 + 512 + 4
+GROWTH = IMAGE_NEW - IMAGE_OLD      # -244928
 HEADER_OLD = 0x406FA024
 PATTERNS_OLD = 0x406FA040
 HEADER_NEW = HEADER_OLD + GROWTH
@@ -58,25 +60,42 @@ PATTERNS_NEW = PATTERNS_OLD + GROWTH
 PATTERN_SIZE = 40924                # deploye : 4 + 8 x 722 + 8 x 4385 + 64
 PATTERN_COUNT = 80
 KITS_OLD_OFFSET = 2948188           # offset des kits, relatif a l'en-tete
-# Les kits ne tiennent plus juste apres les patterns (ils depasseraient l'ancienne aire de
-# ~10 Ko, dans une zone citee par 2208 litteraux) : ils vont dans la plage libre de 720 896 o
-# a 0x43dd0000 (aucun litteral jusqu'a 0x43e80000, §3.37.a).
-KITS_NEW = 0x43DD0000
+KITS_NEW = 0x43DD0000               # les kits ne tiennent plus apres les patterns : plage libre
 KITS_NEW_OFFSET = KITS_NEW - HEADER_NEW
 
-# --- immediats 32 bits : (avant, apres, sites attendus, role) -------------
+# --- LES PLAGES DE LA CHAINE DE VERSIONS : geometrie d'ORIGINE, a NE PAS toucher --------
+# Leur sortie est un bloc **v6**, pas un bloc v7 : elles gardent 2 163 716, 14 848, 4 336, etc.
+# Elles restent dans l'image (le controle de fin de chaine les rend inoffensives : il exige la
+# version 7, et elles produisent du 6), mais elles doivent rester *coherentes* — c'est ce qui
+# garantit qu'elles ne debordent pas.
+LEGACY = [
+    (0x4005BE32, 0x4005BEE0, "element de kit v5 -> v6"),
+    (0x4005C15A, 0x4005C2E2, "elements de pattern v5 -> v6"),
+    (0x4005C2E2, 0x4005CD9E, "les six convertisseurs de version et leurs aides"),
+    # ILE COURANTE : 0x4005cd9e..0x4005cdde est un aide du bloc COURANT (le marcheur de la
+    # queue rangee, qui lit le pas d'une entree a +4336 -> +5780). §3.48 l'a prouve par
+    # l'aller-retour : sans ce decalage, la sauvegarde n'est plus idempotente. Il est pris
+    # DANS la zone des convertisseurs, d'ou la coupure.
+    (0x4005CDDE, 0x4005D000, "fin des convertisseurs de version"),
+    (0x4005D9F6, 0x4005DE74, "les six blocs de la chaine de versions"),
+]
+
+# --- immediats 32 bits : (avant, apres, sites attendus, role) ----------------------------
 IMMEDIATES = [
-    (4332, 5776, 21, "taille des pas : 6 -> 8 pistes"),
-    (4336, 5780, 1, "offset de la queue (immediat)"),
-    (14848, 16292, 19, "bloc range d'un pattern (4 + 8x722 + 10512)"),
+    # le bloc courant
+    (IMAGE_OLD, IMAGE_NEW, 14, "taille du bloc courant (creation, chargements, sauvegarde)"),
+    (2163712, 1918784, 4, "sceau de cloture du bloc courant"),
+    (1425920, 1303872, 9, "base des kits dans le fichier (512 + 80x16292)"),
+    (1426192, 1304144, 1, "base des kits dans l'image (784 + 80x16292)"),
+    (1425408, 1303360, 2, "fin des blocs ranges du bloc courant"),
+    (14848, 16292, 12, "creneau range d'un pattern (4 + 8x722 + 10512)"),
+    # les enregistrements deployes (les tables de la memoire de travail)
     (30710, 40924, 12, "enregistrement deploye"),
-    (7094, 7294, 8, "enregistrement de kit"),
-    (600, 800, 7, "borne des kits (6 -> 8 pistes)"),
-    (2948160, 3273920, 2, "fin de la table des patterns (96 x 30710 -> 80 x 40924)"),
+    (7094, 7294, 8, "enregistrement de kit deploye"),
+    (600, 800, 5, "aire par piste du kit (6 -> 8 pistes)"),
+    (2948160, 3273920, 2, "fin de la table des patterns deployes"),
     (26310, 35080, 3, "borne de la queue deployee (6 x 4385 -> 8 x 4385) — §3.39.c"),
-    (681024, 583520, 1, "fin de la table des kits (96 x 7094 -> 80 x 7294)"),
-    (1425408, 1303360, 8, "fin des blocs ranges (96 x 14848 -> 80 x 16292)"),
-    (IMAGE_OLD, IMAGE_NEW, 20, "taille de l'image projet"),
+    (681024, 583520, 1, "fin de la table des kits deployes"),
     (PATTERNS_OLD, PATTERNS_NEW, 6, "base de la table des patterns"),
     (HEADER_OLD, HEADER_NEW, 7, "en-tete de projet"),
     (KITS_OLD_OFFSET, KITS_NEW_OFFSET, 6, "offset des kits (relatif a l'en-tete)"),
@@ -86,43 +105,43 @@ IMMEDIATES = [
 # ATTENTION : le tri par « usage absolu » ne suffit pas — il depend de la VALEUR.
 #   - `pea.l $3a00.w`     (absolu)  = une TAILLE a changer ;
 #   - `pea.l $10f0(a3)`   (registre) = un DECALAGE dans l'enregistrement, a changer aussi ;
-#   - `clr.l $258(a2)`    (registre) = une COINCIDENCE de 600, a LAISSER.
-# Trois familles, donc, et chacune doit etre revue site par site (notes/56 §3.37) :
-#   (valeur, apres, mode, sites attendus, role) avec mode = 'absolu' | 'registre' | 'tout'
+#   - `clr.l $258(a2)`    (registre) = une COINCIDENCE, a LAISSER.
 DISPLACEMENTS = [
     # decalages dans l'enregistrement : usage par registre, a changer
-    (4336, 5780, "registre", 7, "offset de la queue"),
-    (30706, 40920, "registre", 4, "champ a la fin de l'enregistrement"),
-    (30642, 40856, "registre", 3, "enregistrement - 68"),
-    (14736, 16180, "registre", 8, "bloc range - 112 (14848 -> 16292)"),
+    (4336, 5780, "registre", 5, "offset de la queue dans le pattern range"),
+    (30706, 40920, "registre", 4, "champ a la fin de l'enregistrement deploye (le 5e est PATCHES)"),
+    (30642, 40856, "registre", 3, "enregistrement deploye - 68"),
+    (14736, 16180, "registre", 6, "pattern range - 112 (14848 -> 16292)"),
     # tailles absolues, a changer
-    (7094, 7294, "tout", 8, "taille de kit (7 absolus + le pas de 0x4005d55a)"),
-    (600, 800, "absolu", 6, "taille de kit (copie) — ses 13 sites a registre sont des champs"),
-    (14848, 16292, "tout", 33, "bloc range (30 absolus + 4 vrais a registre)"),
+    (7094, 7294, "tout", 8, "taille de kit deploye"),
+    (600, 800, "absolu", 6, "aire par piste du kit"),
+    (14848, 16292, "tout", 31, "creneau range"),
 ]
 
-# Sites ecartes APRES REVUE (§3.38) : la valeur apparait par coincidence dans la ZONE DE
-# DONNEES de l'image (chaines, tables), jamais du code. Verifie un par un : les octets
-# voisins sont des `.short` (donnee desassemblee comme du code).
-EXCLUDE = {
-    0x4011AB70: "7094 : donnee (move.b -$4925(a5),$1bb6(a5))",
-    0x40139F70: "14848 : donnee (move.b (a5),$3a00(a0))",
-    0x4013C276: "14848 : donnee (move.w d0,d5)",
-    0x4019D936: "14848 : donnee (move.w d0,d5)",
-    0x401A10F6: "14848 : donnee (cmpil #...,d0)",
-    0x401A17DE: "14848 : donnee (move.l d7,$3a00(a7))",
-    0x401A8C5E: "14848 : donnee (subl d4,fp@(14848))",
-}
+# --- EN ATTENTE : LES DEUX CHAMPS DE KIT QUI SUIVENT L'AIRE PAR PISTE -------------------
+# L'aire par piste passe de 600 a 800 octets, donc les deux champs qui la suivent decalent de
+# +200 : 628 -> 828 et 694 -> 894 (deployes), 632 -> 832 et 708 -> 908 (ranges).
+#
+# MAIS ces quatre valeurs ne peuvent PAS etre trouvees par valeur : le balayage en rend
+# 35, 5, 47 et 19 sites, dont l'immense majorite sont des coincidences (632 et 708 sont des
+# decalages banals). Les sites CERTAINS sont les quatre de l'element de deroulement
+# (0x4005b2ae), et les deux de l'element v5 -> v6 (0x4005be32, dans LEGACY). Les autres —
+# les LECTEURS des champs f et g de l'enregistrement deploye — doivent etre identifies par
+# FONCTION, un par un : c'est le dernier point ouvert du jalon 2.
+#
+# Tant que ce n'est pas fait, le generateur REFUSE d'ecrire : passer 600 a 800 sans decaler
+# f et g ferait ecrire les pistes 7-8 PAR-DESSUS f et g.
+KIT_FIELDS_PENDING = True
 
-# --- la garde du nombre de patterns --------------------------------------
-GUARD_VA = 0x400083BA               # moveq #95 -> moveq #79
+# Les sites certains, a utiliser quand la revue sera faite (les elements de deroulement).
+KIT_FIELDS_KNOWN = [
+    (0x4005B31E, "628", "828", "element de kit : champ f, deploye"),
+    (0x4005B32C, "694", "894", "element de kit : champ g, deploye"),
+    (0x4005B326, "632", "832", "element de kit : champ f, range"),
+    (0x4005B334, "708", "908", "element de kit : champ g, range"),
+]
 
 # --- corrections octet a octet -------------------------------------------
-# Le gestionnaire de queue (0x4005b766) valide l'index de PISTE encode dans les verrous
-# ranges contre 5 : `moveb #5,%d5` (0x4005b820). Les cinq autres sites `moveb #5,%dN` de
-# l'image ont ete revus (§3.41) : aucun n'est une borne de piste (un compteur a rebours
-# 0x400596a0, un cas de commutation, un champ d'objet, un « genre » de table, un contexte
-# EMAC). Une seule correction, donc.
 PATCHES = [
     (0x4005B820, "1a3c0005", "1a3c0007", "borne #5 -> #7 : index de piste encode"),
     # Deplacements 16 bits de 4332 et 4336 que les balayages par IMMEDIAT avaient manques
@@ -133,18 +152,35 @@ PATCHES = [
     (0x4000C62E, "10ec", "1690", "deplacement 4332 -> 5776"),
     (0x4005CDB2, "10f0", "1694", "lecture 4336 -> 5780"),
     # Le champ ecrit en fin d'enregistrement par le depliage : `movel %sp@(44),%a2@(30706)`
-    # (0x4005b946). Son deplacement est le 5e site de 30706, manque par le triage du §3.36
-    # (qui en comptait 4) — le controle E, en comparant les formes canoniques, l'a revele.
+    # (0x4005b946). Son deplacement est le 5e site de 30706, manque par le triage du §3.36.
     (0x4005B94A, "77f2", "9fd8", "champ de fin : 30706 -> 40920"),
+    # Le NOMBRE DE PATTERNS du bloc courant, en trois endroits (§3.51) : le balayage par
+    # immediat ne voit pas un `moveq`. La garde de 0x400083ba (`moveq #95`) est traitee a part.
+    (0x4005D502, "7060", "7050", "bloc courant : 96 -> 80 patterns (marcheur range/deploye)"),
+    (0x4006A3E6, "7260", "7250", "bloc courant : 96 -> 80 patterns"),
+    (0x4008DB10, "7060", "7050", "bloc courant : 96 -> 80 patterns (sauvegarde)"),
+    # LA VERSION : le bloc courant est ecrit en version 7 et la chaine l'exige. Les six
+    # convertisseurs, eux, estampillent leur sortie en 6 : ils ne sont PAS touches (§3.51).
+    (0x4000FD7C, "7006", "7007", "creation de projet : version 6 -> 7"),
+    (0x4000EF6E, "7206", "7207", "materialisation d'un bloc : version 6 -> 7"),
+    (0x4005DE94, "7206", "7207", "controle de fin de chaine : version 6 -> 7"),
 ]
 
-# La revue des sites en mode registre a ete faite (§3.38) ; mais le BANC a trouve DEUX bornes
-# oubliees (§3.39, §3.40) :
-#   - 26310 = 6 x 4385 (la borne de piste du gestionnaire de queue) : AJOUTEE, le banc passe ;
-#   - `moveb #5,%d5` (0x4005b820) : l'index de piste ENCODE dans les verrous ranges est valide
-#     contre 5. Six sites `moveb #5,%dN` existent dans l'image, dont celui-ci ; les cinq autres
-#     sont a revoir. Tant que ce n'est pas fait, l'outil REFUSE d'ecrire (sauf --draft) : aucun
-#     firmware incomplet ne doit pouvoir etre construit.
+# La garde du nombre de patterns : `moveq #95` -> `moveq #79` (l'index maximal).
+GUARD_VA = 0x400083BA
+
+# Sites ecartes APRES REVUE (§3.38) : la valeur apparait par coincidence dans la ZONE DE
+# DONNEES de l'image (chaines, tables), jamais du code.
+EXCLUDE = {
+    0x4011AB70: "7094 : donnee (move.b -$4925(a5),$1bb6(a5))",
+    0x40139F70: "14848 : donnee (move.b (a5),$3a00(a0))",
+    0x4013C276: "14848 : donnee (move.w d0,d5)",
+    0x4019D936: "14848 : donnee (move.w d0,d5)",
+    0x401A10F6: "14848 : donnee (cmpil #...,d0)",
+    0x401A17DE: "14848 : donnee (move.l d7,$3a00(a7))",
+    0x401A8C5E: "14848 : donnee (subl d4,fp@(14848))",
+}
+
 REVIEW_PENDING = False
 PENDING_VALUES = []
 
@@ -171,6 +207,14 @@ def ins_at(stock, va):
         i = ins[0]
         if i.address <= va < i.address + i.size:
             return i
+    return None
+
+
+def in_legacy(va):
+    """La raison si `va` est dans la chaine de versions (geometrie d'origine), sinon None."""
+    for lo, hi, why in LEGACY:
+        if lo <= va < hi:
+            return why
     return None
 
 
@@ -219,8 +263,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cycles", required=True, help="model-cycles_OS1.13.syx officiel")
     ap.add_argument("--check", action="store_true", help="vérifie que le JSON versionné correspond")
-    ap.add_argument("--draft", action="store_true",
-                    help="écrit quand même le JSON, malgré la revue des sites en mode registre en attente")
+    ap.add_argument("--audit", action="store_true",
+                    help="montre tous les sites trouvés, sans rien écrire ni échouer (mise au point)")
     args = ap.parse_args()
 
     stock = T.main_os_from_syx(args.cycles)
@@ -228,43 +272,70 @@ def main():
     if build.sha(stock) != dev["section_sha256"]:
         raise SystemExit("!! ce n'est pas le MAIN OS 1.13 officiel")
 
-    print("disposition : image %d -> %d (+%d)" % (IMAGE_OLD, IMAGE_NEW, GROWTH))
-    print("              en-tete %#x -> %#x, patterns %#x -> %#x"
+    print("conteneur : bloc %d -> %d (%+d)" % (IMAGE_OLD, IMAGE_NEW, GROWTH))
+    print("            en-tete %#x -> %#x, patterns %#x -> %#x"
           % (HEADER_OLD, HEADER_NEW, PATTERNS_OLD, PATTERNS_NEW))
-    print("              kits -> %#x (offset %d -> %d, relatif a l'en-tete)"
+    print("            kits -> %#x (offset %d -> %d, relatif a l'en-tete)"
           % (KITS_NEW, KITS_OLD_OFFSET, KITS_NEW_OFFSET))
+    print("chaine de versions (geometrie d'origine, NON touchee) :")
+    for lo, hi, why in LEGACY:
+        print("            %#010x..%#010x  %s" % (lo, hi, why))
 
     writes, bad = [], []
     for old, new, expect, role in IMMEDIATES:
-        sites = find_imm_sites(stock, old)
-        if len(sites) != expect:
+        found = find_imm_sites(stock, old)
+        sites = [va for va in found if va not in EXCLUDE and in_legacy(va) is None]
+        skipped = len(found) - len(sites)
+        if args.audit:
+            print("  immediat %-52s %2d site(s) retenu(s), %d ecarte(s)"
+                  % (role, len(sites), skipped))
+            for va in sorted(found):
+                tag = in_legacy(va) or EXCLUDE.get(va) or ''
+                print("      %08x  %s%s" % (va, '' if not tag else '<<< ', tag))
+        elif len(sites) != expect:
             bad.append("%s : %d site(s) au lieu de %d" % (role, len(sites), expect))
         for va in sites:
             writes.append((va, struct.pack(">I", old), struct.pack(">I", new), role))
-        print("  immediat %-52s %2d site(s)" % (role, len(sites)))
+        if not args.audit:
+            print("  immediat %-52s %2d site(s) (dont %d dans la chaine, ecartes)"
+                  % (role, len(sites), skipped))
 
     for old, new, mode, expect, role in DISPLACEMENTS:
-        sites = [va for va in find_disp_sites(stock, old, mode) if va not in EXCLUDE]
-        if len(sites) != expect:
+        found = find_disp_sites(stock, old, mode)
+        sites = [va for va in found if va not in EXCLUDE and in_legacy(va) is None]
+        skipped = len(found) - len(sites)
+        if args.audit:
+            print("  taille   %-46s %-8s %2d retenu(s), %d ecarte(s)"
+                  % (role, mode, len(sites), skipped))
+            for va in sorted(found):
+                tag = in_legacy(va) or EXCLUDE.get(va) or ''
+                print("      %08x  %s%s" % (va, '' if not tag else '<<< ', tag))
+        elif len(sites) != expect:
             bad.append("%s (%s) : %d site(s) au lieu de %d" % (role, mode, len(sites), expect))
         for va in sites:
             writes.append((va, struct.pack(">H", old), struct.pack(">H", new), role))
-        print("  taille   %-46s %-8s %2d site(s)" % (role, mode, len(sites)))
+        if not args.audit:
+            print("  taille   %-46s %-8s %2d site(s) (dont %d dans la chaine, ecartes)"
+                  % (role, mode, len(sites), skipped))
 
-    # la garde du nombre de patterns : moveq #95 -> #79
+    # la garde du nombre de patterns : moveq #95 -> moveq #79
     op = stock[GUARD_VA - BASE]
     if not (0x70 <= op <= 0x77) or stock[GUARD_VA - BASE + 1] != 95:
         raise SystemExit("!! la garde du nombre de patterns n'est pas en %#x" % GUARD_VA)
     writes.append((GUARD_VA, bytes([op, 95]), bytes([op, 79]),
                    "nombre de patterns : 96 -> 80"))
 
-    # corrections octet a octet
     for va, old_hex, new_hex, role in PATCHES:
         ob = bytes.fromhex(old_hex)
         if stock[va - BASE:va - BASE + len(ob)] != ob:
             bad.append("%s : octets d'origine inattendus en %#x" % (role, va))
         writes.append((va, ob, bytes.fromhex(new_hex), role))
-        print("  correctif %-48s %2d octet(s)" % (role, len(ob)))
+        if not args.audit:
+            print("  correctif %-48s %2d octet(s)" % (role, len(ob)))
+
+    if args.audit:
+        print("\n--audit : rien n'a ete ecrit.")
+        return
 
     if bad:
         for b in bad:
@@ -282,23 +353,57 @@ def main():
             raise SystemExit("!! octets d'origine inattendus en %#x (%s)" % (va, role))
         uniq.append({"off": va - BASE, "old": old.hex(), "new": new.hex()})
 
+    # --- LE CONTROLE DU DECOUPAGE : la chaine de versions doit rester IDENTIQUE au stock ---
+    patched, _ = build.apply_writes(stock, [{
+        "id": "x", "order": 1, "section": 3, "device": "Model:Cycles", "os": "1.13",
+        "writes": uniq,
+    }])
+    drift = [(lo, hi, why) for lo, hi, why in LEGACY
+             if patched[lo - BASE:hi - BASE] != stock[lo - BASE:hi - BASE]]
+    if drift:
+        for lo, hi, why in drift:
+            print("  !! la chaine de versions a ete modifiee : %#x..%#x (%s)" % (lo, hi, why))
+            for va, old, new, role in sorted(writes, key=lambda w: w[0]):
+                if lo <= va < hi:
+                    print("       %08x  %s -> %s   %s" % (va, old.hex(), new.hex(), role))
+        raise SystemExit("!! le decoupage est faux : une plage LEGACY a change")
+
     print("total : %d ecriture(s)" % len(uniq))
+    print("controle : les %d plages de la chaine de versions sont identiques au stock"
+          % len(LEGACY))
+
+    if KIT_FIELDS_PENDING and not args.audit:
+        raise SystemExit(
+            "!! les deux champs de kit qui suivent l'aire par piste ne sont pas encore "
+            "decales (+200) :\n"
+            "   628 -> 828 et 694 -> 894 (deployes), 632 -> 832 et 708 -> 908 (ranges).\n"
+            "   Ils ne peuvent pas etre trouves par valeur (35, 5, 47 et 19 sites, presque "
+            "tous des coincidences) :\n"
+            "   les LECTEURS des champs f et g doivent etre identifies par FONCTION, un par un "
+            "(notes/56 §3.52).\n"
+            "   Passer 600 a 800 sans ce decalage ferait ecrire les pistes 7-8 PAR-DESSUS f et "
+            "g : aucun firmware incomplet ne doit pouvoir etre construit.")
 
     tweak = {
         "id": "groove-patterns",
         "order": 57,
-        "name": "Format de pattern a huit pistes (Model:Groove)",
+        "name": "Format de pattern a huit pistes et conteneur (Model:Groove)",
         "description": [
             "Model:Groove, jalon 2 : le format de pattern passe a huit pistes (enregistrement "
-            "30 710 -> 40 924 octets deployes, 14 848 -> 19 796 ranges), les kits a 7 294 octets "
+            "30 710 -> 40 924 octets deployes, 14 848 -> 16 292 ranges), les kits a 7 294 octets "
+            "deployes (aire par piste 600 -> 800, les deux champs qui suivent decalent de +200) "
             "et le projet a 80 patterns au lieu de 96 (la banque F est echangee contre les pistes "
             "7-8, le seul point de perte de donnees du mod).",
-            "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). L'image projet "
-            "grandit de 60 768 octets, donc l'en-tete et la table des patterns se decalent, et les "
-            "kits demenagent vers la plage libre de 0x43dd0000.",
-            "La conversion des projets existants (convertisseur v6 -> v7) et l'interface (page de "
-            "pistes) sont des jalons suivants : sans la conversion, un projet d'origine serait mal "
-            "lu. Construit en ligne de commande seulement, hors flasher. Genere par "
+            "Le conteneur du bloc projet suit : 2 163 716 -> 1 918 788 octets, sceau de cloture "
+            "+2 163 712 -> +1 918 784, base des kits 1 303 872 (fichier) et 1 304 144 (image). "
+            "La chaine des convertisseurs de version (les six v0..v5 -> v6) garde la geometrie "
+            "d'origine : sa sortie est un bloc v6, et c'est ce qui garantit qu'elle ne deborde "
+            "pas de son tampon.",
+            "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). Les kits "
+            "demenagent vers la plage libre de 0x43dd0000.",
+            "La conversion des projets d'origine n'est PAS faite dans le firmware : la version du "
+            "bloc courant passe a 7, donc un projet d'origine est refuse proprement (code "
+            "d'erreur dedie). Construit en ligne de commande seulement, hors flasher. Genere par "
             "tools/gen_groove_pattern.py, notes/54-56.",
         ],
         "device": "Model:Cycles",
