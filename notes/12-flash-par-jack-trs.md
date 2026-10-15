@@ -161,16 +161,38 @@ Conclusions :
 2. **Répétition** : flasher l'**OS officiel 1.13** en WAV. Si `UPDATING FLASH` s'affiche puis que la machine redémarre, le lien est validé.
 3. **Flash du mod** en WAV, avec exactement les mêmes réglages.
 
-### 3.9 Outil à écrire `[À FAIRE]` (si on poursuit cette piste)
+### 3.9 L'outil : `tools/syx2wav.py` — **écrit** `[FAIT]` (15/10)
 
-Un script `tools/syx2wav.py`, en Python pur (module standard `wave`), qui :
-- vérifie le `.syx` (mtlib), comme `flash.py` ;
-- produit des trames 8N1 à 31 250 bauds, avec la même cadence `--pace` que `flash.py` ;
-- dessine des fronts à bande limitée (échelons à bande limitée précalculés, fenêtrés) ;
-- alterne la polarité par octet avec équilibrage de charge (§3.5) ;
-- met L et R en opposition de phase, avec `--rate 96000` et un `--level` en dBFS (crête ≤ −1 dBFS) ;
-- propose un mode `--test` (§3.8, étape 1) ;
-- **s'auto-vérifie** : il décode son propre WAV (seuil + UART) et le compare octet par octet au `.syx` avant de l'écrire.
+```bash
+python3 tools/syx2wav.py model-cycles_OS1.13.syx --out recovery.wav --rate 96000
+```
+
+Ce que le script fait, exactement comme spécifié ci-dessus :
+
+- il **vérifie le `.syx`** avec `mtlib.syx.unwrap` (comme `flash.py`, mais sans `mido`) ;
+- il découpe les messages F0..F7 (même découpage que `flash.py`) ;
+- il produit des trames **8N1 à 31 250 bauds**, avec la même **cadence `--pace`** que `flash.py`
+  (défaut 1,4 ; 2,0 si la machine se fige) ;
+- les fronts sont **à bande limitée** : rendu sur une grille fine de 3,072 MHz, filtre
+  anti-repliement à 0,45·fs, puis décimation (facteurs 16 / 32 / 64 pour 192 / 96 / 48 kHz) ;
+- il **alterne la polarité** des zéros, octet par octet, au-delà de 16 bits de charge cumulée,
+  avec un bit de repos à chaque bascule (§3.5) ;
+- gauche et droite sont en **opposition de phase**, `--level` en dBFS, crête ≤ −1 dBFS par défaut ;
+- il **s'auto-vérifie** : il décode le WAV qu'il vient d'écrire (seuil + UART 16×, vote
+  majoritaire) et le compare **octet par octet** au `.syx`. **S'il ne se décode pas, il n'écrit
+  rien.** Il affiche aussi la **plage de seuil** pour laquelle le premier message tient : c'est
+  le repère de calibrage du volume (viser environ 2× le seuil, §3.8).
+
+Taille : ~7 minutes ≈ **160 Mo** en 96 kHz, 16 bits, stéréo.
+
+**Ce qui reste `[HYP]`** : le niveau de la sortie casque face au seuil de l'optocoupleur — c'est
+l'inconnue du §3.3, et **seul un essai sur la machine tranche**. Le script garantit le *signal*,
+pas l'*électricité*.
+
+**Note pour la récupération** : ce chemin est le seul qui ne demande **aucune interface MIDI**.
+Il vaut donc la peine d'être tenté quand une machine est bloquée et qu'on n'a pas d'interface —
+en gardant en tête le risque du §3.7 (un octet corrompu passé inaperçu dans la section
+*bootstrap*), qui croît avec le taux d'erreur du lien.
 
 ## 4. Pour mémoire : l'USB
 

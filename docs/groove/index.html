@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>8 track M:C — Model:Groove</title>
-<link rel="stylesheet" href="../flasher/style.css?v=2026-10-15-g4">
+<link rel="stylesheet" href="../flasher/style.css?v=2026-10-15-g5">
 <style>
   .wrap { max-width: 820px; }
   .warn { border-left: 4px solid var(--bad, #c0392b); }
@@ -29,6 +29,7 @@
       <li><strong>A bank is traded.</strong> 80 patterns instead of 96 — bank F is exchanged for tracks 7–8. This is the mod's only data loss.</li>
       <li><strong>Your existing projects will be refused.</strong> Cleanly: nothing is erased, and restoring the official OS brings everything back.</li>
       <li><strong>Tracks 7–8 are selectable from the track menu</strong> (the menu now lists eight, and the index bounds follow). Kevin's <em>page 2</em> — pads T1–T2 lighting only LEDs 1–2 — is not written yet, so the <em>display</em> is still the six-track one.</li>
+      <li><strong>Recovery needs a MIDI interface, not USB.</strong> If anything goes wrong, the STARTUP MENU restores the official OS — but it listens on the <strong>MIDI IN jack</strong>, and the USB port does nothing in that mode. Have a MIDI interface, or the experimental headphone-jack route (<code>tools/syx2wav.py</code>, untested), <strong>before</strong> you flash. The bootloader is never touched, so the machine is never lost — but it can be out of action until you can send over MIDI.</li>
       <li><strong>Rule deviation, stated plainly:</strong> this repo's rule is that unproven code does not go in a flasher. The owner has overruled it for this page.</li>
     </ul>
     <ul class="fr">
@@ -36,6 +37,7 @@
       <li><strong>Une banque est échangée.</strong> 80 patterns au lieu de 96 — la banque F contre les pistes 7-8. C'est la seule perte de données du mod.</li>
       <li><strong>Vos projets existants seront refusés.</strong> Proprement : rien n'est effacé, et remettre l'OS officiel les rend lisibles.</li>
       <li><strong>Les pistes 7-8 sont sélectionnables depuis le menu de pistes</strong> (le menu en propose huit, et les bornages suivent). La <em>page 2</em> de Kevin — pads T1-T2 n'allumant que les LEDs 1-2 — n'est pas encore écrite : l'<em>affichage</em> reste celui de six pistes.</li>
+      <li><strong>La récupération exige une interface MIDI, pas l'USB.</strong> En cas de problème, le STARTUP MENU remet l'OS officiel — mais il écoute sur la <strong>prise MIDI IN</strong>, et le port USB ne fait rien dans ce mode. Ayez une interface MIDI, ou la piste expérimentale par la sortie casque (<code>tools/syx2wav.py</code>, non testée), <strong>avant</strong> de flasher. Le bootloader n'est jamais touché, la machine n'est donc jamais perdue — mais elle peut rester hors service tant que vous ne pouvez pas envoyer par MIDI.</li>
       <li><strong>Écart à la règle, dit franchement :</strong> la règle du dépôt est que du code non prouvé ne va pas dans un flasher. Le propriétaire l'a écartée pour cette page.</li>
     </ul>
   </section>
@@ -97,9 +99,9 @@
   <p class="foot"><a href="../flasher/">← the mods flasher</a> · <a href="../guide/">the guide</a></p>
 </main>
 
-<script src="tweaks.js?v=2026-10-15-g4"></script>
-<script src="../flasher/builder.js?v=2026-10-15-g4"></script>
-<script src="../flasher/flasher.js?v=2026-10-15-g4"></script>
-<script src="groove.js?v=2026-10-15-g4"></script>
+<script src="tweaks.js?v=2026-10-15-g5"></script>
+<script src="../flasher/builder.js?v=2026-10-15-g5"></script>
+<script src="../flasher/flasher.js?v=2026-10-15-g5"></script>
+<script src="groove.js?v=2026-10-15-g5"></script>
 </body>
 </html>
