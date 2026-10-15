@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>8 track M:C — Model:Groove</title>
+<link rel="stylesheet" href="../flasher/style.css?v=2026-10-15-g1">
+<style>
+  .wrap { max-width: 820px; }
+  .warn { border-left: 4px solid var(--bad, #c0392b); }
+  .warn li { margin: .35em 0; }
+  .fr { opacity: .85; }
+  .fr::before { content: "FR — "; font-weight: 600; opacity: .7; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>8 track M:C</h1>
+  <p class="lead">
+    <span>Model:Groove — a derived Model:Cycles OS 1.13 whose only goal is <strong>eight audio tracks</strong> instead of six. Nothing from the mods page is included.</span>
+  </p>
+  <p class="lead fr">Model:Groove — un OS dérivé du Model:Cycles 1.13 dont le seul but est de passer à <strong>huit pistes audio</strong> au lieu de six. Rien de la page des mods n'y est inclus.</p>
+
+  <section class="alert bad warn">
+    <h2>Read this first</h2>
+    <ul>
+      <li><strong>Experimental.</strong> The pattern format is proven in emulation; the <em>kit</em> is not. The kit is verified byte by byte, not proven.</li>
+      <li><strong>A bank is traded.</strong> 80 patterns instead of 96 — bank F is exchanged for tracks 7–8. This is the mod's only data loss.</li>
+      <li><strong>Your existing projects will be refused.</strong> Cleanly: nothing is erased, and restoring the official OS brings everything back.</li>
+      <li><strong>Tracks 7–8 are not reachable from the panel yet.</strong> The track page isn't written, so this build is for checking the engine and the format.</li>
+      <li><strong>Rule deviation, stated plainly:</strong> this repo's rule is that unproven code does not go in a flasher. The owner has overruled it for this page.</li>
+    </ul>
+    <ul class="fr">
+      <li><strong>Expérimental.</strong> Le format de pattern est prouvé en émulation ; le <em>kit</em> ne l'est pas. Le kit est vérifié octet par octet, pas prouvé.</li>
+      <li><strong>Une banque est échangée.</strong> 80 patterns au lieu de 96 — la banque F contre les pistes 7-8. C'est la seule perte de données du mod.</li>
+      <li><strong>Vos projets existants seront refusés.</strong> Proprement : rien n'est effacé, et remettre l'OS officiel les rend lisibles.</li>
+      <li><strong>Les pistes 7-8 ne sont pas encore atteignables depuis le panneau.</strong> La page de pistes n'est pas écrite : cette construction sert à vérifier le moteur et le format.</li>
+      <li><strong>Écart à la règle, dit franchement :</strong> la règle du dépôt est que du code non prouvé ne va pas dans un flasher. Le propriétaire l'a écartée pour cette page.</li>
+    </ul>
+  </section>
+
+  <section class="step">
+    <h2>1 — Your official file</h2>
+    <label class="drop" id="drop" tabindex="0">
+      <span class="drop-t"><strong id="drop-title">Drop model-cycles_OS1.13.syx here</strong>
+        <span id="drop-sub">or click to choose it</span></span>
+      <input id="file" type="file" accept=".syx" hidden>
+    </label>
+    <div class="status" id="file-status" aria-live="polite"></div>
+  </section>
+
+  <section class="step">
+    <h2>2 — Build and check</h2>
+    <p class="panel-text">
+      <span>Two tweaks are applied: <code>groove-8tracks</code> (the engine) then <code>groove-patterns</code> (the format). The result is checked against the expected MAIN OS; if it differs, nothing is sent.</span>
+    </p>
+    <p class="panel-text fr">Deux tweaks sont appliqués : <code>groove-8tracks</code> (le moteur) puis <code>groove-patterns</code> (le format). Le résultat est comparé au MAIN OS attendu ; s'il diffère, rien n'est envoyé.</p>
+    <p><button type="button" class="btn" id="build" disabled>Build</button></p>
+    <div class="status" id="build-status" aria-live="polite"></div>
+  </section>
+
+  <section class="step">
+    <h2>3 — Send over USB</h2>
+    <p class="panel-text">
+      <span>The machine must be on its <strong>STARTUP MENU</strong> (hold <kbd>[FUNC]</kbd> while powering on), as for any OS update. If anything goes wrong, the STARTUP MENU restores the official OS.</span>
+    </p>
+    <p class="panel-text fr">La machine doit être sur son <strong>STARTUP MENU</strong> (maintenir <kbd>[FUNC]</kbd> à l'allumage), comme pour toute mise à jour. En cas de problème, le STARTUP MENU remet l'OS officiel.</p>
+    <p><button type="button" class="btn" id="send" disabled>Send</button>
+       <button type="button" class="btn" id="cancel" hidden>Cancel</button></p>
+    <div class="status" id="send-status" aria-live="polite"></div>
+  </section>
+
+  <section class="step">
+    <h2>What to look for</h2>
+    <ul>
+      <li>Does it boot, and does it complain about the current project?</li>
+      <li>Can you reach the browser and create a new project?</li>
+      <li>Do tracks 1–6 sound exactly as before?</li>
+      <li>Do tracks 7–8 exist, play, and stay silent without a trig?</li>
+      <li>Try to load an original project: is it refused cleanly, with nothing erased?</li>
+    </ul>
+  </section>
+
+  <p class="foot"><a href="../flasher/">← the mods flasher</a> · <a href="../guide/">the guide</a></p>
+</main>
+
+<script src="tweaks.js?v=2026-10-15-g1"></script>
+<script src="../flasher/builder.js?v=2026-10-15-g1"></script>
+<script src="../flasher/flasher.js?v=2026-10-15-g1"></script>
+<script src="groove.js?v=2026-10-15-g1"></script>
+</body>
+</html>
