@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>8 track M:C — Model:Groove</title>
-<link rel="stylesheet" href="../flasher/style.css?v=2026-10-15-g2">
+<link rel="stylesheet" href="../flasher/style.css?v=2026-10-15-g3">
 <style>
   .wrap { max-width: 820px; }
   .warn { border-left: 4px solid var(--bad, #c0392b); }
   .warn li { margin: .35em 0; }
   .fr { opacity: .85; }
   .fr::before { content: "FR — "; font-weight: 600; opacity: .7; }
+  select#port { max-width: 100%; padding: .45em .6em; font: inherit; }
 </style>
 </head>
 <body>
@@ -60,14 +61,22 @@
   </section>
 
   <section class="step">
-    <h2>3 — Send over USB</h2>
+    <h2>3 — Choose the port, then send over USB</h2>
     <p class="panel-text">
-      <span>The machine must be on its <strong>STARTUP MENU</strong> (hold <kbd>[FUNC]</kbd> while powering on), as for any OS update. If anything goes wrong, the STARTUP MENU restores the official OS.</span>
+      <span>The machine must be on its <strong>STARTUP MENU</strong>: power off, hold <kbd>[FUNC]</kbd>, power on, release, then <kbd>[TRIG 4]</kbd> (OS UPGRADE). The screen shows <code>READY TO RECEIVE</code>. If anything goes wrong, the STARTUP MENU restores the official OS.</span>
     </p>
-    <p class="panel-text fr">La machine doit être sur son <strong>STARTUP MENU</strong> (maintenir <kbd>[FUNC]</kbd> à l'allumage), comme pour toute mise à jour. En cas de problème, le STARTUP MENU remet l'OS officiel.</p>
+    <p class="panel-text fr">La machine doit être sur son <strong>STARTUP MENU</strong> : éteindre, maintenir <kbd>[FUNC]</kbd>, allumer, relâcher, puis <kbd>[TRIG 4]</kbd> (OS UPGRADE). L'écran affiche <code>READY TO RECEIVE</code>. En cas de problème, le STARTUP MENU remet l'OS officiel.</p>
+    <p><button type="button" class="btn" id="refresh">Refresh ports</button>
+       <select id="port" aria-label="MIDI output port"><option value="">— press Refresh ports —</option></select></p>
+    <div class="status" id="port-status" aria-live="polite"></div>
     <p><button type="button" class="btn" id="send" disabled>Send</button>
+       <button type="button" class="btn" id="download" disabled>Download the .syx</button>
        <button type="button" class="btn" id="cancel" hidden>Cancel</button></p>
     <div class="status" id="send-status" aria-live="polite"></div>
+    <p class="panel-text">
+      <span>If the fast send fails, use <strong>Download the .syx</strong>: put the machine in <code>READY TO RECEIVE</code> and send the file with any SysEx tool (SysEx Librarian, Elektron C6, <code>amidi</code>).</span>
+    </p>
+    <p class="panel-text fr">Si l'envoi rapide échoue, utilisez <strong>Download the .syx</strong> : mettez la machine sur <code>READY TO RECEIVE</code> et envoyez le fichier avec n'importe quel outil SysEx (SysEx Librarian, C6 d'Elektron, <code>amidi</code>).</p>
   </section>
 
   <section class="step">
@@ -84,9 +93,9 @@
   <p class="foot"><a href="../flasher/">← the mods flasher</a> · <a href="../guide/">the guide</a></p>
 </main>
 
-<script src="tweaks.js?v=2026-10-15-g2"></script>
-<script src="../flasher/builder.js?v=2026-10-15-g2"></script>
-<script src="../flasher/flasher.js?v=2026-10-15-g2"></script>
-<script src="groove.js?v=2026-10-15-g2"></script>
+<script src="tweaks.js?v=2026-10-15-g3"></script>
+<script src="../flasher/builder.js?v=2026-10-15-g3"></script>
+<script src="../flasher/flasher.js?v=2026-10-15-g3"></script>
+<script src="groove.js?v=2026-10-15-g3"></script>
 </body>
 </html>
