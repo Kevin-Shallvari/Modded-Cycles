@@ -100,10 +100,11 @@ LEGACY = [
 #   - la grappe 0x400a**** : le moteur ne parcourt pas les kits (aucun 7094), donc il lit par
 #     pointeur — argument du pas, §3.53.
 KIT_FIELDS = {
-    628: (828, [0x40009AB2, 0x40009AC4, 0x40009B76, 0x4000A564, 0x4005B31E, 0x400613EA]),
+    628: (828, [0x40009AB2, 0x40009AC4, 0x40009B76, 0x4000A564, 0x4005B31E, 0x400613EA,
+                 0x40009C4A, 0x40009F8A, 0x4000A0D6, 0x4005D140]),
     694: (894, [0x40009AC0, 0x4005B32C, 0x4005D160, 0x400613F4]),
     632: (832, [0x40009B6A, 0x4005B322, 0x4005D13A]),
-    708: (908, [0x40009B64, 0x4005B330, 0x4005D15C]),
+    708: (908, [0x40009B64, 0x4000A552, 0x4005B330, 0x4005D15C]),
 }
 
 # Ce sont les adresses des INSTRUCTIONS. Le generateur retrouve la position de la valeur en

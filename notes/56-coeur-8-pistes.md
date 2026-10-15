@@ -2805,6 +2805,94 @@ huit fonctions qui indexent les kits par 7 094 n'ont **aucun** offset absolu de 
    **fiche de kit**, d'autres un **tampon de pattern** (`clrl` en série). C'est le prix de la
    leçon : **pour ces quatre valeurs, le balayage par valeur ne suffit pas.**
 
+### 3.54 Le kit : **vérifié**, pas **prouvé** — et l'obstacle est nommé `[FAIT]` (15/10)
+
+`tools/re/test_groove_kit.py`, `build/re8/trace_kit.py`, `probe_empty_kit.py`.
+
+#### a) Ce qu'on a essayé `[FAIT]`
+
+Le banc des patterns prouve un pattern en émulation : il **déplie**, **emballe**, **déplie** et
+compare. Le kit devait avoir le même banc. Il ne peut pas, et voici ce qui l'a montré, dans
+l'ordre.
+
+**1. Les deux éléments avaient été appelés à l'envers.** Leurs prologues le disent :
+
+| | prologue | sens |
+|---|---|---|
+| `0x4005d080` | `memcpy(a2, a3@(4), 16)` — la **source** porte l'en-tête de 4 o | **dépliage** : `(déployé, rangé)` |
+| `0x4005b2ae` | `memcpy(a2@(4), a3, 16)` — la **destination** porte l'en-tête | **emballage** : `(rangé, déployé, contexte)` |
+
+Appelé à l'envers, on écrit dans le tampon qu'on relit ensuite : le banc comparait des **zéros**
+et « passait ». **C'est le contrôle négatif qui l'a démasqué** — en remettant les 21 décalages à
+leur ancienne place, le banc ne voyait rien. Un banc qui ne peut pas échouer ne prouve rien.
+
+**2. Un morceau de 100 octets n'est pas de la donnée, c'est un ENREGISTREMENT IMBRIQUÉ.** Le
+convertisseur appelé par les deux éléments (`0x4005afa0`) écrit **son propre sceau** et **sa
+propre version 2**, puis lit un **type de machine en `+88`** et indexe une table de descripteurs
+(`0x4010ee4c`) avec. Une trace des 64 dernières instructions situe la faute exactement là :
+
+```
+4005afbc  moveq #2,%d0
+4005afbe  movel #0xBEEFBACE,%a2@     ; le sceau du morceau
+4005afc4  movel %d0,%a2@(4)          ; sa version
+4005b02e  movel %a3@(88),%d0         ; le TYPE, lu dans le morceau
+4005b032  lea %a1@(3,%d0:l:4),%a1    ; indexe la table avec
+4005b038  moveb %a1@,%a2@(94)        ; <<< la faute
+```
+
+Un kit **ne peut donc pas être fabriqué** : c'est le §3.46, un cran plus bas — *le banc ne peut
+pas inventer les données de l'OS*. Pour les patterns, la sortie était d'appeler le **chemin
+d'écriture de l'OS** (`0x4005ba0a`), qui sait en fabriquer un vrai.
+
+**3. Le code du kit est ORIENTÉ OBJET.** `0x40009a1e`, le codec du kit, travaille sur un objet,
+lit son **descripteur de classe** et appelle des **méthodes virtuelles** :
+
+```
+40009a2a  moveal %sp@(40),%a2        ; a2 = un OBJET
+40009a40  moveal %a2@,%a0            ; sa classe
+40009a46  moveal %a0@(48),%a0        ; une METHODE VIRTUELLE
+40009a4a  jsr %a0@
+```
+
+Piloter cela dans une émulation nue ne demande pas un banc : cela demande de **reconstruire une
+tranche de l'OS** (les objets, leurs classes, les enregistrements imbriqués).
+
+#### b) Pourquoi le pattern, lui, marche `[FAIT]`
+
+Le chemin des patterns (`0x4005b894`, `0x4005ba0a`) est de la **donnée plate** : pas d'objet,
+pas de méthode virtuelle, pas d'enregistrement imbriqué. C'est toute la différence, et c'est
+pourquoi le contrôle E du banc des patterns est un vrai aller-retour.
+
+#### c) L'état, sans embellissement `[FAIT]`
+
+| | |
+|---|---|
+| le format de pattern | **prouvé en émulation** — banc A–E vert sur le jeu de changements réel |
+| le découpage du conteneur | **prouvé** — le générateur vérifie la chaîne de versions octet à octet |
+| les 21 sites du kit | **vérifiés** octet par octet dans l'image construite |
+| le **comportement** du kit | **NON PROUVÉ** |
+
+`tools/re/test_groove_kit.py` **sort toujours 1** : il vérifie les quatre constantes, puis
+**constate** l'obstacle et le nomme. Il ne doit jamais passer tant que le kit n'est pas prouvé
+autrement — un « non prouvé » ne doit pas ressembler à un succès.
+
+**Conséquence de la règle du projet** (« prouver en émulation d'abord ; du code non prouvé ne va
+pas dans le flasher ») : le kit est acceptable en **ligne de commande**, il n'est **pas** candidat
+au flasher, et il n'est **pas** `tested` — tant que Maxime ne l'a pas entendu sur la machine.
+
+#### d) Les trois voies qui restent `[HYP]`
+
+1. **Le chemin de l'image entière** (le « 3d » prévu) : construire une vraie image de projet et
+   laisser le **chemin de chargement de l'OS** la lire — il faut alors la couche fichier ;
+2. **la machine** : c'est de toute façon la bonne question à lui poser — *les pistes 7 et 8
+   sonnent-elles juste, un kit se sauvegarde-t-il et se recharge-t-il ?* ;
+3. **un audit statique**, qui est ce qu'on a : les 21 sites, chacun avec sa raison, et la
+   vérification octet par octet.
+
+**À demander à Maxime sur la machine** : un kit modifié sur les pistes 7-8 puis rechargé ; un kit
+sauvegardé puis rouvert ; une piste 8 qui joue ; et un projet d'origine, pour confirmer qu'il est
+**refusé proprement** et que rien n'est effacé.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
