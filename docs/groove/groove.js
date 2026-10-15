@@ -198,9 +198,8 @@
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
     say($("send-status"),
-        "Downloaded model-cycles_OS1.13_groove.syx. Put the machine in OS UPGRADE (FUNC held at " +
-        "power-on, then TRIG 4, screen reads READY TO RECEIVE) and send it with any SysEx tool.",
-        "is-ok");
+        "Downloaded model-cycles_OS1.13_groove.syx. On the machine press SETTINGS, open " +
+        "CONFIG > UPGRADE, confirm YES, then send the file with any SysEx tool.", "is-ok");
   }
 
   /* ---- câblage --------------------------------------------------------------- */
