@@ -69,7 +69,7 @@ KITS_NEW_OFFSET = KITS_NEW - HEADER_NEW
 # version 7, et elles produisent du 6), mais elles doivent rester *coherentes* — c'est ce qui
 # garantit qu'elles ne debordent pas.
 LEGACY = [
-    (0x4005BE32, 0x4005BEE0, "element de kit v5 -> v6"),
+    (0x4005BDC0, 0x4005BEE0, "elements de kit v5 -> v6 et v4 -> v5"),
     (0x4005C15A, 0x4005C2E2, "elements de pattern v5 -> v6"),
     (0x4005C2E2, 0x4005CD9E, "les six convertisseurs de version et leurs aides"),
     # ILE COURANTE : 0x4005cd9e..0x4005cdde est un aide du bloc COURANT (le marcheur de la
@@ -80,8 +80,43 @@ LEGACY = [
     (0x4005D9F6, 0x4005DE74, "les six blocs de la chaine de versions"),
 ]
 
+# --- LES DEUX CHAMPS DE KIT : UNE LISTE BLANCHE (§3.52, §3.53) --------------------------
+# L'aire par piste passe de 600 a 800 octets, donc les deux champs qui la suivent decalent de
+# +200 : 628 -> 828 et 694 -> 894 (deployes), 632 -> 832 et 708 -> 908 (ranges).
+#
+# Ces quatre valeurs sont des decalages BANALS (36, 6, 54 et 27 sites), presque tous des
+# coincidences. On ne peut donc PAS les trouver par valeur : on donne la LISTE BLANCHE des
+# sites, chacun avec sa raison. Le generateur verifie que chacun est bien trouve par le
+# balayage (sinon l'entree est fausse) et que les octets d'origine sont ceux attendus.
+#
+# Ecartes, avec leur raison :
+#   - 0x400333dc, 0x4003c1fc : une SERIE de `clrl` sur 612..640, un tampon contigu, pas un
+#     champ de 66 octets ;
+#   - 0x4003f9ae : CHARGE un pointeur depuis 628 — la fiche de kit et l'enregistrement deploye
+#     sont des donnees plates, sans pointeur ;
+#   - 0x400db764, 0x400dc4c8 : constructeurs d'OBJET (un descripteur de classe est ecrit),
+#     champs pointeurs ;
+#   - 0x4003a400 : `pea 0x274` est une ADRESSE, pas un decalage ;
+#   - la grappe 0x400a**** : le moteur ne parcourt pas les kits (aucun 7094), donc il lit par
+#     pointeur — argument du pas, §3.53.
+KIT_FIELDS = {
+    628: (828, [0x40009AB2, 0x40009AC4, 0x40009B76, 0x4000A564, 0x4005B31E, 0x400613EA]),
+    694: (894, [0x40009AC0, 0x4005B32C, 0x4005D160, 0x400613F4]),
+    632: (832, [0x40009B6A, 0x4005B322, 0x4005D13A]),
+    708: (908, [0x40009B64, 0x4005B330, 0x4005D15C]),
+}
+
+# Ce sont les adresses des INSTRUCTIONS. Le generateur retrouve la position de la valeur en
+# cherchant ses deux octets DANS l'instruction (a +2 pour `pea.l $274(a3)`, a +4 pour un
+# immediat 32 bits comme `addi.l #708,%d2`) : la liste blanche reste lisible, et la position
+# est verifiee, pas supposee.
+KIT_FIELD_SCAN = 8
+
 # --- immediats 32 bits : (avant, apres, sites attendus, role) ----------------------------
 IMMEDIATES = [
+    # la geometrie des pas (deployee et rangee)
+    (4332, 5776, 20, "taille des pas : 6 -> 8 pistes"),
+    (4336, 5780, 1, "offset de la queue (immediat)"),
     # le bloc courant
     (IMAGE_OLD, IMAGE_NEW, 14, "taille du bloc courant (creation, chargements, sauvegarde)"),
     (2163712, 1918784, 4, "sceau de cloture du bloc courant"),
@@ -118,28 +153,8 @@ DISPLACEMENTS = [
     (14848, 16292, "tout", 31, "creneau range"),
 ]
 
-# --- EN ATTENTE : LES DEUX CHAMPS DE KIT QUI SUIVENT L'AIRE PAR PISTE -------------------
-# L'aire par piste passe de 600 a 800 octets, donc les deux champs qui la suivent decalent de
-# +200 : 628 -> 828 et 694 -> 894 (deployes), 632 -> 832 et 708 -> 908 (ranges).
-#
-# MAIS ces quatre valeurs ne peuvent PAS etre trouvees par valeur : le balayage en rend
-# 35, 5, 47 et 19 sites, dont l'immense majorite sont des coincidences (632 et 708 sont des
-# decalages banals). Les sites CERTAINS sont les quatre de l'element de deroulement
-# (0x4005b2ae), et les deux de l'element v5 -> v6 (0x4005be32, dans LEGACY). Les autres —
-# les LECTEURS des champs f et g de l'enregistrement deploye — doivent etre identifies par
-# FONCTION, un par un : c'est le dernier point ouvert du jalon 2.
-#
-# Tant que ce n'est pas fait, le generateur REFUSE d'ecrire : passer 600 a 800 sans decaler
-# f et g ferait ecrire les pistes 7-8 PAR-DESSUS f et g.
-KIT_FIELDS_PENDING = True
-
-# Les sites certains, a utiliser quand la revue sera faite (les elements de deroulement).
-KIT_FIELDS_KNOWN = [
-    (0x4005B31E, "628", "828", "element de kit : champ f, deploye"),
-    (0x4005B32C, "694", "894", "element de kit : champ g, deploye"),
-    (0x4005B326, "632", "832", "element de kit : champ f, range"),
-    (0x4005B334, "708", "908", "element de kit : champ g, range"),
-]
+# Les sites de KIT_FIELDS sont verifies a l'execution : chacun doit etre trouve par le
+# balayage, et les octets d'origine doivent etre ceux de la valeur.
 
 # --- corrections octet a octet -------------------------------------------
 PATCHES = [
@@ -333,6 +348,29 @@ def main():
         if not args.audit:
             print("  correctif %-48s %2d octet(s)" % (role, len(ob)))
 
+    # les deux champs de kit : liste blanche. On NE demande PAS au balayage de les trouver :
+    # il s'appuie sur capstone, qui se desynchronise par endroits (en 0x40009ac0 il lit
+    # `divs.w` la ou objdump lit `pea.l $2b6(a3)`). La liste blanche donne les INSTRUCTIONS ;
+    # on retrouve la position de la valeur dans leurs octets, et on la verifie.
+    for old, (new, addrs) in sorted(KIT_FIELDS.items()):
+        ob = struct.pack(">H", old)
+        nb = struct.pack(">H", new)
+        for va in addrs:
+            raw = stock[va - BASE:va - BASE + KIT_FIELD_SCAN]
+            pos = None
+            for k in range(0, len(raw) - 1, 2):
+                if raw[k:k + 2] == ob:
+                    pos = va + k
+                    break
+            if pos is None:
+                bad.append("champ de kit %d : la valeur n'est pas dans les octets de %#x (%s)"
+                           % (old, va, raw.hex()))
+                continue
+            writes.append((pos, ob, nb, "champ de kit %d -> %d" % (old, new)))
+        if not args.audit:
+            print("  champ   %-46s %2d site(s), position verifiee"
+                  % ("kit %d -> %d" % (old, new), len(addrs)))
+
     if args.audit:
         print("\n--audit : rien n'a ete ecrit.")
         return
@@ -371,18 +409,6 @@ def main():
     print("total : %d ecriture(s)" % len(uniq))
     print("controle : les %d plages de la chaine de versions sont identiques au stock"
           % len(LEGACY))
-
-    if KIT_FIELDS_PENDING and not args.audit:
-        raise SystemExit(
-            "!! les deux champs de kit qui suivent l'aire par piste ne sont pas encore "
-            "decales (+200) :\n"
-            "   628 -> 828 et 694 -> 894 (deployes), 632 -> 832 et 708 -> 908 (ranges).\n"
-            "   Ils ne peuvent pas etre trouves par valeur (35, 5, 47 et 19 sites, presque "
-            "tous des coincidences) :\n"
-            "   les LECTEURS des champs f et g doivent etre identifies par FONCTION, un par un "
-            "(notes/56 §3.52).\n"
-            "   Passer 600 a 800 sans ce decalage ferait ecrire les pistes 7-8 PAR-DESSUS f et "
-            "g : aucun firmware incomplet ne doit pouvoir etre construit.")
 
     tweak = {
         "id": "groove-patterns",

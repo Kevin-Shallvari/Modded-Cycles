@@ -1,11 +1,12 @@
 {
  "id": "groove-patterns",
  "order": 57,
- "name": "Format de pattern a huit pistes (Model:Groove)",
+ "name": "Format de pattern a huit pistes et conteneur (Model:Groove)",
  "description": [
-  "Model:Groove, jalon 2 : le format de pattern passe a huit pistes (enregistrement 30 710 -> 40 924 octets deployes, 14 848 -> 19 796 ranges), les kits a 7 294 octets et le projet a 80 patterns au lieu de 96 (la banque F est echangee contre les pistes 7-8, le seul point de perte de donnees du mod).",
-  "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). L'image projet grandit de 60 768 octets, donc l'en-tete et la table des patterns se decalent, et les kits demenagent vers la plage libre de 0x43dd0000.",
-  "La conversion des projets existants (convertisseur v6 -> v7) et l'interface (page de pistes) sont des jalons suivants : sans la conversion, un projet d'origine serait mal lu. Construit en ligne de commande seulement, hors flasher. Genere par tools/gen_groove_pattern.py, notes/54-56."
+  "Model:Groove, jalon 2 : le format de pattern passe a huit pistes (enregistrement 30 710 -> 40 924 octets deployes, 14 848 -> 16 292 ranges), les kits a 7 294 octets deployes (aire par piste 600 -> 800, les deux champs qui suivent decalent de +200) et le projet a 80 patterns au lieu de 96 (la banque F est echangee contre les pistes 7-8, le seul point de perte de donnees du mod).",
+  "Le conteneur du bloc projet suit : 2 163 716 -> 1 918 788 octets, sceau de cloture +2 163 712 -> +1 918 784, base des kits 1 303 872 (fichier) et 1 304 144 (image). La chaine des convertisseurs de version (les six v0..v5 -> v6) garde la geometrie d'origine : sa sortie est un bloc v6, et c'est ce qui garantit qu'elle ne deborde pas de son tampon.",
+  "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). Les kits demenagent vers la plage libre de 0x43dd0000.",
+  "La conversion des projets d'origine n'est PAS faite dans le firmware : la version du bloc courant passe a 7, donc un projet d'origine est refuse proprement (code d'erreur dedie). Construit en ligne de commande seulement, hors flasher. Genere par tools/gen_groove_pattern.py, notes/54-56."
  ],
  "device": "Model:Cycles",
  "os": "1.13",
@@ -14,7 +15,7 @@
   {
    "off": 26800,
    "old": "406fa024",
-   "new": "406c4684"
+   "new": "406be364"
   },
   {
    "off": 32698,
@@ -24,7 +25,7 @@
   {
    "off": 32714,
    "old": "406fa040",
-   "new": "406c46a0"
+   "new": "406be380"
   },
   {
    "off": 32724,
@@ -42,14 +43,49 @@
    "new": "00000320"
   },
   {
+   "off": 38580,
+   "old": "0274",
+   "new": "033c"
+  },
+  {
+   "off": 38594,
+   "old": "02b6",
+   "new": "037e"
+  },
+  {
+   "off": 38598,
+   "old": "0274",
+   "new": "033c"
+  },
+  {
    "off": 38748,
    "old": "00000258",
    "new": "00000320"
   },
   {
+   "off": 38760,
+   "old": "02c4",
+   "new": "038c"
+  },
+  {
+   "off": 38764,
+   "old": "0278",
+   "new": "0340"
+  },
+  {
+   "off": 38776,
+   "old": "0274",
+   "new": "033c"
+  },
+  {
    "off": 41288,
    "old": "00000258",
    "new": "00000320"
+  },
+  {
+   "off": 41316,
+   "old": "0274",
+   "new": "033c"
   },
   {
    "off": 49544,
@@ -99,7 +135,7 @@
   {
    "off": 59008,
    "old": "002cfc5c",
-   "new": "0370b97c"
+   "new": "03711c9c"
   },
   {
    "off": 59046,
@@ -117,14 +153,29 @@
    "new": "00009fdc"
   },
   {
+   "off": 59926,
+   "old": "0015c200",
+   "new": "0013e540"
+  },
+  {
    "off": 59962,
    "old": "3a00",
    "new": "3fa4"
   },
   {
+   "off": 60022,
+   "old": "0015c200",
+   "new": "0013e540"
+  },
+  {
    "off": 60058,
    "old": "3a00",
    "new": "3fa4"
+  },
+  {
+   "off": 60144,
+   "old": "0015c200",
+   "new": "0013e540"
   },
   {
    "off": 60238,
@@ -142,9 +193,29 @@
    "new": "0013e340"
   },
   {
+   "off": 60270,
+   "old": "7206",
+   "new": "7207"
+  },
+  {
+   "off": 60278,
+   "old": "00210400",
+   "new": "001d4740"
+  },
+  {
+   "off": 60630,
+   "old": "0015c200",
+   "new": "0013e540"
+  },
+  {
    "off": 60666,
    "old": "00003a00",
    "new": "00003fa4"
+  },
+  {
+   "off": 60732,
+   "old": "0015c200",
+   "new": "0013e540"
   },
   {
    "off": 60768,
@@ -154,7 +225,12 @@
   {
    "off": 63856,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
+  },
+  {
+   "off": 63868,
+   "old": "7006",
+   "new": "7007"
   },
   {
    "off": 64176,
@@ -194,7 +270,17 @@
   {
    "off": 64684,
    "old": "002cfc5c",
-   "new": "0370b97c"
+   "new": "03711c9c"
+  },
+  {
+   "off": 64736,
+   "old": "0015c200",
+   "new": "0013e540"
+  },
+  {
+   "off": 66396,
+   "old": "0015c200",
+   "new": "0013e540"
   },
   {
    "off": 66448,
@@ -204,7 +290,7 @@
   {
    "off": 66460,
    "old": "002cfc5c",
-   "new": "0370b97c"
+   "new": "03711c9c"
   },
   {
    "off": 67348,
@@ -254,7 +340,7 @@
   {
    "off": 130444,
    "old": "406fa040",
-   "new": "406c46a0"
+   "new": "406be380"
   },
   {
    "off": 130454,
@@ -269,7 +355,7 @@
   {
    "off": 130998,
    "old": "406fa040",
-   "new": "406c46a0"
+   "new": "406be380"
   },
   {
    "off": 131008,
@@ -304,32 +390,32 @@
   {
    "off": 279710,
    "old": "406fa024",
-   "new": "406c4684"
+   "new": "406be364"
   },
   {
    "off": 279748,
    "old": "406fa024",
-   "new": "406c4684"
+   "new": "406be364"
   },
   {
    "off": 279842,
    "old": "406fa024",
-   "new": "406c4684"
+   "new": "406be364"
   },
   {
    "off": 279878,
    "old": "406fa024",
-   "new": "406c4684"
+   "new": "406be364"
   },
   {
    "off": 279924,
    "old": "406fa024",
-   "new": "406c4684"
+   "new": "406be364"
   },
   {
    "off": 280504,
    "old": "406fa024",
-   "new": "406c4684"
+   "new": "406be364"
   },
   {
    "off": 343518,
@@ -384,7 +470,7 @@
   {
    "off": 350728,
    "old": "406fa040",
-   "new": "406c46a0"
+   "new": "406be380"
   },
   {
    "off": 351908,
@@ -400,6 +486,26 @@
    "off": 372502,
    "old": "00000258",
    "new": "00000320"
+  },
+  {
+   "off": 372512,
+   "old": "0274",
+   "new": "033c"
+  },
+  {
+   "off": 372516,
+   "old": "0278",
+   "new": "0340"
+  },
+  {
+   "off": 372526,
+   "old": "02b6",
+   "new": "037e"
+  },
+  {
+   "off": 372530,
+   "old": "02c4",
+   "new": "038c"
   },
   {
    "off": 373702,
@@ -467,11 +573,6 @@
    "new": "1694"
   },
   {
-   "off": 375462,
-   "old": "00000258",
-   "new": "00000320"
-  },
-  {
    "off": 375728,
    "old": "000010ec",
    "new": "00001690"
@@ -507,119 +608,29 @@
    "new": "3f34"
   },
   {
-   "off": 376482,
-   "old": "000010ec",
-   "new": "00001690"
-  },
-  {
-   "off": 376494,
-   "old": "10f0",
-   "new": "1694"
-  },
-  {
-   "off": 376498,
-   "old": "10f0",
-   "new": "1694"
-  },
-  {
-   "off": 376514,
-   "old": "3990",
-   "new": "3f34"
-  },
-  {
-   "off": 376518,
-   "old": "3990",
-   "new": "3f34"
-  },
-  {
-   "off": 376686,
-   "old": "00003a00",
-   "new": "00003fa4"
-  },
-  {
-   "off": 376698,
-   "old": "0015c000",
-   "new": "0013e340"
-  },
-  {
-   "off": 376976,
-   "old": "00003a00",
-   "new": "00003fa4"
-  },
-  {
-   "off": 376988,
-   "old": "0015c000",
-   "new": "0013e340"
-  },
-  {
-   "off": 377266,
-   "old": "00003a00",
-   "new": "00003fa4"
-  },
-  {
-   "off": 377278,
-   "old": "0015c000",
-   "new": "0013e340"
-  },
-  {
-   "off": 377778,
-   "old": "3a00",
-   "new": "3fa4"
-  },
-  {
-   "off": 377790,
-   "old": "00003a00",
-   "new": "00003fa4"
-  },
-  {
-   "off": 377810,
-   "old": "0015c000",
-   "new": "0013e340"
-  },
-  {
-   "off": 378346,
-   "old": "3a00",
-   "new": "3fa4"
-  },
-  {
-   "off": 378358,
-   "old": "00003a00",
-   "new": "00003fa4"
-  },
-  {
-   "off": 378378,
-   "old": "0015c000",
-   "new": "0013e340"
-  },
-  {
-   "off": 379234,
-   "old": "00000258",
-   "new": "00000320"
-  },
-  {
    "off": 379314,
    "old": "10f0",
    "new": "1694"
   },
   {
-   "off": 379548,
-   "old": "00003a00",
-   "new": "00003fa4"
-  },
-  {
-   "off": 379560,
-   "old": "0015c000",
-   "new": "0013e340"
-  },
-  {
-   "off": 379694,
-   "old": "00003a00",
-   "new": "00003fa4"
-  },
-  {
    "off": 380212,
    "old": "00000258",
    "new": "00000320"
+  },
+  {
+   "off": 380220,
+   "old": "0278",
+   "new": "0340"
+  },
+  {
+   "off": 380254,
+   "old": "02c4",
+   "new": "038c"
+  },
+  {
+   "off": 380258,
+   "old": "02b6",
+   "new": "037e"
   },
   {
    "off": 380630,
@@ -637,9 +648,14 @@
    "new": "0031f4c0"
   },
   {
+   "off": 380736,
+   "old": "0015c200",
+   "new": "0013e540"
+  },
+  {
    "off": 380742,
    "old": "002cfc5c",
-   "new": "0370b97c"
+   "new": "03711c9c"
   },
   {
    "off": 380768,
@@ -652,6 +668,16 @@
    "new": "0008e760"
   },
   {
+   "off": 380848,
+   "old": "00210400",
+   "new": "001d4740"
+  },
+  {
+   "off": 380970,
+   "old": "00210400",
+   "new": "001d4740"
+  },
+  {
    "off": 381176,
    "old": "000077f6",
    "new": "00009fdc"
@@ -662,9 +688,19 @@
    "new": "00003fa4"
   },
   {
+   "off": 381186,
+   "old": "7060",
+   "new": "7050"
+  },
+  {
    "off": 381224,
    "old": "002cfc5c",
-   "new": "0370b97c"
+   "new": "03711c9c"
+  },
+  {
+   "off": 381230,
+   "old": "0015c200",
+   "new": "0013e540"
   },
   {
    "off": 381274,
@@ -672,34 +708,14 @@
    "new": "1c7e"
   },
   {
-   "off": 383104,
-   "old": "00210404",
-   "new": "001daa64"
+   "off": 383620,
+   "old": "00210400",
+   "new": "001d4740"
   },
   {
-   "off": 383220,
-   "old": "00210404",
-   "new": "001daa64"
-  },
-  {
-   "off": 383280,
-   "old": "00210404",
-   "new": "001daa64"
-  },
-  {
-   "off": 383396,
-   "old": "00210404",
-   "new": "001daa64"
-  },
-  {
-   "off": 383456,
-   "old": "00210404",
-   "new": "001daa64"
-  },
-  {
-   "off": 383572,
-   "old": "00210404",
-   "new": "001daa64"
+   "off": 383636,
+   "old": "7206",
+   "new": "7207"
   },
   {
    "off": 383820,
@@ -807,6 +823,16 @@
    "new": "3fa4"
   },
   {
+   "off": 397292,
+   "old": "0274",
+   "new": "033c"
+  },
+  {
+   "off": 397302,
+   "old": "02b6",
+   "new": "037e"
+  },
+  {
    "off": 397716,
    "old": "000066c6",
    "new": "00008908"
@@ -834,7 +860,7 @@
   {
    "off": 398190,
    "old": "002cfc5c",
-   "new": "0370b97c"
+   "new": "03711c9c"
   },
   {
    "off": 398234,
@@ -849,27 +875,32 @@
   {
    "off": 409050,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 409062,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 409514,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
+  },
+  {
+   "off": 434150,
+   "old": "7260",
+   "new": "7250"
   },
   {
    "off": 434168,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 435300,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 528684,
@@ -879,7 +910,7 @@
   {
    "off": 528694,
    "old": "406fa040",
-   "new": "406c46a0"
+   "new": "406be380"
   },
   {
    "off": 529034,
@@ -894,7 +925,7 @@
   {
    "off": 529290,
    "old": "406fa040",
-   "new": "406c46a0"
+   "new": "406be380"
   },
   {
    "off": 529860,
@@ -914,32 +945,42 @@
   {
    "off": 572050,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 573548,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 578556,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 578864,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 578884,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 579006,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
+  },
+  {
+   "off": 579290,
+   "old": "0015c310",
+   "new": "0013e650"
+  },
+  {
+   "off": 579344,
+   "old": "7060",
+   "new": "7050"
   },
   {
    "off": 579348,
@@ -949,7 +990,7 @@
   {
    "off": 579408,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 858058,
@@ -984,7 +1025,7 @@
   {
    "off": 944268,
    "old": "00210404",
-   "new": "001daa64"
+   "new": "001d4744"
   },
   {
    "off": 954008,

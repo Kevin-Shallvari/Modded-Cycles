@@ -426,20 +426,29 @@ pattern et la sélection de piste sont des jalons suivants.
 
 MAIN OS (jalon 1, 712 octets modifiés) : `d7ea09e22f8ede8e54ce5b5c37fd69fdcf282ccaf2c97cae0052265409986171`
 
-Jalon 2 ([note 56](../../notes/56-coeur-8-pistes.md) §3.35–§3.48) : le **format de pattern** passe à
+Jalon 2 ([note 56](../../notes/56-coeur-8-pistes.md) §3.35–§3.53) : le **format de pattern** passe à
 huit pistes — enregistrement déployé **40 924** octets (`4 + 8×722 + 8×4385 + 64`), bloc rangé
 **16 292** (`4 + 8×722 + 10 512`, la queue rangée étant une liste plate de 80 entrées de 130 o qui
 **ne grandit pas**), kits **7 294** octets, **80 patterns** au lieu de 96 (la banque F est échangée
-contre les pistes 7-8 — c'est le seul point de perte de données du mod, à traiter par la conversion
-des projets). L'image projet **rétrécit** de 219 552 octets, donc l'en-tête et la table des patterns
-descendent (`0x406c4684` / `0x406c46a0`) et les kits vont dans la plage libre de `0x43dd0000`.
-**196 écritures**, chacune vérifiée octet à octet ; **prouvé en émulation** par
+contre les pistes 7-8 — c'est le seul point de perte de données du mod). Le **conteneur du bloc
+projet** suit : **1 918 788** octets au lieu de 2 163 716, sceau de clôture **+1 918 784**, base des
+kits **1 303 872** (fichier) / **1 304 144** (image) — donc l'en-tête et la table des patterns
+descendent (`0x406be364` / `0x406be380`) et les kits vont dans la plage libre de `0x43dd0000`.
+L'aire par piste d'un kit passe de 600 à 800 octets, donc **les deux champs qui la suivent décalent
+de +200** (628 → 828, 694 → 894 déployés ; 632 → 832, 708 → 908 rangés) — c'est ce qui rend le kit
+déployé égal à 7 294. La **chaîne des convertisseurs de version** (les six `v0…v5 → v6`) garde en
+revanche la **géométrie d'origine** : sa sortie est un bloc v6, et c'est ce qui garantit qu'elle ne
+déborde pas de son tampon. La **version passe à 7**, donc un projet d'origine est **refusé
+proprement** (code d'erreur dédié) : il n'est ni lu de travers ni effacé, et revenir à l'OS officiel
+le rend lisible.
+**204 écritures**, chacune vérifiée octet à octet, et le générateur **vérifie son propre découpage**
+(les plages de la chaîne de versions restent identiques au stock) ; **prouvé en émulation** par
 `tools/re/test_groove_pattern.py` (A–E : le dépliage couvre huit pistes, les pistes 0-5 sont
 identiques au stock — pas **et** queues —, et l'aller-retour écrire→relire de l'OS est stable sur
-les deux images). **Pas encore jouable depuis le panneau** : la conversion des projets existants
-(convertisseur v6 → v7) et la page de pistes restent à faire.
+les deux images). **Pas encore jouable depuis le panneau** : la page de pistes reste à faire, et le
+**kit** n'a pas encore son propre banc d'aller-retour.
 
-MAIN OS (jalons 1+2, 1 348 octets modifiés) : `ac9c4e33fdbe39e31831f4af6601ab0cc318ce5e5185e7945431dacfaa642af7`
+MAIN OS (jalons 1+2, 383 écritures) : `56f3cee2380bc27a1ed1244ccfc14a1fc9ebd11903378ac6c79235f87670572b`
 (OS d'origine : `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`).
 
 ## Flasher (rappel)
