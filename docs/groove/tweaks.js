@@ -2,10 +2,10 @@
  * NE PAS editer a la main : relance le script apres avoir change un tweak.
  *
  * Model:Groove — ligne derivee, hors page des mods (docs/groove/).
- * MAIN OS attendu pour 56 + 57 : 90cab637dc08ff0463fc60596fac60769f07c9f51f49a06f5f8194f0d44285c2
+ * MAIN OS attendu pour 56 + 57 : a0777eb2cfbdb81c5b7c1d40358555b40196a75b8e1d4f583d44fbb6cc21bf18
  */
 window.MC_GROOVE = {
-  "mainos": "90cab637dc08ff0463fc60596fac60769f07c9f51f49a06f5f8194f0d44285c2",
+  "mainos": "a0777eb2cfbdb81c5b7c1d40358555b40196a75b8e1d4f583d44fbb6cc21bf18",
   "device": "Model:Cycles",
   "os": "1.13",
   "order": ["groove-8tracks", "groove-patterns"],
@@ -283,6 +283,15 @@ window.MC_GROOVE = {
         {"off": 130988, "old": "000077f6", "new": "00009fdc"},
         {"off": 130998, "old": "406fa040", "new": "406be380"},
         {"off": 131008, "old": "00001bb6", "new": "00001c7e"},
+        {"off": 144794, "old": "7005", "new": "7007"},
+        {"off": 145570, "old": "7005", "new": "7007"},
+        {"off": 145576, "old": "7405", "new": "7407"},
+        {"off": 145816, "old": "7005", "new": "7007"},
+        {"off": 146170, "old": "7005", "new": "7007"},
+        {"off": 148832, "old": "7205", "new": "7207"},
+        {"off": 166626, "old": "7006", "new": "7008"},
+        {"off": 177588, "old": "7205", "new": "7207"},
+        {"off": 177596, "old": "7005", "new": "7007"},
         {"off": 208888, "old": "0258", "new": "0320"},
         {"off": 208976, "old": "0258", "new": "0320"},
         {"off": 209034, "old": "0258", "new": "0320"},

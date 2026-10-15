@@ -185,6 +185,34 @@ PATCHES = [
 # La garde du nombre de patterns : `moveq #95` -> `moveq #79` (l'index maximal).
 GUARD_VA = 0x400083BA
 
+# --- LES BORNES D'INTERFACE : LA SELECTION DE PISTE (§3.31.c, §3.34.a, §3.32.b) ---------
+# La machine n'a que six pads, mais l'interface doit compter HUIT pistes. On elargit donc le
+# chemin de SELECTION : le menu de pistes, la liste « Track %d », les bornages d'indice et les
+# gardes des actions de piste (Copy/Paste/Clear TRK).
+#
+# Ce qui est LAISSE, et pourquoi :
+#   - les boucles qui parcourent les 6 PADS (0x4001cfb6, 0x4001d5d2, 0x4001d74e, 0x40020a42) :
+#     le panneau a six pads, c'est la contrainte materielle ; la page 2 de Kevin rebranche
+#     seulement DEUX de ces pads sur les pistes 7-8 ;
+#   - les bornes de MACHINE (0x4001b696 : l'indice est multiplie par 28, la taille du
+#     descripteur, §3.29.d) : les elargir serait une corruption silencieuse ;
+#   - les boucles dont le role n'est pas encore tranche (0x400231c2, 0x4002fa10, 0x4002fade,
+#     0x4001b086, 0x4001b092, 0x40022ec2) : voir §3.55.
+#
+# Chaque site est verifie : l'octet de gauche doit etre un `moveq` (0x70..0x77) et celui de
+# droite la valeur attendue. C'est le meme controle que pour la garde du nombre de patterns.
+UI_TRACK_BOUNDS = [
+    (0x4002399A, 5, 7, "garde d'action de piste (Copy/Paste/Clear TRK)"),
+    (0x40023CA2, 5, 7, "bornage de l'indice de piste"),
+    (0x40023CA8, 5, 7, "bornage de l'indice de piste (valeur par defaut)"),
+    (0x40023D98, 5, 7, "menu de selection de piste : une entree par piste"),
+    (0x40023EFA, 5, 7, "garde d'action de piste (Copy/Paste/Clear TRK)"),
+    (0x40024960, 5, 7, "garde d'indice"),
+    (0x4002B9B4, 5, 7, "bornage d'indice"),
+    (0x4002B9BC, 5, 7, "bornage d'indice (valeur par defaut)"),
+    (0x40028EE2, 6, 8, "la liste des pistes (« Track %d »)"),
+]
+
 # Sites ecartes APRES REVUE (§3.38) : la valeur apparait par coincidence dans la ZONE DE
 # DONNEES de l'image (chaines, tables), jamais du code.
 EXCLUDE = {
@@ -340,6 +368,21 @@ def main():
         raise SystemExit("!! la garde du nombre de patterns n'est pas en %#x" % GUARD_VA)
     writes.append((GUARD_VA, bytes([op, 95]), bytes([op, 79]),
                    "nombre de patterns : 96 -> 80"))
+
+    # les bornes d'interface du chemin de selection de piste
+    for va, old, new, role in UI_TRACK_BOUNDS:
+        op = stock[va - BASE]
+        val = stock[va - BASE + 1]
+        if not (0x70 <= op <= 0x77):
+            bad.append("%s : %#x n'est pas un moveq (opcode %02x)" % (role, va, op))
+            continue
+        if val != old:
+            bad.append("%s : la valeur en %#x est %d, attendue %d" % (role, va, val, old))
+            continue
+        writes.append((va, bytes([op, old]), bytes([op, new]), "piste : " + role))
+    if not args.audit:
+        print("  piste   %-46s %2d borne(s) d'interface" % ("selection de piste",
+                                                            len(UI_TRACK_BOUNDS)))
 
     for va, old_hex, new_hex, role in PATCHES:
         ob = bytes.fromhex(old_hex)

@@ -441,18 +441,21 @@ revanche la **géométrie d'origine** : sa sortie est un bloc v6, et c'est ce qu
 déborde pas de son tampon. La **version passe à 7**, donc un projet d'origine est **refusé
 proprement** (code d'erreur dédié) : il n'est ni lu de travers ni effacé, et revenir à l'OS officiel
 le rend lisible.
-**204 écritures**, chacune vérifiée octet à octet, et le générateur **vérifie son propre découpage**
+**218 écritures**, chacune vérifiée octet à octet, et le générateur **vérifie son propre découpage**
 (les plages de la chaîne de versions restent identiques au stock) ; **prouvé en émulation** par
 `tools/re/test_groove_pattern.py` (A–E : le dépliage couvre huit pistes, les pistes 0-5 sont
 identiques au stock — pas **et** queues —, et l'aller-retour écrire→relire de l'OS est stable sur
-les deux images). **Pas encore jouable depuis le panneau** : la page de pistes reste à faire. Le **kit** est
-**vérifié site par site** mais **pas prouvé en émulation** : son code est orienté objet (méthodes
+les deux images). Le **kit** est vérifié site par site mais **pas prouvé en émulation** : son code est orienté objet (méthodes
 virtuelles) et ses morceaux de 100 o sont des enregistrements imbriqués dont le type indexe une
 table de descripteurs — un banc ne peut pas fabriquer un kit valide (notes/56 §3.54). En
 conséquence il est acceptable **en ligne de commande**, mais il n'est **pas** candidat au flasher
 et **pas** `tested` tant qu'il n'a pas été entendu sur la machine.
+La **sélection de piste** compte désormais **huit** entrées (le menu de pistes, la liste
+« Track %d », les bornages d'indice et les gardes des actions Copy/Paste/Clear TRK — §3.55), donc
+les pistes 7-8 sont **atteignables depuis le panneau**. La **page 2** de Kevin (pads T1-T2 →
+pistes 7-8, LEDs 1-2 allumées) reste à écrire.
 
-MAIN OS (jalons 1+2, 383 écritures) : `56f3cee2380bc27a1ed1244ccfc14a1fc9ebd11903378ac6c79235f87670572b`
+MAIN OS (jalons 1+2, 397 écritures) : `a0777eb2cfbdb81c5b7c1d40358555b40196a75b8e1d4f583d44fbb6cc21bf18`
 (OS d'origine : `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`).
 
 ## Flasher (rappel)

@@ -2893,6 +2893,60 @@ au flasher, et il n'est **pas** `tested` — tant que Maxime ne l'a pas entendu 
 sauvegardé puis rouvert ; une piste 8 qui joue ; et un projet d'origine, pour confirmer qu'il est
 **refusé proprement** et que rien n'est effacé.
 
+### 3.55 Jalon 3, la **sélection de piste** : les bornes d'interface `[FAIT]`/`[HYP]` (15/10)
+
+`build/re8/ui_bounds.py`, `ui_bounds.txt`.
+
+#### a) Le constat qui a tout débloqué `[FAIT]`
+
+Les bornes d'interface recensées au §3.31.c et au §3.34.a n'avaient **jamais été changées**. Vérifié
+borne par borne contre le jeu de changements : le menu de sélection de piste, la boucle des pads, le
+tableau des pads, la carte des LEDs — **aucune** n'y était, et la zone `0x4002xxxx` ne portait que
+**6** écritures, toutes des pas de tables du **moteur**. C'est pour cela que les pistes 7-8 n'étaient
+pas atteignables : **rien n'avait dit au panneau qu'il y en a huit.**
+
+#### b) Le tri : PISTE, PAD ou MACHINE `[FAIT]`
+
+Les trois valent 5 ou 6, donc la valeur ne dit rien. Le discriminant est **ce qui suit** :
+
+| | ce qui suit | verdict |
+|---|---|---|
+| une **piste** | un enregistrement de pattern, ou la chaîne « Track %d » | à élargir |
+| un **pad** | le tableau des pads (`0x404a8ba0`) — six, **c'est le matériel** | **laisser** |
+| une **machine** | un **× 28** (taille du descripteur, §3.29.d) | **laisser** (corruption silencieuse) |
+
+Le piège connu du §3.34.b (`0x4001b696`, × 28) est bien une **machine** : il reste.
+
+#### c) Les neuf bornes élargies `[FAIT]`
+
+Le **chemin de sélection** : le menu de pistes (`0x40023d98`, une entrée par piste), la liste
+« Track %d » (`0x40028ee2`), les **bornages d'indice** (`0x40023ca2` **et** `0x40023ca8` — les deux
+`moveq`, la garde et la valeur par défaut ; idem `0x4002b9b4` et `0x4002b9bc`), la garde d'indice
+`0x40024960`, et les **gardes des actions de piste** (`0x4002399a`, `0x40023efa` — les appelants
+construisent « Copy/Paste/Clear TRK %d Sound », §3.31.c). Chacune est vérifiée : l'octet de gauche
+doit être un `moveq` (0x70..0x77) et celui de droite la valeur attendue — le même contrôle que pour
+la garde du nombre de patterns.
+
+**Laissées, avec leur raison** : les boucles qui parcourent les **6 pads** (`0x4001cfb6`,
+`0x4001d5d2`, `0x4001d74e`, `0x40020a42` — la page 2 de Kevin ne rebranche que **deux** de ces six
+pads), et les bornes de **machine** (`0x4001b696`).
+
+#### d) Ce qui reste `[HYP]`
+
+1. **La page 2 elle-même** (la conception de Kevin, §3.32) : pads T1-T2 → pistes 7-8, LEDs 1-2
+   allumées. Le chemin **pad → piste** passe par **deux sauts virtuels** : la vue des pads → un
+   sous-objet en `vue+64` (accesseur `0x400764e0`, un thunk qui ajoute 64 et saute en `0x400e8646`)
+   → une méthode en `+32` de sa classe. Le descripteur de classe est en `0x401001d8` (`%a0@(128)`
+   y lit bien `0x400764e0`), mais **rien ne le cite** : il est construit à l'exécution, donc la
+   prochaine étape est le **constructeur**, pas une recherche de littéral.
+2. **Six boucles dont le rôle n'est pas tranché** (`0x400231c2`, `0x4002fa10`, `0x4002fade`,
+   `0x4001b086`, `0x4001b092`, `0x40022ec2`) : élargies trop vite, elles pourraient écrire dans un
+   tableau de six. À classer avant d'y toucher.
+
+**Ce qui est acquis** : les pistes 7-8 sont **sélectionnables** (le menu en propose huit, les
+bornages et les gardes suivent) — donc **testables sur la machine**. L'affichage de page, lui, reste
+à faire.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
