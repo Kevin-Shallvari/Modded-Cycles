@@ -173,8 +173,18 @@ Ce que le script fait, exactement comme spécifié ci-dessus :
 - il découpe les messages F0..F7 (même découpage que `flash.py`) ;
 - il produit des trames **8N1 à 31 250 bauds**, avec la même **cadence `--pace`** que `flash.py`
   (défaut 1,4 ; 2,0 si la machine se fige) ;
-- les fronts sont **à bande limitée** : rendu sur une grille fine de 3,072 MHz, filtre
-  anti-repliement à 0,45·fs, puis décimation (facteurs 16 / 32 / 64 pour 192 / 96 / 48 kHz) ;
+- les fronts sont **à bande limitée** par **échelons précalculés** : la réponse indicielle du
+  filtre (0,45·fs, 12 zéros de sinc, fenêtre de Blackman) est calculée une fois sur la grille
+  fine de 3,072 MHz, puis **estampillée à chaque front**, centrée sur l'instant du front ; on
+  décime ensuite (facteurs 16 / 32 / 64 pour 192 / 96 / 48 kHz). C'est la somme des marches
+  d'un filtre linéaire, donc exactement ce que le filtre produirait — mais linéaire en nombre
+  de fronts, là où filtrer chaque trame coûtait une convolution par message (~20 min pour l'OS
+  officiel, contre ~30 s) ;
+- **le piège, trouvé par l'auto-contrôle** : `amp = diff(lv_full)` est **décalé d'un cran** par
+  rapport à `ts`. `amp[j]` est le changement qui a lieu **à l'instant `ts[j]`**, et le dernier
+  est le retour au repos **après** le dernier bit. Aligner les deux tableaux naïvement décale
+  chaque octet d'un bit et **rien ne se décode** — c'est exactement ce que le contrôle a
+  signalé (34148 erreurs de trame, premier écart à 0), et c'est pour cela qu'il existe ;
 - il **alterne la polarité** des zéros, octet par octet, au-delà de 16 bits de charge cumulée,
   avec un bit de repos à chaque bascule (§3.5) ;
 - gauche et droite sont en **opposition de phase**, `--level` en dBFS, crête ≤ −1 dBFS par défaut ;

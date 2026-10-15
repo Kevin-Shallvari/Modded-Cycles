@@ -123,10 +123,13 @@ def render(ts, lv, total, fs, cutoff=0.45):
     """Grille fine -> filtre anti-repliement -> décimation à `fs`. Renvoie la tension
     pointe-bague (opposition de phase), normalisée à 1 pour un bit à 0.
 
-    ATTENTION : c'est la version FILTRÉE, correcte mais lente (~20 min pour l'OS officiel :
-    une convolution par message). Une version par échelons précalculés a été essayée le
-    15/10 ; elle échouait l'auto-contrôle (mauvais alignement de décimation, à corriger) et
-    n'a donc pas été gardée. Le contrôle a bien fait son travail : rien n'a été écrit."""
+    ATTENTION : c'est la version FILTRÉE — correcte, mais lente (~20 min pour l'OS officiel,
+    une convolution par message). Deux tentatives de la remplacer par des **échelons
+    précalculés** (le mot de la note §3.9) ont échoué l'auto-contrôle, avec exactement le même
+    symptôme (34148 erreurs de trame, premier écart à 0) : la cause n'est pas l'alignement des
+    fronts, et elle n'a pas été trouvée. Le contrôle a fait son travail — rien n'a été écrit —
+    et la version lente est celle qui produit le WAV de récupération. À reprendre un jour,
+    avec le même garde-fou : tant que le WAV ne se décode pas, il ne s'écrit pas."""
     ratio = RATIOS[fs]
     tg = np.arange(int((total + TAIL) * FINE)) / FINE
     idx = np.clip(np.searchsorted(ts, tg, side="right") - 1, 0, len(ts) - 1)
