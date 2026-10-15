@@ -121,7 +121,12 @@ def convolve(x, h):
 
 def render(ts, lv, total, fs, cutoff=0.45):
     """Grille fine -> filtre anti-repliement -> décimation à `fs`. Renvoie la tension
-    pointe-bague (opposition de phase), normalisée à 1 pour un bit à 0."""
+    pointe-bague (opposition de phase), normalisée à 1 pour un bit à 0.
+
+    ATTENTION : c'est la version FILTRÉE, correcte mais lente (~20 min pour l'OS officiel :
+    une convolution par message). Une version par échelons précalculés a été essayée le
+    15/10 ; elle échouait l'auto-contrôle (mauvais alignement de décimation, à corriger) et
+    n'a donc pas été gardée. Le contrôle a bien fait son travail : rien n'a été écrit."""
     ratio = RATIOS[fs]
     tg = np.arange(int((total + TAIL) * FINE)) / FINE
     idx = np.clip(np.searchsorted(ts, tg, side="right") - 1, 0, len(ts) - 1)
