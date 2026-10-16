@@ -515,9 +515,19 @@ comme un entier alors que le chargement ne lit que l'octet bas.
 
 MAIN OS (jalons 1+2+3, 427 écritures) : `1e15286aa91a849e97f6d6950a718e7e1504663e1793bc76e32d8b61e880bd4a`
 
-Ce qui reste : la **chaîne entière dans l'OS** ne s'émule pas — le démarrage, les constructeurs, les
-sémaphores, l'allocateur (notes/56 §3.46) — et c'est l'essai machine qui le dira. La banque F
-(16 patterns) reste perdue à la conversion, comme partout dans ce mod.
+**Ce candidat ne démarre pas** (flash du 16/10, écran d'exception). La cause est au
+[§3.60](../notes/56-coeur-8-pistes.md) : la **chaîne des convertisseurs de version** écrit son
+bloc v6 (**2 163 716** octets) dans l'image projet, et le jalon 2 a **rapproché l'en-tête** de
+cette même quantité — la région `image -> en-tête` n'est plus que **1 918 788**. La chaîne déborde
+donc de **244 928** octets **par-dessus l'en-tête de projet et le début de la table des patterns
+déployés**, à chaque démarrage, *avant* le contrôle de fin que le convertisseur remplace. Le
+correctif (à faire) : garder la géométrie de **stockage** de l'OS d'origine (en-tête `0x406fa024`,
+patterns `0x406fa040`, enregistrement stocké 2 163 988) et ne raccourcir **que le bloc**.
+
+Ce qui reste, après ce correctif : la **chaîne entière dans l'OS** ne s'émule toujours pas — le
+démarrage, les constructeurs, les sémaphores, l'allocateur (notes/56 §3.46) — et c'est l'essai
+machine qui le dira. La banque F (16 patterns) reste perdue à la conversion, comme partout dans ce
+mod. **Aucun firmware Groove n'a encore démarré sur la machine.**
 
 ## Flasher (rappel)
 

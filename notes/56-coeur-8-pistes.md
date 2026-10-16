@@ -3221,6 +3221,94 @@ La **chaîne entière dans l'OS** — le démarrage, les constructeurs, les sém
 reste hors de l'émulateur (§3.46). Ce que la machine doit dire, et que personne d'autre ne peut :
 est-ce que l'OS démarre sur son propre projet d'usine, et est-ce que le projet converti se charge ?
 
+### 3.60 La cause du plantage : la **chaîne écrit son bloc v6 dans une région rabaissée au v7** `[FAIT]` (16/10)
+
+Étape 3d, et le vrai coupable depuis le début. Le candidat `56 + 57 + 58` (MAIN OS
+`1e15286a…`) **plante sur la machine exactement comme les précédents** (Maxime, 16/10, flashé
+par USB depuis un OS Model:Cycles). La lecture ci-dessous dit pourquoi, et pourquoi le refus
+d'abord (§3.56, §3.57) puis le convertisseur (§3.58, §3.59) ne pouvaient y changer quoi que ce
+soit.
+
+#### a) L'arithmétique `[FAIT]`
+
+La **chaîne des convertisseurs de version** travaille **sur place** : chaque étape écrit son
+résultat dans l'image projet (`a2`), et la dernière (`v5 -> v6`) y écrit **2 163 716 octets** —
+une constante de son code, dans `LEGACY`, donc jamais modifiée.
+
+| | région `image -> en-tête` | ce que la chaîne y écrit |
+|---|---|---|
+| stock | `0x406fa024 - 0x404e9c20` = **2 163 716** | 2 163 716 : elle s'arrête **exactement** au début de l'en-tête |
+| Groove | `0x406be364 - 0x404e9c20` = **1 918 788** | 2 163 716 : elle dépasse de **244 928** |
+
+Le jalon 2 a fait les deux choses à la fois : il a **raccourci le bloc** (juste : 80 patterns de
+16 292) *et* **rapproché l'en-tête** de la même quantité. La chaîne, elle, écrit toujours la
+taille v6 (`2163716`), et elle n'est pas touchée — c'est ce qui garantit qu'elle ne déborde pas
+de **son** tampon, mais pas de la **région** où elle dépose. À chaque démarrage elle écrase donc :
+
+```
+[0x406be364, 0x406fa024) = l'en-tête de projet (28 o) + 244 900 octets de la table des
+                           patterns déployés
+```
+
+Des octets de kit se retrouvent là où l'en-tête est lu, un champ est pris pour un pointeur, et la
+machine part ailleurs : c'est la classe de l'adresse fautive `0x00300000` (hors de l'OS) de
+l'écran d'exception. **Systématique, avec ou sans projet à l'utilisateur**, parce que le projet
+d'usine est un bloc **v5** qui traverse la chaîne à chaque démarrage — et c'est pourquoi un EMPTY
+RESET ne changeait rien non plus.
+
+L'adresse fautive exacte n'a pas été relevée sur l'écran du 16/10 : **à demander** (§3.60.d).
+
+#### b) Pourquoi le refus, puis le convertisseur, n'y pouvaient rien `[FAIT]`
+
+Le contrôle de fin de chaîne est **après** les écritures. Quand la version 7 a fait refuser le
+bloc (§3.56, §3.57), les 244 928 octets étaient déjà écrits. Et le convertisseur du §3.58 est
+branché **sur ce même contrôle** (`0x4005de74`) : il s'exécute après le dégât, et il réécrit
+l'image (`a2`) sans jamais toucher à ce qui a débordé **au-delà** d'elle. « Le bloc v6 est refusé
+à chaque démarrage » décrivait donc bien le contrôle, mais pas l'écriture — et c'est l'écriture
+qui plante.
+
+#### c) Le correctif `[HYP -> à faire]`
+
+**Ne pas rapprocher l'en-tête.** Le bloc v7 est plus court, mais la **région** doit rester celle
+que la chaîne sait remplir :
+
+| | valeur |
+|---|---|
+| en-tête de projet | **`0x406fa024`** (inchangé : plus de décalage) |
+| table des patterns déployés | **`0x406fa040`** (inchangée) |
+| taille de l'enregistrement stocké | **2 163 988** (inchangée) |
+| bloc courant (copies de l'OS : création, chargements, sauvegarde) | **1 918 788** (nouveau) |
+| queue et sceau du bloc, aire de kit, enregistrement déployé, comptes, version 7 | **nouveaux** |
+| kits déployés | **`0x43dd0000`** (déménagés : la table des patterns, plus grande, ne leur laisse plus la place) |
+
+Ce qui tient : la table des patterns déployés (80 × 40 924 = **3 273 920**) se termine en
+`0x40a1ba80`, **dans** l'aire que les kits occupaient en stock (qui finissait en `0x40a6af00`) ;
+seuls les kits ont besoin d'ailleurs. Le bloc v7 (1 918 788) laisse alors 244 928 octets de marge
+dans la région, et la chaîne s'arrête au début de l'en-tête, intègre.
+
+**Contrôle inverse à écrire** (§3.56 et §3.57 ont montré l'utilité) : la région
+`en-tête - image` doit être **≥** la taille du plus grand bloc que la chaîne produit, et
+`en-tête`, `patterns` et `taille d'enregistrement` doivent **survivre** au patch. Avec le
+générateur actuel, ce contrôle **échoue** — c'est la démonstration du bug.
+
+#### d) Ce qu'il reste à faire `[HYP]`
+
+1. `tools/gen_groove_pattern.py` : garder `HEADER_OLD`, `PATTERNS_OLD` et `RECORD_OLD`
+   (retirer les trois entrées de `IMMEDIATES` et de `GEOMETRY`, et ajouter le contrôle du
+   §3.60.c), recalculer `KITS_NEW_OFFSET` et `DEPLOYED_TAIL_NEW` — les deux dépendent de
+   l'en-tête ;
+2. régénérer `57-groove-patterns.json`, relancer `gen_groove_page.py`, le build et les cinq bancs
+   (dont `test_groove_pattern.py`, qui code les adresses en dur) ;
+3. corriger `BUILD.md` et la page : le candidat `1e15286a…` **ne démarre pas** ;
+4. réemballer les deux `.syx` (0x11 clé Cycles, 0x0F conteneur Samples) et **faire flasher
+   Maxime**, récupération STARTUP MENU + MIDI IN sous la main ;
+5. demander la **valeur de `P`** de l'écran d'exception du 16/10 : si elle est toujours
+   `0x00300000`, elle confirme le pointeur pris dans les données de kit ; si elle a changé, elle
+   dit autre chose.
+
+Si ça démarre, le convertisseur du §3.58 reprend son rôle — c'est lui qui **accepte** le bloc v6
+en le passant en v7 ; sans ce correctif, il ne s'exécute jamais sur un bloc intact.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
@@ -3263,13 +3351,19 @@ est-ce que l'OS démarre sur son propre projet d'usine, et est-ce que le projet 
 candidat **après** le plantage : les deux générateurs passent `--check`, et les trois contrôles du
 second (géométrie, version, comptes) nomment leurs sites quand on les désactive.
 
-**Jalon 3 : conversion des projets** (16/10, §3.58 et §3.59) : `56 + 57 + 58` (**427 écritures**,
+**Jalon 3 : conversion des projets** (16/10, §3.58 à §3.60) : `56 + 57 + 58` (**427 écritures**,
 1 754 octets), MAIN OS
 `1e15286aa91a849e97f6d6950a718e7e1504663e1793bc76e32d8b61e880bd4a`. Le convertisseur **v6 -> v7**
 (288 o d'assembleur, dans le masque de sprite libéré `0x4016cae8`) prend la place du contrôle de
-fin de chaîne, qui **refusait** le bloc à chaque démarrage ; son banc (`test_groove_chain.py`, A à
-E) passe, y compris la redirection exécutée dans l'image construite. C'est le candidat **après**
-le second plantage — le premier dont on sait qu'il convertit au lieu de refuser.
+fin de chaîne ; son banc (`test_groove_chain.py`, A à E) passe, y compris la redirection exécutée
+dans l'image construite.
+
+**Ce candidat ne démarre pas** (flash du 16/10) — et le §3.60 dit pourquoi : la chaîne écrit son
+bloc v6 (2 163 716 o) dans une région que le jalon 2 a rabaissée à 1 918 788, donc **par-dessus
+l'en-tête de projet et le début de la table des patterns déployés**, *avant* le contrôle de fin
+que le convertisseur remplace. Le correctif est décrit au §3.60.c : garder la géométrie de
+**stockage** (en-tête `0x406fa024`, patterns `0x406fa040`, enregistrement 2 163 988) et ne
+raccourcir que le **bloc**. **Aucun firmware Groove n'a encore démarré sur la machine.**
 
 ## 5. Ce qui compte pour la suite
 
