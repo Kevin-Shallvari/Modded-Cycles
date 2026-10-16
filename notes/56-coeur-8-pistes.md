@@ -3032,6 +3032,79 @@ adresses relogées (une seule coïncidence, dans une donnée graphique en `0x401
   chargement du projet courant (il doit être **refusé proprement** — version 6 contre 7) ; une
   sauvegarde puis une réouverture ; puis les pistes 7-8 (une note sur chacune, muettes sans trig).
 
+### 3.57 Les listes à la main : **deux sites de version** et **douze comptes** oubliés — et un contrôle **vide** `[FAIT]` (16/10)
+
+`tools/gen_groove_pattern.py` (`PATTERN_COUNTS`, `SEAL_EXCUSES`, `COUNT_EXCUSES`, `versions_near`).
+
+Après le §3.56, la question n'était plus « ce défaut » mais « **combien d'autres** ». Le mod
+repose sur des listes **écrites à la main** ; la seule façon de répondre est de rendre chacune
+**inversable** : reprendre la valeur d'origine, exiger qu'elle ait disparu. Trois contrôles,
+chacun **vu échouer** avant de passer.
+
+#### a) La **version** : deux sites sur cinq `[FAIT]`
+
+Le sceau `0xBEEFBACE` et le sceau de clôture `0xBACEF00C` marquent le bloc projet : **tout** site
+qui les écrit ou les compare fixe aussi la version. Le triage n'en listait que **trois**. La
+revue des **36** sites de sceau en a trouvé deux de plus, restés en 6 :
+
+| site | ce qu'il fait | conséquence |
+|---|---|---|
+| `0x4005d3c4` | **écrit** un bloc (sceau, sceau de clôture au nouvel offset, version) | le bloc écrit est **v6** |
+| `0x4005d43a` | **valideur du déploiement** : `moveq #6 ; cmpl %a3@(4)` | la chaîne acceptait le bloc **v7**, puis le déploiement le **refusait** — l'OS ne pouvait pas matérialiser son propre projet |
+
+Les exceptions (justifiées, `SEAL_EXCUSES`) sont les sceaux d'**autres** enregistrements : les
+morceaux de 100 o des kits et des machines, qui portent leur propre version 2 (§3.54).
+
+#### b) Les **comptes** : douze sites oubliés `[FAIT]`
+
+`moveq #96` apparaît **124** fois dans l'image, `moveq #95` **421** fois. Le triage n'en changeait
+que trois (plus la garde). La revue a retenu les sites dont le **voisinage immédiat** utilise une
+constante du pattern ou du kit — c'est ce qui distingue un compte de patterns d'un autre 96 (le
+banc de sons : 96 enregistrements de 732 o à +5 192 ; les 96 **projets** du +Drive ; les 96
+**sons** indexant des descripteurs de 28 o) — et en a trouvé **douze** :
+
+- trois **boucles sur les créneaux de kit** (`0x4000ef26`, `0x4005d556`, `0x400617fa`) : pas rangé
+  7 680 ou déployé 7 094, comptées **96 au lieu de 80** — la boucle lisait **122 880 octets
+  au-delà du bloc**, c'est-à-dire dans l'en-tête et la table des patterns déployés : **la classe
+  du plantage** ;
+- quatre **bornes d'indice de pattern rangé** (pas 14 848, base 512) et cinq **clamps d'indice de
+  kit** (accès `-7680 × i`) : `95` au lieu de `79`.
+
+#### c) Le contrôle qui ne pouvait pas échouer `[FAIT]`
+
+Le premier contrôle de version **désassemblait** sa fenêtre avec capstone. Il **passait** — et
+pour une mauvaise raison : capstone rend une **liste vide** sur certaines plages (données,
+instructions EMAC), donc la fenêtre était vide, donc rien n'était vu. C'est le **test de
+défaillance** qui l'a montré : correctifs retirés, le contrôle restait muet. Il balaie maintenant
+les **octets** (`0x70..0x77` puis l'immediat), comme celui des comptes, qui, lui, avait échoué
+correctement du premier coup.
+
+**Leçon de méthode** : un contrôle « inversé » ne vaut que s'il a été **vu refuser**. Les trois
+contrôles du générateur sont désormais : `GEOMETRY` (23 valeurs de géométrie), les 36 sites de
+sceau (version 7), les comptes proches de la géométrie (96 → 80, 95 → 79) — chacun avec ses
+justifications nommées, et chacun vérifié en le désactivant.
+
+#### d) Une **erreur du §3.56**, corrigée `[FAIT]`
+
+Le §3.56 avait écrit la « fin des kits déployés » comme la **somme des deux tables + 28**
+(3 857 468). C'est faux : c'est un **décalage**, `kit_offset + kit_size`. En v6 les deux
+**coïncidaient** (2 948 188 + 681 024 = 3 629 212 = « tables + 28 »), et c'est cette coïncidence
+qui a fait écrire la mauvaise formule. La bonne valeur est **58 328 060** (elle atteint
+`0x43e5e760`, la fin des kits, qui ont déménagé). Avec l'ancienne, la queue était copiée 570 Ko
+plus loin, dans les données de l'OS.
+
+#### e) L'état `[FAIT]`/`[HYP]`
+
+**244 écritures**, **1 452 octets** changés sur 1 744 192, MAIN OS
+`66930c1052c5641ba992f48ca1fa6445f3a8d9a2ef645d7490c2efb8abcbb9c9`, `.syx` 894 624 o.
+Bancs verts : `test_groove_pattern` (format, aller-retour), `test_groove` (moteur),
+`groove_page_check.js` (la page construit la même image, 1 452 octets), `webbuild_check`.
+
+`[HYP]` Ce qui reste **non prouvé**, et c'est la même limite qu'au §3.54 : le chemin de
+l'enregistrement (lire puis réécrire un vrai projet stocké), le code du kit, et les neuf bornes
+d'interface — l'émulateur ne les atteint pas. Les contrôles statiques, eux, sont exacts et
+nomment leurs sites.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
@@ -3068,10 +3141,11 @@ adresses relogées (une seule coïncidence, dans une donnée graphique en `0x401
 `d7ea09e22f8ede8e54ce5b5c37fd69fdcf282ccaf2c97cae0052265409986171` (OS d'origine
 `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`). Le générateur passe `--check`.
 
-**Jalon 1 + 2 corrigés** (16/10, §3.56) : `56-groove-8tracks` + `57-groove-patterns` (230 écritures,
-1 424 octets), MAIN OS `4a300c7eaee832014539d27916635cce6fab47b09cc732888056fb3e6b14a54d`, `.syx`
-894 624 o. C'est le premier candidat **après** le plantage : les deux générateurs passent `--check`,
-et le contrôle `GEOMETRY` du second nomme les 12 sites qu'il attrape quand on les lui retire.
+**Jalon 1 + 2 corrigés** (16/10, §3.56 et §3.57) : `56-groove-8tracks` + `57-groove-patterns`
+(244 écritures, 1 452 octets), MAIN OS
+`66930c1052c5641ba992f48ca1fa6445f3a8d9a2ef645d7490c2efb8abcbb9c9`, `.syx` 894 624 o. C'est le
+candidat **après** le plantage : les deux générateurs passent `--check`, et les trois contrôles du
+second (géométrie, version, comptes) nomment leurs sites quand on les désactive.
 
 ## 5. Ce qui compte pour la suite
 

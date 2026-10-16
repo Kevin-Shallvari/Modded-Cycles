@@ -455,8 +455,22 @@ La **sélection de piste** compte désormais **huit** entrées (le menu de piste
 les pistes 7-8 sont **atteignables depuis le panneau**. La **page 2** de Kevin (pads T1-T2 →
 pistes 7-8, LEDs 1-2 allumées) reste à écrire.
 
-MAIN OS (jalons 1+2, 409 écritures) : `4a300c7eaee832014539d27916635cce6fab47b09cc732888056fb3e6b14a54d`
+MAIN OS (jalons 1+2, 423 écritures) : `66930c1052c5641ba992f48ca1fa6445f3a8d9a2ef645d7490c2efb8abcbb9c9`
 (OS d'origine : `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`).
+
+**Revue de complétude du 16/10 (notes/56 §3.57)** : le mod reposait sur des listes écrites à la
+main ; chacune a été rendue **inversable** (reprendre la valeur d'origine, exiger qu'elle ait
+disparu) et **vue échouer** avant de passer. Trois contrôles, et trois familles de sites
+retrouvées : **deux sites de version** restés en 6 — une écriture de bloc (`0x4005d3c4`) et le
+**valideur du déploiement** (`0x4005d43a`), qui refusait le bloc v7 que la chaîne venait
+d'accepter, si bien que l'OS ne pouvait pas matérialiser son propre projet — et **douze comptes**
+`moveq #96/#95` oubliés (boucles sur les créneaux de kit, bornes d'indice de pattern rangé,
+clamps d'indice de kit) : une de ces boucles lisait 122 880 octets au-delà du bloc, la classe du
+plantage. Le §3.56 s'était aussi trompé sur une valeur : la fin des kits déployés est un
+**décalage** (`kit_offset + kit_size`, 58 328 060), pas la somme des deux tables (3 857 468) —
+en v6 les deux coïncidaient. Un premier contrôle de version, écrit sur un désassemblage capstone,
+**passait sans rien voir** (capstone rend des listes vides sur certaines plages) : c'est le test
+de défaillance qui l'a démasqué, et il balaie maintenant les octets.
 
 **Correction du 16/10 (notes/56 §3.56)** : le premier candidat (`a0777eb2…`) plantait au démarrage —
 `M:C OS R0038 EXCEPTION V03-M3-P00300000`, une *address error* à une adresse **hors de l'OS**

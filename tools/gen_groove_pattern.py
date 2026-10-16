@@ -80,11 +80,13 @@ TAIL_OLD = CLOSING_OLD - 512        # 2 163 200 : la queue de 512 o, relative a 
 TAIL_NEW = CLOSING_NEW - 512        # 1 918 272
 TAIL_REC_OLD = TAIL_OLD + ENVELOPE  # 2 163 472 : la meme, relative a l'enregistrement
 TAIL_REC_NEW = TAIL_NEW + ENVELOPE  # 1 918 544
-# le total des deux tables deployees (96 x 30 710 + 96 x 7 094 d'origine), en-tete compris
-TABLES_OLD = 96 * 30710 + 96 * 7094
-TABLES_NEW = PATTERN_COUNT * PATTERN_SIZE + PATTERN_COUNT * 7294
-DEPLOYED_TOTAL_OLD = TABLES_OLD + 28        # 3 629 212
-DEPLOYED_TOTAL_NEW = TABLES_NEW + 28        # 3 857 468
+# La FIN DES KITS deployes, relative a l'en-tete. Ce n'est PAS une somme des deux tailles :
+# c'est un DECALAGE, et il suit les kits quand ils demenagent. En v6 les deux coincidaient
+# (2 948 188 + 681 024 = 3 629 212 = « total des tables + 28 ») — c'est cette coincidence qui
+# a fait ecrire la mauvaise formule au §3.56, et le pointeur de la queue tombait alors dans les
+# donnees de l'OS. Voir notes/56 §3.57.
+DEPLOYED_TAIL_OLD = KITS_OLD_OFFSET + 96 * 7094                 # 3 629 212
+DEPLOYED_TAIL_NEW = KITS_NEW_OFFSET + PATTERN_COUNT * 7294      # 58 328 060
 
 # --- LES PLAGES DE LA CHAINE DE VERSIONS : geometrie d'ORIGINE, a NE PAS toucher --------
 # Leur sortie est un bloc **v6**, pas un bloc v7 : elles gardent 2 163 716, 14 848, 4 336, etc.
@@ -119,7 +121,7 @@ GEOMETRY = [
     (RECORD_OLD, "imm", "taille de l'enregistrement stocke"),
     (TAIL_OLD, "imm", "queue de 512 o, relative a l'image"),
     (TAIL_REC_OLD, "imm", "queue de 512 o, relative a l'enregistrement"),
-    (DEPLOYED_TOTAL_OLD, "imm", "total des tables deployees + en-tete"),
+    (DEPLOYED_TAIL_OLD, "imm", "fin des kits deployes (relative a l'en-tete)"),
     (1425408, "imm", "fin des blocs ranges du bloc courant"),
     (1425920, "imm", "base des kits dans le fichier"),
     (1426192, "imm", "base des kits dans l'image"),
@@ -139,6 +141,24 @@ GEOMETRY = [
     (4332, "registre", "taille des pas"),
     (4336, "registre", "offset de la queue"),
 ]
+
+# --- LE CONTROLE DE LA VERSION (§3.57) ---------------------------------------------------
+# Le sceau 0xBEEFBACE et le sceau de cloture 0xBACEF00C marquent le BLOC PROJET : tout site qui
+# les ecrit ou les compare fixe aussi la VERSION du bloc, qui vaut 7 depuis ce mod. Le triage
+# du jalon 2 n'en listait que trois — deux ecritures et la fin de chaine — et deux autres sont
+# restes en 6, dont le VALIDEUR DU DEPLOIEMENT : la chaine acceptait le bloc v7 et le
+# deploiement le refusait ensuite (notes/56 §3.57).
+#
+# Ce controle reprend donc TOUS les sites de sceau et exige 7. Les seules exceptions sont les
+# sceaux d'AUTRES enregistrements — les morceaux de 100 o des kits et des machines, qui portent
+# leur propre version 2 (notes/56 §3.54) — et la chaine de versions, dont la sortie est un bloc
+# v6 (LEGACY, deja exclue).
+SEAL_EXCUSES = {
+    0x4005AFC0: "sceau d'un enregistrement de 100 o (machine) : sa version est 2",
+    0x4005B01A: "sceau de cloture du meme enregistrement de 100 o",
+    0x4005B074: "sceau d'un enregistrement de 100 o (machine)",
+    0x4005B0CE: "sceau de cloture du meme enregistrement de 100 o",
+}
 
 # --- LES DEUX CHAMPS DE KIT : UNE LISTE BLANCHE (§3.52, §3.53) --------------------------
 # L'aire par piste passe de 600 a 800 octets, donc les deux champs qui la suivent decalent de
@@ -204,7 +224,7 @@ IMMEDIATES = [
     (RECORD_OLD, RECORD_NEW, 3, "taille de l'enregistrement stocke (enveloppe 272 + image)"),
     (TAIL_OLD, TAIL_NEW, 4, "queue de 512 o, relative a l'image"),
     (TAIL_REC_OLD, TAIL_REC_NEW, 1, "queue de 512 o, relative a l'enregistrement"),
-    (DEPLOYED_TOTAL_OLD, DEPLOYED_TOTAL_NEW, 4, "total des tables deployees + en-tete"),
+    (DEPLOYED_TAIL_OLD, DEPLOYED_TAIL_NEW, 4, "fin des kits deployes (relative a l'en-tete)"),
 ]
 
 # --- tailles et decalages en deplacement 16 bits -------------------------
@@ -250,10 +270,64 @@ PATCHES = [
     (0x4000FD7C, "7006", "7007", "creation de projet : version 6 -> 7"),
     (0x4000EF6E, "7206", "7207", "materialisation d'un bloc : version 6 -> 7"),
     (0x4005DE94, "7206", "7207", "controle de fin de chaine : version 6 -> 7"),
+    # DEUX SITES OUBLIES PAR LE TRIAGE (§3.57) : un troisieme ECRIVAIN de bloc et le VALIDEUR
+    # DU DEPLOIEMENT. Le second est le plus grave : la chaine acceptait le bloc v7 (controle de
+    # fin de chaine, ci-dessus) et le deploiement le refusait ensuite, en exigeant 6 — l'OS ne
+    # pouvait donc pas materialiser son propre projet.
+    (0x4005D3C4, "7006", "7007", "ecriture d'un bloc : version 6 -> 7 (sceau et sceau de cloture)"),
+    (0x4005D43A, "7006", "7007", "valideur du deploiement : version 6 -> 7"),
 ]
 
 # La garde du nombre de patterns : `moveq #95` -> `moveq #79` (l'index maximal).
 GUARD_VA = 0x400083BA
+
+# --- LES COMPTES DE PATTERNS/KITS OUBLIES (§3.57) ---------------------------------------
+# Le triage du jalon 2 n'en listait que TROIS (plus la garde ci-dessus). La revue complete des
+# `moveq #96/#95` — tous registres, et seulement ceux dont le voisinage IMMEDIAT utilise une
+# constante du pattern ou du kit — en a trouve DOUZE de plus : des boucles sur les creneaux de
+# kit (pas 7 680 et pas range 14 848), des bornes d'indice de pattern range et des clamps
+# d'indice de kit. Chacun est nomme ici, et le generateur verifie l'opcode et la valeur.
+#
+# Ce qui a ete ECARTE, et pourquoi (c'est COUNT_EXCUSES plus bas, verifie par le controle) :
+#   - le banc de SONS : 96 enregistrements de 732 o a +5 192 (`movel #732`) — 17 sites ;
+#   - 96 SONS indexant des enregistrements de 28 o (le descripteur de machine, §3.29.d) ;
+#   - les 96 PROJETS du +Drive (`jsr 0x4008c2c2` sur le gestionnaire de projets).
+PATTERN_COUNTS = [
+    (0x4000EDFE, 95, 79, "kit range : borne d'indice (acces -7680 x i, base fichier)"),
+    (0x4000EE32, 95, 79, "pattern range : borne d'indice (pas 14 848, base 512)"),
+    (0x4000EE5E, 95, 79, "kit range : borne d'indice (acces -7680 x i)"),
+    (0x4000EE92, 95, 79, "pattern range : borne d'indice (pas 14 848, base 512)"),
+    (0x4000EF26, 96, 80, "boucle de balayage des creneaux de kit ranges (pas 7 680)"),
+    (0x4000F0B6, 95, 79, "kit range : borne d'indice (acces -7680 x i)"),
+    (0x4000F0EE, 95, 79, "pattern range : borne d'indice (pas 14 848, base 512)"),
+    (0x4000F11C, 95, 79, "kit range : borne d'indice (acces -7680 x i)"),
+    (0x4000F154, 95, 79, "pattern range : borne d'indice (pas 14 848, base 512)"),
+    (0x4005D556, 96, 80, "boucle des kits : deploye 7 094 et creneau range 7 680"),
+    (0x400617FA, 96, 80, "boucle des kits ranges (pas 7 094)"),
+    (0x4006A418, 96, 80, "bloc courant : borne d'indice de pattern"),
+]
+
+# Le controle des comptes (§3.57) : tout `moveq #96/#95` dont le voisinage (COUNT_WINDOW)
+# utilise une constante du pattern ou du kit doit etre CHANGE — sauf justification ci-dessous.
+COUNT_GEOM = [14848, 30710, 7094, 4332, 4336, 7680, 1425408, 1425920, 1426192,
+              2948160, 2948188, 2163712, 2163716, 3629212, 26310, 681024]
+COUNT_WINDOW = 80
+# Le banc de SONS (96 enregistrements de 732 o a +5 192) : il n'est atteint par ce controle que
+# la ou son voisinage touche AUSSI la geometrie du pattern — un seul site. Les seize autres
+# sites du banc n'ont aucune constante de pattern autour d'eux : ils ne sont pas des candidats,
+# et les inscrire ici serait une justification qui ne verifie rien.
+COUNT_EXCUSES = {
+    0x4000ECE0: "banc de sons (96 x 732 o a +5 192) ; la constante 30 710 du voisinage est "
+                "celle du motif deploye, pas de ce site",
+}
+# et les cinq sites hors du banc de sons, chacun avec sa raison :
+COUNT_EXCUSES.update({
+    0x4000FE66: "96 = les 96 PROJETS du +Drive (jsr 0x4008c2c2, gestionnaire de projets)",
+    0x4000FF50: "96 = les 96 PROJETS du +Drive (jsr 0x4008c2c2)",
+    0x40010056: "96 = les 96 PROJETS du +Drive (jsr 0x4008c2c2)",
+    0x40020380: "indice de SONS : l'accesseur 0x4000eb90 (banc de 732 o) suit",
+    0x4008C430: "96 = les 96 SONS de la banque (enregistrements de 28 o, §3.29.d)",
+})
 
 # --- LES BORNES D'INTERFACE : LA SELECTION DE PISTE (§3.31.c, §3.34.a, §3.32.b) ---------
 # La machine n'a que six pads, mais l'interface doit compter HUIT pistes. On elargit donc le
@@ -350,6 +424,25 @@ def find_imm_sites(stock, value):
     return out
 
 
+def versions_near(stock, va, back=40, span=80):
+    """Les numeros de version utilises pres d'un site de sceau, vus dans les OCTETS.
+
+    On cherche les `moveq #N,%dX` de la fenetre — opcode 0x70..0x77 puis l'immediat. C'est
+    volontairement un balayage d'OCTETS, pas un desassemblage : capstone rend une liste VIDE
+    sur certaines plages (donnees, instructions EMAC), et un controle vide passe alors sans
+    rien voir. C'est exactement ce qui est arrive au premier essai de ce controle (§3.57) :
+    il fallait le test de defaillance pour s'en apercevoir.
+    """
+    out = []
+    lo = max(0, va - BASE - back)
+    hi = min(len(stock) - 1, va - BASE + span)
+    for o in range(lo, hi):
+        op = stock[o]
+        if 0x70 <= op <= 0x77 and stock[o + 1] in (2, 6, 7):
+            out.append((stock[o + 1], "%08x moveq #%d" % (BASE + o, stock[o + 1])))
+    return out
+
+
 def find_disp_sites(stock, value, mode):
     """Sites d'un deplacement 16 bits, selon le mode :
        'absolu'   -> l'operande n'a pas de registre (`$3a00.w`) : une taille ;
@@ -438,6 +531,20 @@ def main():
         raise SystemExit("!! la garde du nombre de patterns n'est pas en %#x" % GUARD_VA)
     writes.append((GUARD_VA, bytes([op, 95]), bytes([op, 79]),
                    "nombre de patterns : 96 -> 80"))
+
+    # les douze comptes de patterns/kits retrouves par la revue (§3.57)
+    for va, old, new, role in PATTERN_COUNTS:
+        op = stock[va - BASE]
+        val = stock[va - BASE + 1]
+        if not (0x70 <= op <= 0x77):
+            bad.append("%s : %#x n'est pas un moveq (opcode %02x)" % (role, va, op))
+            continue
+        if val != old:
+            bad.append("%s : la valeur en %#x est %d, attendue %d" % (role, va, val, old))
+            continue
+        writes.append((va, bytes([op, old]), bytes([op, new]), "compte : " + role))
+    if not args.audit:
+        print("  compte  %-46s %2d site(s) de plus" % ("patterns et kits", len(PATTERN_COUNTS)))
 
     # les bornes d'interface du chemin de selection de piste
     for va, old, new, role in UI_TRACK_BOUNDS:
@@ -539,6 +646,57 @@ def main():
     print("controle : aucune des %d valeurs de la geometrie d'origine ne survit hors de la "
           "chaine" % len(GEOMETRY))
 
+    # --- LE CONTROLE DE LA VERSION (§3.57) -------------------------------------------------
+    seal_sites = []
+    for pat, what in ((struct.pack(">I", 0xBEEFBACE), "sceau de bloc"),
+                      (struct.pack(">I", 0xBACEF00C), "sceau de cloture")):
+        i = stock.find(pat)
+        while i >= 0:
+            seal_sites.append((BASE + i, what))
+            i = stock.find(pat, i + 1)
+    wrong = []
+    for va, what in sorted(seal_sites):
+        if in_legacy(va) or va in SEAL_EXCUSES:
+            continue
+        six = [w for v, w in versions_near(patched, va) if v == 6]
+        if six:
+            wrong.append("%s en %#x : %s" % (what, va, ", ".join(six)))
+    if wrong:
+        for w in wrong:
+            print("  !! " + w)
+        raise SystemExit(
+            "!! un site de sceau n'utilise pas la version courante (7) : le triage des\n"
+            "   versions est INCOMPLET (notes/56 §3.57). Ajouter le site a PATCHES, ou\n"
+            "   la justification a SEAL_EXCUSES s'il s'agit d'un autre enregistrement.")
+    print("controle : les %d sites de sceau n'utilisent que la version courante (7)"
+          % len(seal_sites))
+
+    # --- LE CONTROLE DES COMPTES DE PATTERNS/KITS (§3.57) -----------------------------------
+    counts, excused = [], 0
+    for o in range(0, len(stock) - 1, 2):
+        op = stock[o]
+        if not (0x70 <= op <= 0x77) or stock[o + 1] not in (96, 95):
+            continue
+        va = BASE + o
+        lo, hi = max(0, o - COUNT_WINDOW), o + COUNT_WINDOW
+        near = [v for v in COUNT_GEOM if stock.find(struct.pack(">I", v), lo, hi) >= 0]
+        if not near:
+            continue                      # rien a voir avec le pattern ni avec le kit
+        if patched[o + 1] in (80, 79):
+            continue
+        if va in COUNT_EXCUSES:
+            excused += 1
+            continue
+        counts.append("%#x : moveq #%d reste inchange (voisines %s)" % (va, stock[o + 1], near))
+    if counts:
+        for c in counts:
+            print("  !! " + c)
+        raise SystemExit(
+            "!! un compte de patterns/kit n'a pas ete change (notes/56 §3.57).\n"
+            "   L'ajouter a PATTERN_COUNTS, ou a COUNT_EXCUSES avec sa raison.")
+    print("controle : les comptes de patterns/kits proches de la geometrie sont tous changes "
+          "(%d justifies)" % excused)
+
     print("total : %d ecriture(s)" % len(uniq))
     print("controle : les %d plages de la chaine de versions sont identiques au stock"
           % len(LEGACY))
@@ -560,12 +718,20 @@ def main():
             "pas de son tampon.",
             "L'ENREGISTREMENT STOCKE suit aussi (notes/56 §3.56) : sa taille passe de 2 163 988 "
             "a 1 919 060 (l'enveloppe de 272 o + l'image), la queue de 512 o de 2 163 200 a "
-            "1 918 272 (2 163 472 -> 1 918 544 relative a l'enregistrement) et le total des deux "
-            "tables deployees de 3 629 212 a 3 857 468. Ce sont des valeurs DERIVEES : le "
-            "triage du jalon 2 les avait oubliees, et le chemin sauvegarde/chargement ecrivait "
-            "244 928 o au-dela de l'enregistrement — dans l'en-tete de projet et la table des "
-            "patterns deployes (plantage du 16/10). Le generateur verifie desormais TOUTE la "
-            "geometrie d'origine (GEOMETRY), pas seulement la liste des valeurs changees.",
+            "1 918 272 (2 163 472 -> 1 918 544 relative a l'enregistrement) et la fin des kits "
+            "deployes de 3 629 212 a 58 328 060 (c'est un DECALAGE — kit_offset + kit_size —, "
+            "pas la somme des deux tables : les kits ont demenage). Ce sont des valeurs "
+            "DERIVEES : le triage du jalon 2 les avait oubliees, et le chemin "
+            "sauvegarde/chargement ecrivait 244 928 o au-dela de l'enregistrement — dans "
+            "l'en-tete de projet et la table des patterns deployes (plantage du 16/10).",
+            "La revue du 16/10 (notes/56 §3.57) a trouve DEUX autres sites de version restes "
+            "en 6 — une ecriture de bloc et le VALIDEUR DU DEPLOIEMENT, qui refusait donc le "
+            "bloc v7 que la chaine venait d'accepter — et DOUZE comptes de patterns/kits "
+            "oublies (boucles sur les creneaux de kit, bornes d'indice de pattern range, "
+            "clamps d'indice de kit). Le generateur porte maintenant trois controles inverses : "
+            "GEOMETRY (toute la geometrie d'origine doit avoir change), les 36 sites de sceau "
+            "(la version doit etre 7) et les comptes proches de la geometrie (96 -> 80, 95 -> "
+            "79). Chacun a ete vu echouer avant de passer.",
             "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). Les kits "
             "demenagent vers la plage libre de 0x43dd0000.",
             "La conversion des projets d'origine n'est PAS faite dans le firmware : la version du "
