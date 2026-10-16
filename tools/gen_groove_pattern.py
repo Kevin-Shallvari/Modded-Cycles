@@ -63,6 +63,29 @@ KITS_OLD_OFFSET = 2948188           # offset des kits, relatif a l'en-tete
 KITS_NEW = 0x43DD0000               # les kits ne tiennent plus apres les patterns : plage libre
 KITS_NEW_OFFSET = KITS_NEW - HEADER_NEW
 
+# --- LES VALEURS DERIVEES : L'ENREGISTREMENT STOCKE (§3.56) ------------------------------
+# Le projet n'est pas seulement « un bloc » : sur le +Drive (et en MRAM) il est STOCKE dans un
+# ENREGISTREMENT = une enveloppe de 272 o suivie de l'image, et le bloc se termine par une
+# « queue » de 512 o qui finit sur le sceau de cloture. Ces valeurs sont DERIVEES (image + 272,
+# sceau - 512, somme des deux tables) : le balayage par valeur ne les voit que si on les lui
+# donne. Oubliees, le chemin sauvegarde/chargement ecrit 244 928 o AU-DELA de l'enregistrement
+# — c'est-a-dire dans l'en-tete de projet et la table des patterns deployes, que le moteur et
+# l'interface lisent. C'est le plantage du 16/10 (notes/56 §3.56).
+ENVELOPE = 272                      # l'enveloppe de l'enregistrement stocke (0x404e9b10)
+RECORD_OLD = IMAGE_OLD + ENVELOPE   # 2 163 988
+RECORD_NEW = IMAGE_NEW + ENVELOPE   # 1 919 060
+CLOSING_OLD = IMAGE_OLD - 4         # 2 163 712 : le sceau de cloture est les 4 derniers octets
+CLOSING_NEW = IMAGE_NEW - 4         # 1 918 784
+TAIL_OLD = CLOSING_OLD - 512        # 2 163 200 : la queue de 512 o, relative a l'image
+TAIL_NEW = CLOSING_NEW - 512        # 1 918 272
+TAIL_REC_OLD = TAIL_OLD + ENVELOPE  # 2 163 472 : la meme, relative a l'enregistrement
+TAIL_REC_NEW = TAIL_NEW + ENVELOPE  # 1 918 544
+# le total des deux tables deployees (96 x 30 710 + 96 x 7 094 d'origine), en-tete compris
+TABLES_OLD = 96 * 30710 + 96 * 7094
+TABLES_NEW = PATTERN_COUNT * PATTERN_SIZE + PATTERN_COUNT * 7294
+DEPLOYED_TOTAL_OLD = TABLES_OLD + 28        # 3 629 212
+DEPLOYED_TOTAL_NEW = TABLES_NEW + 28        # 3 857 468
+
 # --- LES PLAGES DE LA CHAINE DE VERSIONS : geometrie d'ORIGINE, a NE PAS toucher --------
 # Leur sortie est un bloc **v6**, pas un bloc v7 : elles gardent 2 163 716, 14 848, 4 336, etc.
 # Elles restent dans l'image (le controle de fin de chaine les rend inoffensives : il exige la
@@ -78,6 +101,43 @@ LEGACY = [
     # DANS la zone des convertisseurs, d'ou la coupure.
     (0x4005CDDE, 0x4005D000, "fin des convertisseurs de version"),
     (0x4005D9F6, 0x4005DE74, "les six blocs de la chaine de versions"),
+]
+
+# --- LA GEOMETRIE D'ORIGINE, VERIFIEE EN ENTIER (§3.56) ----------------------------------
+# Le balayage ci-dessus est mene VALEUR PAR VALEUR, sur des listes ecrites a la main. Une
+# valeur DERIVEE — l'enregistrement stocke (image + enveloppe), la queue de 512 o qui finit sur
+# le sceau de cloture, le total des deux tables deployees — n'y est que si on l'y a mise ; et
+# c'est exactement ce qui a manque au jalon 2 (plantage du 16/10).
+#
+# GEOMETRY est le controle INVERSE : on reprend toute la geometrie d'origine et on exige
+# qu'aucun de ses immediats ne survive dans l'image patchee, hors de la chaine de versions
+# (dont la sortie est un bloc v6, et qui doit donc garder ses valeurs). Ajouter une valeur ici
+# quand la geometrie change : c'est ce qui empeche l'oubli de recommencer.
+GEOMETRY = [
+    (IMAGE_OLD, "imm", "taille du bloc projet"),
+    (CLOSING_OLD, "imm", "sceau de cloture du bloc"),
+    (RECORD_OLD, "imm", "taille de l'enregistrement stocke"),
+    (TAIL_OLD, "imm", "queue de 512 o, relative a l'image"),
+    (TAIL_REC_OLD, "imm", "queue de 512 o, relative a l'enregistrement"),
+    (DEPLOYED_TOTAL_OLD, "imm", "total des tables deployees + en-tete"),
+    (1425408, "imm", "fin des blocs ranges du bloc courant"),
+    (1425920, "imm", "base des kits dans le fichier"),
+    (1426192, "imm", "base des kits dans l'image"),
+    (2948160, "imm", "fin de la table des patterns deployes"),
+    (2948188, "imm", "offset des kits (relatif a l'en-tete)"),
+    (681024, "imm", "fin de la table des kits deployes"),
+    (26310, "imm", "borne de la queue deployee"),
+    (30710, "imm", "enregistrement deploye"),
+    (14848, "imm", "creneau range"),
+    (7094, "imm", "kit deploye"),
+    (HEADER_OLD, "imm", "en-tete de projet"),
+    (PATTERNS_OLD, "imm", "table des patterns deployes"),
+    # les memes pas, vus en deplacement de 16 bits (l'autre moitie du balayage)
+    (14848, "tout", "creneau range (deplacement)"),
+    (7094, "tout", "kit deploye (deplacement)"),
+    (600, "absolu", "aire par kit par piste"),
+    (4332, "registre", "taille des pas"),
+    (4336, "registre", "offset de la queue"),
 ]
 
 # --- LES DEUX CHAMPS DE KIT : UNE LISTE BLANCHE (§3.52, §3.53) --------------------------
@@ -135,6 +195,16 @@ IMMEDIATES = [
     (PATTERNS_OLD, PATTERNS_NEW, 6, "base de la table des patterns"),
     (HEADER_OLD, HEADER_NEW, 7, "en-tete de projet"),
     (KITS_OLD_OFFSET, KITS_NEW_OFFSET, 6, "offset des kits (relatif a l'en-tete)"),
+    # LES VALEURS DERIVEES DE L'ENREGISTREMENT STOCKE (§3.56) : l'enregistrement stocke n'est
+    # pas une constante, c'est une SOMME (image + enveloppe), et la queue de 512 o se termine
+    # sur le sceau de cloture. Le triage du jalon 2 ne les avait pas : le chemin
+    # sauvegarde/chargement ecrivait donc 244 928 o au-dela de l'enregistrement — dans l'en-tete
+    # de projet et la table des patterns deployes. Plantage du 16/10 sur la machine. GEOMETRY
+    # (plus bas) est le controle qui rend cet oubli impossible a refaire.
+    (RECORD_OLD, RECORD_NEW, 3, "taille de l'enregistrement stocke (enveloppe 272 + image)"),
+    (TAIL_OLD, TAIL_NEW, 4, "queue de 512 o, relative a l'image"),
+    (TAIL_REC_OLD, TAIL_REC_NEW, 1, "queue de 512 o, relative a l'enregistrement"),
+    (DEPLOYED_TOTAL_OLD, DEPLOYED_TOTAL_NEW, 4, "total des tables deployees + en-tete"),
 ]
 
 # --- tailles et decalages en deplacement 16 bits -------------------------
@@ -450,6 +520,25 @@ def main():
                     print("       %08x  %s -> %s   %s" % (va, old.hex(), new.hex(), role))
         raise SystemExit("!! le decoupage est faux : une plage LEGACY a change")
 
+    # --- LE CONTROLE DES VALEURS DERIVEES (§3.56) ------------------------------------------
+    stale = []
+    for value, mode, what in GEOMETRY:
+        found = (find_imm_sites(patched, value) if mode == "imm"
+                 else find_disp_sites(patched, value, mode))
+        for va in found:
+            if in_legacy(va) is None and va not in EXCLUDE:
+                stale.append("%s : %d survit en %#x" % (what, value, va))
+    if stale:
+        for s in stale:
+            print("  !! " + s)
+        raise SystemExit(
+            "!! une valeur de la geometrie d'origine survit hors de la chaine de versions :\n"
+            "   le balayage par valeur est INCOMPLET (notes/56 §3.56). Ajouter la valeur\n"
+            "   manquante a IMMEDIATES/DISPLACEMENTS, ou le site a EXCLUDE s'il s'agit d'une\n"
+            "   coincidence de donnee.")
+    print("controle : aucune des %d valeurs de la geometrie d'origine ne survit hors de la "
+          "chaine" % len(GEOMETRY))
+
     print("total : %d ecriture(s)" % len(uniq))
     print("controle : les %d plages de la chaine de versions sont identiques au stock"
           % len(LEGACY))
@@ -469,6 +558,14 @@ def main():
             "La chaine des convertisseurs de version (les six v0..v5 -> v6) garde la geometrie "
             "d'origine : sa sortie est un bloc v6, et c'est ce qui garantit qu'elle ne deborde "
             "pas de son tampon.",
+            "L'ENREGISTREMENT STOCKE suit aussi (notes/56 §3.56) : sa taille passe de 2 163 988 "
+            "a 1 919 060 (l'enveloppe de 272 o + l'image), la queue de 512 o de 2 163 200 a "
+            "1 918 272 (2 163 472 -> 1 918 544 relative a l'enregistrement) et le total des deux "
+            "tables deployees de 3 629 212 a 3 857 468. Ce sont des valeurs DERIVEES : le "
+            "triage du jalon 2 les avait oubliees, et le chemin sauvegarde/chargement ecrivait "
+            "244 928 o au-dela de l'enregistrement — dans l'en-tete de projet et la table des "
+            "patterns deployes (plantage du 16/10). Le generateur verifie desormais TOUTE la "
+            "geometrie d'origine (GEOMETRY), pas seulement la liste des valeurs changees.",
             "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). Les kits "
             "demenagent vers la plage libre de 0x43dd0000.",
             "La conversion des projets d'origine n'est PAS faite dans le firmware : la version du "

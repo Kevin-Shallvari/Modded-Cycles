@@ -455,8 +455,20 @@ La **sélection de piste** compte désormais **huit** entrées (le menu de piste
 les pistes 7-8 sont **atteignables depuis le panneau**. La **page 2** de Kevin (pads T1-T2 →
 pistes 7-8, LEDs 1-2 allumées) reste à écrire.
 
-MAIN OS (jalons 1+2, 397 écritures) : `a0777eb2cfbdb81c5b7c1d40358555b40196a75b8e1d4f583d44fbb6cc21bf18`
+MAIN OS (jalons 1+2, 409 écritures) : `4a300c7eaee832014539d27916635cce6fab47b09cc732888056fb3e6b14a54d`
 (OS d'origine : `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`).
+
+**Correction du 16/10 (notes/56 §3.56)** : le premier candidat (`a0777eb2…`) plantait au démarrage —
+`M:C OS R0038 EXCEPTION V03-M3-P00300000`, une *address error* à une adresse **hors de l'OS**
+(`0x00300000`), écran que le gestionnaire reprend indéfiniment (`rte`). L'**enregistrement stocké**
+n'avait pas suivi le bloc : sa taille (2 163 988), la queue de 512 o (2 163 200 et 2 163 472) et le
+total des deux tables déployées (3 629 212) sont des valeurs **dérivées** (image + 272, sceau − 512,
+patterns + kits) et n'étaient pas dans le triage — **12 sites**. Ils écrivaient 244 928 o au-delà de
+l'enregistrement, c'est-à-dire **dans l'en-tête de projet et les 244 928 premiers octets de la table
+des patterns déployés**, que le moteur et l'interface lisent. Le générateur porte désormais
+**`GEOMETRY`**, le contrôle **inverse** du balayage : toute la géométrie d'origine est reprise et aucun
+de ses immédiats ne doit survivre hors de la chaîne de versions. Le contrôle a été **vu échouer** (les
+quatre valeurs retirées, il nomme les 12 sites) avant de passer.
 
 ## Flasher (rappel)
 

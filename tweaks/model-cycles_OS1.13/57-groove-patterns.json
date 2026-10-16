@@ -5,6 +5,7 @@
  "description": [
   "Model:Groove, jalon 2 : le format de pattern passe a huit pistes (enregistrement 30 710 -> 40 924 octets deployes, 14 848 -> 16 292 ranges), les kits a 7 294 octets deployes (aire par piste 600 -> 800, les deux champs qui suivent decalent de +200) et le projet a 80 patterns au lieu de 96 (la banque F est echangee contre les pistes 7-8, le seul point de perte de donnees du mod).",
   "Le conteneur du bloc projet suit : 2 163 716 -> 1 918 788 octets, sceau de cloture +2 163 712 -> +1 918 784, base des kits 1 303 872 (fichier) et 1 304 144 (image). La chaine des convertisseurs de version (les six v0..v5 -> v6) garde la geometrie d'origine : sa sortie est un bloc v6, et c'est ce qui garantit qu'elle ne deborde pas de son tampon.",
+  "L'ENREGISTREMENT STOCKE suit aussi (notes/56 §3.56) : sa taille passe de 2 163 988 a 1 919 060 (l'enveloppe de 272 o + l'image), la queue de 512 o de 2 163 200 a 1 918 272 (2 163 472 -> 1 918 544 relative a l'enregistrement) et le total des deux tables deployees de 3 629 212 a 3 857 468. Ce sont des valeurs DERIVEES : le triage du jalon 2 les avait oubliees, et le chemin sauvegarde/chargement ecrivait 244 928 o au-dela de l'enregistrement — dans l'en-tete de projet et la table des patterns deployes (plantage du 16/10). Le generateur verifie desormais TOUTE la geometrie d'origine (GEOMETRY), pas seulement la liste des valeurs changees.",
   "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). Les kits demenagent vers la plage libre de 0x43dd0000.",
   "La conversion des projets d'origine n'est PAS faite dans le firmware : la version du bloc courant passe a 7, donc un projet d'origine est refuse proprement (code d'erreur dedie). Construit en ligne de commande seulement, hors flasher. Genere par tools/gen_groove_pattern.py, notes/54-56."
  ],
@@ -153,6 +154,11 @@
    "new": "00001690"
   },
   {
+   "off": 58980,
+   "old": "0037609c",
+   "new": "003adc3c"
+  },
+  {
    "off": 59008,
    "old": "002cfc5c",
    "new": "03711c9c"
@@ -196,6 +202,11 @@
    "off": 60144,
    "old": "0015c200",
    "new": "0013e540"
+  },
+  {
+   "off": 60156,
+   "old": "00210200",
+   "new": "001d4540"
   },
   {
    "off": 60238,
@@ -328,6 +339,11 @@
    "new": "1c7e"
   },
   {
+   "off": 70836,
+   "old": "00210200",
+   "new": "001d4540"
+  },
+  {
    "off": 70894,
    "old": "00003a00",
    "new": "00003fa4"
@@ -451,6 +467,16 @@
    "off": 209146,
    "old": "0258",
    "new": "0320"
+  },
+  {
+   "off": 273860,
+   "old": "00210514",
+   "new": "001d4854"
+  },
+  {
+   "off": 273872,
+   "old": "00210514",
+   "new": "001d4854"
   },
   {
    "off": 279710,
@@ -703,6 +729,16 @@
    "new": "037e"
   },
   {
+   "off": 380476,
+   "old": "0037609c",
+   "new": "003adc3c"
+  },
+  {
+   "off": 380488,
+   "old": "00210200",
+   "new": "001d4540"
+  },
+  {
    "off": 380630,
    "old": "00003a00",
    "new": "00003fa4"
@@ -746,6 +782,16 @@
    "off": 380970,
    "old": "00210400",
    "new": "001d4740"
+  },
+  {
+   "off": 381016,
+   "old": "0037609c",
+   "new": "003adc3c"
+  },
+  {
+   "off": 381022,
+   "old": "00210200",
+   "new": "001d4540"
   },
   {
    "off": 381176,
@@ -933,6 +979,11 @@
    "new": "03711c9c"
   },
   {
+   "off": 398210,
+   "old": "0037609c",
+   "new": "003adc3c"
+  },
+  {
    "off": 398234,
    "old": "1bb6",
    "new": "1c7e"
@@ -1041,6 +1092,16 @@
    "off": 579006,
    "old": "00210404",
    "new": "001d4744"
+  },
+  {
+   "off": 579166,
+   "old": "00210514",
+   "new": "001d4854"
+  },
+  {
+   "off": 579268,
+   "old": "00210310",
+   "new": "001d4650"
   },
   {
    "off": 579290,

@@ -2947,6 +2947,91 @@ pads), et les bornes de **machine** (`0x4001b696`).
 bornages et les gardes suivent) — donc **testables sur la machine**. L'affichage de page, lui, reste
 à faire.
 
+### 3.56 Le plantage du 16/10 : quatre valeurs **dérivées** oubliées — et le contrôle qui rend l'oubli impossible `[FAIT]` (16/10)
+
+`tools/gen_groove_pattern.py` (`GEOMETRY`), `tweaks/model-cycles_OS1.13/57-groove-patterns.json`.
+
+#### a) L'écran, décodé `[FAIT]`
+
+`M:C OS R0038 EXCEPTION V03-M3-P00300000`. Les deux chaînes sont dans l'OS :
+
+```
+4012bc8c  "M:C OS%.12s R%.04s "
+4012bca0  "EXCEPTION V%02x-M%x-P%08x"
+```
+
+Le gestionnaire est `0x40078ce2` ; il est appelé par le répartiteur `0x40001976`, qui lui passe
+**la trame d'exception du CPU** (`moveal 0x4049fd64,%a0` … `movel 0x4049fd68,%sp@-` … `jsr %a0@`).
+Il lit **V** dans le mot format/vecteur de la trame, **M** dans `SR` (`mvzb %a2@(2)`), **P** dans
+`+4` (le PC), puis **finit par `rte`** : l'instruction fautive se ré-exécute, faut à nouveau, et
+l'écran reste — c'est le « brick ». Seule la **section 3** était touchée : le retour par le
+STARTUP MENU est toujours possible.
+
+`V03` = vecteur 3 = **address error** (le même champ que le `VEC:xx` de l'Octatrack) ; et
+**`P00300000` n'est pas dans l'OS** (qui vit à `0x40000400`+) : le CPU avait déjà perdu ses
+pointeurs. Corruption mémoire, donc — pas un refus propre.
+
+#### b) La cause : l'**enregistrement stocké** n'a pas suivi le bloc `[FAIT]`
+
+Le jalon 2 change le **bloc** (2 163 716 → 1 918 788), donc l'en-tête descend à `0x406be364`. Mais
+le projet n'est pas qu'un bloc : sur le +Drive (et en MRAM) il est **stocké** dans un
+**enregistrement = enveloppe de 272 o + image**, et le bloc finit par une **queue de 512 o** qui se
+termine sur le sceau de clôture. Ces valeurs sont **dérivées** — et le triage ne les avait pas :
+
+| valeur d'origine | ce que c'est | sites | devrait être |
+|---|---|---|---|
+| **2 163 988** | l'enregistrement (272 + image) | 3 | 1 919 060 |
+| **2 163 200** | la queue de 512 o, relative à l'image | 4 | 1 918 272 |
+| **2 163 472** | la même, relative à l'enregistrement | 1 | 1 918 544 |
+| **3 629 212** | total des deux tables déployées + en-tête | 4 | 3 857 468 |
+
+`0x400431a8` est le chemin de l'enregistrement : `movel #2163988,%d0` puis
+`movel #2163988,%sp@- / pea 0x404e9b10` — **l'adresse fixe de l'enregistrement**. Et la queue se
+pose par `moveal #2163200,%a0 / addal %a2,%a0` (`0x4000eefc`, `0x400118b4`, `0x4005d248`,
+`0x4005d45e`), `addal #2163472,%a0` (`0x4008dac4`).
+
+**2 163 988 − 1 919 060 = 244 928** : exactement le rétrécissement. Ces offsets tombent donc
+**dans l'en-tête de projet (`0x406be364`) et les 244 928 premiers octets de la table des patterns
+déployés (`0x406be380`)** — les tables que le moteur et l'interface lisent. Un index de machine lu
+dans des données devenues quelconques → un descripteur de classe faux → un pointeur de méthode faux
+→ `jsr` dans le vide → *address error* → l'écran → `rte` → l'écran. **Et cela arrive au
+démarrage** : le projet actif passe par là (« UPGRADING ACTIVE PROJECT… », `0x4012dd21`), ce qui
+explique la machine morte au premier allumage plutôt qu'un défaut d'usage.
+
+#### c) Pourquoi aucun contrôle ne l'avait vu `[FAIT]`
+
+- le balayage du générateur est mené **valeur par valeur**, sur une liste écrite à la main : ces
+  quatre-là sont des **sommes** (image + 272, sceau − 512, patterns + kits) et n'y figuraient pas ;
+- le contrôle du §3.52 ne vérifie que la **chaîne de versions** (`LEGACY`) : il ne dit rien des
+  autres valeurs ;
+- les bancs du jalon 2 sont au niveau des **éléments** (déplier/emballer un pattern) : ils ne
+  descendent pas au niveau de l'enregistrement (§3.46) — et l'émulateur ne fabrique pas un projet.
+
+#### d) Le correctif, et le contrôle qui rend l'oubli impossible `[FAIT]`
+
+1. les quatre valeurs entrent dans `IMMEDIATES` → **230 écritures** (12 sites de plus) ;
+2. **`GEOMETRY`** est le contrôle **inverse** : il reprend **toute** la géométrie d'origine et exige
+   qu'aucun de ses immédiats ne survive dans l'image patchée hors de la chaîne de versions
+   (`find_imm_sites`/`find_disp_sites`, `LEGACY` et `EXCLUDE` exceptés). C'est la chasse qui a
+   trouvé le défaut, transformée en garde.
+3. **Le contrôle a été vu échouer** : les quatre entrées retirées, il nomme les 12 sites ; remises,
+   il passe (`aucune des 23 valeurs de la géométrie d'origine ne survit hors de la chaîne`).
+   Un contrôle qui ne peut pas échouer ne prouve rien (§3.54).
+
+Image : **1 424 octets** changés sur 1 744 192, MAIN OS
+`4a300c7eaee832014539d27916635cce6fab47b09cc732888056fb3e6b14a54d`, `.syx` 894 624 o.
+Vérifié en plus, sur l'image construite : le jalon 1 (56) ne laisse survivre **aucune** de ses 42
+adresses relogées (une seule coïncidence, dans une donnée graphique en `0x4018fa32`).
+
+#### e) Ce qui reste `[HYP]`
+
+- Le chemin de l'**enregistrement** (lire puis réécrire un vrai projet stocké) n'est **pas** rejoué
+  en émulation : c'est le §3.46 — le banc ne peut pas fabriquer un projet. Le contrôle statique,
+  lui, est exact, et il nomme les sites.
+- **À demander à la machine** : démarrage normal (l'écran d'exception ne doit plus revenir) ;
+  chargement du projet courant (il doit être **refusé proprement** — version 6 contre 7) ; une
+  sauvegarde puis une réouverture ; puis les pistes 7-8 (une note sur chacune, muettes sans trig).
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
@@ -2982,6 +3067,11 @@ bornages et les gardes suivent) — donc **testables sur la machine**. L'afficha
 **Jalon 1 publié** (13/10) : `56-groove-8tracks.json`, 179 écritures, 712 octets modifiés, MAIN OS
 `d7ea09e22f8ede8e54ce5b5c37fd69fdcf282ccaf2c97cae0052265409986171` (OS d'origine
 `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98`). Le générateur passe `--check`.
+
+**Jalon 1 + 2 corrigés** (16/10, §3.56) : `56-groove-8tracks` + `57-groove-patterns` (230 écritures,
+1 424 octets), MAIN OS `4a300c7eaee832014539d27916635cce6fab47b09cc732888056fb3e6b14a54d`, `.syx`
+894 624 o. C'est le premier candidat **après** le plantage : les deux générateurs passent `--check`,
+et le contrôle `GEOMETRY` du second nomme les 12 sites qu'il attrape quand on les lui retire.
 
 ## 5. Ce qui compte pour la suite
 
