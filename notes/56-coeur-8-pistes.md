@@ -3105,6 +3105,64 @@ l'enregistrement (lire puis réécrire un vrai projet stocké), le code du kit, 
 d'interface — l'émulateur ne les atteint pas. Les contrôles statiques, eux, sont exacts et
 nomment leurs sites.
 
+### 3.58 Jalon 3, étape **3b** : le convertisseur **v6 → v7** — écrit et **prouvé** `[FAIT]` (16/10)
+
+`tools/machines/groove/convert_chain.S` (288 octets), `tools/re/test_groove_chain.py`.
+
+#### a) Le contrat de registres, **lu** dans la chaîne `[FAIT]`
+
+Le §3.49 disait « le point d'insertion est `0x4005de74` » sans dire dans quel état on y arrive. Le
+prologue de la chaîne (`0x4005d9f6`) et le bloc v5 (`0x4005dd90`) le disent :
+
+| registre | ce qu'il porte |
+|---|---|
+| `a2` | **le bloc** (l'image projet), 2 163 716 octets |
+| `a3` | le drapeau « converti » (peut être nul) |
+| `a4` | le contexte de la chaîne |
+| `fp` (`A6`) | **l'allocateur** `0x400802e0` |
+| `a5` | **le libérateur** `0x400cf044` |
+
+et le résultat est un **octet** : le chemin de chargement fait `moveb %d0,%d7` (`0x4008d982`). Le
+bloc v5 fait exactement : allouer, convertir, `memcpy(bloc, résultat, taille)`, libérer, drapeau.
+
+#### b) Le code `[FAIT]`
+
+Deux fonctions, **288 octets** (le §3.49 en annonçait 400 à 600) :
+
+1. `groove_v7(dst, src)` — la **transformée pure**, sans OS : les 512 premiers octets et la
+   version (6 → 7) ; 80 patterns par l'**élément** du §3.50 ; la source saute la banque F
+   (16 × 14 848) ; 80 kits (7 094 copiés, 200 à zéro, puis **586** sautés côté source et **386**
+   côté destination — les deux creneaux font 7 680, mais les enregistrements 7 094 et 7 294) ;
+   la source saute les 16 kits non gardés (122 880) ; la queue de 512 o et le sceau de clôture
+   `0xBACEF00C` à `+1 918 784`.
+2. `groove_chain()` — la **colle** appelée par la redirection : elle ne touche **ni d5, ni d6, ni
+   d7** (le chargement lit `%d6` *après* la chaîne, `0x4008d9c8`), refait le contrôle de fin en v7
+   et rend l'octet attendu.
+
+#### c) Le banc, et les **quatre** fautes qu'il a attrapées `[FAIT]`
+
+| | |
+|---|---|
+| **A** | le code s'assemble et se **lie** (288 o) |
+| **B** | la transformée rend **exactement** la référence Python, octet pour octet |
+| **C** | les 80 patterns sont, un par un, la sortie du **convertisseur d'élément déjà prouvé** ; kits, queue, sceau |
+| **D** | la **colle s'exécute** (allocateur et libérateur remplacés par des stubs) : le bloc de l'image **devient un bloc v7 valide**, le drapeau est posé, elle rend 1 |
+
+Quatre fautes réelles, toutes trouvées par le banc et pas par relecture : le saut de creneau de
+kit confondu entre source (**586**) et destination (**386**) ; un `jsr <étiquette>` que GNU as
+sort en **absolu sans lien** (la cible valait 0) ; les arguments de `groove_v7` **inversés** (en
+m68k le premier argument est le **dernier** empilé) ; et le résultat lu comme un **entier** alors
+que le chemin de chargement ne lit que l'**octet bas**.
+
+#### d) Ce qui reste `[HYP]`
+
+- le **logement** (288 octets : la cave du convertisseur d'élément en fait 182 — il faut une
+  cave plus grande, ou un masque de sprite libéré et sa redirection de constructeur, §3.49.d) ;
+- la **redirection** en `0x4005de74` (`jsr` + `nop`, 42 octets) et le **générateur** ;
+- et le seul contrôle que le banc ne peut pas faire : la **chaîne entière dans l'OS**, parce que
+  l'émulateur ne fait pas le démarrage (les constructeurs, les sémaphores, l'allocateur) — c'est
+  la limite du §3.46, toujours la même.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
