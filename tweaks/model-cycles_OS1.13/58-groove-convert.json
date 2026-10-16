@@ -1,0 +1,40 @@
+{
+ "id": "groove-convert",
+ "order": 58,
+ "name": "Conversion des projets v6 -> v7 (Model:Groove)",
+ "description": [
+  "Model:Groove, jalon 3 : le projet d'origine est CONVERTI au lieu d'etre refuse. Le projet d'usine est un bloc v5 ; la chaine des convertisseurs de version le passe en v6, et depuis que le mod exige la version 7 (57-groove-patterns.json) le controle de fin de chaine refusait ce bloc a CHAQUE demarrage, que l'utilisateur ait son propre projet ou non. C'est ce qui laissait la machine sur l'ecran d'exception.",
+  "Un convertisseur v6 -> v7 de 288 octets d'assembleur (tools/machines/groove/convert_chain.S) prend la place du controle de fin de chaine (0x4005de74) : il alloue un tampon de 1 918 788 octets, recopie l'en-tete de 512 o, repacke les 80 patterns a huit pistes (l'element de 57), abandonne la banque F, repacke les 80 kits (7 094 octets copies, 200 a zero), recopie la queue de 512 o, ecrit le sceau de cloture et la version 7, recopie le tout dans l'image et refait le controle de fin de chaine en v7.",
+  "Le code est pose dans un masque de sprite libere (0x4016cae8, 1024 o) : le constructeur du sprite est redirige vers le masque partage, qui est identique octet pour octet, donc le rendu ne change pas (tools/sprites.py, notes/14 Â§5). Le convertisseur ne touche ni d5, ni d6, ni d7 â€” le chemin de chargement lit %d6 APRES la chaine â€” et son contrat de registres (a2, a3, fp, a5, resultat dans l'octet bas de d0) est lu dans le prologue de la chaine elle-meme, pas suppose.",
+  "Prouve par tools/re/test_groove_chain.py : la transformee rend exactement la reference Python octet pour octet, les 80 patterns sont un a un ceux du convertisseur d'element deja prouve (jalon 2), et la colle s'execute (allocateur et liberateur remplaces par des stubs) en laissant un bloc v7 valide dans l'image, le drapeau pose, et en rendant 1. Le banc a attrape quatre fautes reelles, dont deux qu'aucune relecture n'aurait vues.",
+  "S'applique APRES 57-groove-patterns.json. La banque F (16 patterns) reste perdue : c'est la contrepartie du passage a huit pistes. Construit en ligne de commande seulement, hors flasher. Genere par tools/gen_groove_convert.py, notes/56 Â§3.58."
+ ],
+ "device": "Model:Cycles",
+ "os": "1.13",
+ "section": 3,
+ "requires": [
+  "groove-patterns"
+ ],
+ "writes": [
+  {
+   "off": 1492712,
+   "old": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+   "new": "206f0004226f0008243c00000080201920c0538266f870072140fe047450201920c0223c0000043b201920c0538166f87000223c0000016920c0538166fa223c00000a44201920c0538166f8538266ced3fc0003a0007450223c000006ed201920c0538166f8301930c07000723220c0538166fad3fc0000024ad1fc00000182538266d4d3fc0001e000243c00000080201920c0538266f8203cbacef00c20c070014e754feffff048d700e02f3c001d47444e96588f4a80675a2a002f0a2f056100ff3e508f2f3c001d47442f052f0a41f94008f1f04e904fef000c2f054e95588f4a8b670416bc0001202a0004207cbeefbaceb1d2661c223c001d4740207cbacef00cb1f21800660a7207b28057c04480600242004cd700e04fef00104e75"
+  },
+  {
+   "off": 724230,
+   "old": "4016cae8",
+   "new": "40154ae4"
+  },
+  {
+   "off": 383604,
+   "old": "202a0004207c",
+   "new": "4eb94016cb8c"
+  },
+  {
+   "off": 383610,
+   "old": "beefbace",
+   "new": "60000024"
+  }
+ ]
+}

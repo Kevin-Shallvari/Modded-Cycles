@@ -20,6 +20,7 @@ dans le prologue de la chaîne (notes/56 §3.58). Trois contrôles :
     python3 tools/re/test_groove_chain.py --cycles model-cycles_OS1.13.syx
 """
 import argparse
+import json
 import pathlib
 import struct
 import subprocess
@@ -36,6 +37,7 @@ import build                                        # noqa: E402
 import mcengine as E                                # noqa: E402
 import mcfw                                         # noqa: E402
 import test_groove_convert as C                     # noqa: E402
+import test_groove_pattern as P                     # noqa: E402
 
 mcfw.bridge_emac()
 
@@ -220,6 +222,64 @@ def main():
           '' if after == ref else '%d octet(s) differents'
           % sum(1 for i in range(V7) if after[i] != ref[i]))
     check('le drapeau est pose', flag == b'\x01')
+
+    print('\nE. la redirection, dans l\'image construite (56 + 57 + 58)')
+    t1 = json.loads((P.TW / '56-groove-8tracks.json').read_text(encoding='utf-8'))
+    t2 = json.loads((P.TW / '57-groove-patterns.json').read_text(encoding='utf-8'))
+    t3 = json.loads((P.TW / '58-groove-convert.json').read_text(encoding='utf-8'))
+    built, _ = build.apply_writes(stock, [t1, t2, t3])
+    MASK, CHAIN, EPI = 0x4016CAE8, 0x4005DE74, 0x4005DEA0
+    glue = MASK + chain_off
+    check('le code est pose dans le masque libere',
+          bytes(built[MASK - build.BASE:MASK - build.BASE + len(code)]) == code)
+    want = (bytes.fromhex('4eb9') + glue.to_bytes(4, 'big')
+            + bytes.fromhex('6000') + (EPI - (CHAIN + 8)).to_bytes(2, 'big'))
+    got = bytes(built[CHAIN - build.BASE:CHAIN - build.BASE + 10])
+    check('le controle de fin de chaine appelle la colle', got == want,
+          got.hex() + ' au lieu de ' + want.hex())
+    check('le 0x4005de94 de 57 (version 6 -> 7) n\'est pas ecrase',
+          built[0x4005DE94 - build.BASE:0x4005DE94 - build.BASE + 2] == b'\x72\x07')
+
+    eng3 = E.Engine(built)
+    for base, size in ((0x43000000, 0x00800000),):
+        try:
+            eng3.uc.mem_map(base, size)
+        except Exception:                                      # noqa: BLE001
+            pass
+    eng3.uc.mem_write(SRC_AT, blk)
+    eng3.uc.mem_write(BUF_AT, bytes(V7))
+    eng3.uc.mem_write(FLAG_AT, b'\x00')
+    free3 = 0x437E2000
+    eng3.uc.mem_write(free3, b'\x4e\x75')
+
+    def on_alloc3(uc, address, size, u):
+        if address == ALLOC:
+            sp = uc.reg_read(mk.UC_M68K_REG_A7)
+            uc.reg_write(mk.UC_M68K_REG_D0, BUF_AT)
+            uc.reg_write(mk.UC_M68K_REG_PC, struct.unpack('>I', uc.mem_read(sp, 4))[0])
+            uc.reg_write(mk.UC_M68K_REG_A7, sp + 4)
+
+    eng3.uc.hook_add(UC_HOOK_CODE, on_alloc3)
+    # La pile telle que l'epilogue de la chaine la lit : 32 o de registres sauves, 16 o, puis
+    # l'adresse de retour (`moveml %sp@,...` puis `lea 48(%sp),%sp` puis `rts`).
+    sp = 0x9001F000
+    eng3.uc.mem_write(sp + 48, struct.pack('>I', E.STOP))
+    for reg, val in (('A7', sp), ('A2', SRC_AT), ('A3', FLAG_AT), ('A6', ALLOC), ('A5', free3)):
+        eng3.uc.reg_write(getattr(mk, 'UC_M68K_REG_' + reg), val)
+    try:
+        eng3.uc.emu_start(CHAIN, E.STOP, count=5_000_000)
+        d0 = eng3.uc.reg_read(mk.UC_M68K_REG_D0)
+        check('la redirection s\'execute et rend 1', (d0 & 0xFF) == 1, 'd0 = %#x' % d0)
+    except Exception as exc:                                   # noqa: BLE001
+        pc = eng3.uc.reg_read(mk.UC_M68K_REG_PC)
+        check('la redirection s\'execute et rend 1', False,
+              '%s  PC=%#x  non mappe=%s' % (exc, pc, eng3.unmapped[-3:]))
+    after3 = bytes(eng3.uc.mem_read(SRC_AT, V7))
+    flag3 = bytes(eng3.uc.mem_read(FLAG_AT, 1))
+    check('le bloc de l\'image est devenu un bloc v7 valide (par la redirection)', after3 == ref,
+          '' if after3 == ref else '%d octet(s) differents'
+          % sum(1 for i in range(V7) if after3[i] != ref[i]))
+    check('le drapeau est pose (par la redirection)', flag3 == b'\x01')
 
     print()
     print('TOUT OK' if not FAIL else 'ECHEC : %s' % ', '.join(FAIL))

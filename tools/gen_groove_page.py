@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Génère docs/groove/tweaks.js : les deux tweaks de Model:Groove, pour la page « 8 track M:C ».
+"""Génère docs/groove/tweaks.js : les trois tweaks de Model:Groove, pour la page « 8 track M:C ».
 
 Source unique : les JSON canoniques de tweaks/model-cycles_OS1.13/. Ce script recopie, il ne
 décide rien — comme tools/gen_flasher_tweaks.py pour la page des mods.
@@ -30,8 +30,8 @@ ROOT = HERE.parent
 TW = ROOT / "tweaks" / "model-cycles_OS1.13"
 OUT = ROOT / "docs" / "groove" / "tweaks.js"
 
-# L'ordre compte : 56 (le moteur) puis 57 (le format), comme dans BUILD.md.
-ORDER = ["56-groove-8tracks.json", "57-groove-patterns.json"]
+# L'ordre compte : 56 (le moteur), 57 (le format), puis 58 (le convertisseur de projets).
+ORDER = ["56-groove-8tracks.json", "57-groove-patterns.json", "58-groove-convert.json"]
 
 
 def main():
@@ -61,7 +61,7 @@ def main():
         " * NE PAS editer a la main : relance le script apres avoir change un tweak.",
         " *",
         " * Model:Groove — ligne derivee, hors page des mods (docs/groove/).",
-        " * MAIN OS attendu pour 56 + 57 : %s" % mainos,
+        " * MAIN OS attendu pour 56 + 57 + 58 : %s" % mainos,
         " */",
         "window.MC_GROOVE = {",
         '  "mainos": "%s",' % mainos,

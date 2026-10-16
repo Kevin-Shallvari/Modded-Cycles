@@ -3154,14 +3154,72 @@ sort en **absolu sans lien** (la cible valait 0) ; les arguments de `groove_v7` 
 m68k le premier argument est le **dernier** empilé) ; et le résultat lu comme un **entier** alors
 que le chemin de chargement ne lit que l'**octet bas**.
 
-#### d) Ce qui reste `[HYP]`
+#### d) Ce qui restait `[FAIT au §3.59]`
 
 - le **logement** (288 octets : la cave du convertisseur d'élément en fait 182 — il faut une
   cave plus grande, ou un masque de sprite libéré et sa redirection de constructeur, §3.49.d) ;
-- la **redirection** en `0x4005de74` (`jsr` + `nop`, 42 octets) et le **générateur** ;
+- la **redirection** en `0x4005de74` et le **générateur** ;
 - et le seul contrôle que le banc ne peut pas faire : la **chaîne entière dans l'OS**, parce que
   l'émulateur ne fait pas le démarrage (les constructeurs, les sémaphores, l'allocateur) — c'est
   la limite du §3.46, toujours la même.
+
+Les deux premiers sont faits au §3.59 ; le dernier reste, et c'est la machine qui le dira.
+
+### 3.59 Jalon 3, étape **3c** : le logement, la redirection, le générateur `[FAIT]` (16/10)
+
+`tools/gen_groove_convert.py` → `tweaks/model-cycles_OS1.13/58-groove-convert.json`
+(**4 écritures**, 302 octets) ; `tools/re/test_groove_chain.py` (section **E**).
+
+#### a) Le logement : un masque de sprite libéré `[FAIT]`
+
+Le masque **`0x4016cae8`** (sprite 64x128 « damier de test », **1 024 o**) est entièrement `0xFF`
+dans l'image d'origine, et `build.py` n'y trouve qu'**une** référence — la constante 32 bits de son
+constructeur (`0x400b1106`). `sprites.redirect_write` la fait pointer sur le masque partagé
+`0x40154ae4`, qui est identique octet pour octet : le rendu ne change pas et le plan du masque
+devient libre (notes/14 §5). Les 288 octets du convertisseur y tiennent.
+
+Les deux caves de 396 o (`0x40148662`, `0x401489fa`) sont **écartées** : ce sont celles des tweaks
+de drumkilla (notes/09, notes/14 §6). Elles sont libres pour la ligne Groove, qui n'inclut aucun de
+ces tweaks, mais les prendre rendrait une combinaison impossible plus tard — sans aucune raison.
+
+#### b) La redirection : **10 octets, pas 42** `[FAIT]`
+
+Le contrôle de fin de chaîne occupe `0x4005de74..0x4005de9e` (42 o) et se termine sur le
+`moveq #6,%d1` de `0x4005de94` — **le site que `57-groove-patterns.json` patche aussi** (version
+6 -> 7). Écrire les 42 octets ferait écrire deux tweaks au même endroit.
+
+On n'écrit donc que ce qui est **exécuté** :
+
+| adresse | octets | rôle |
+|---|---|---|
+| `0x4005de74` | `4eb9 xxxxxxxx` (6 o) | `jsr` vers la colle (`0x4016cb8c`) |
+| `0x4005de7a` | `6000 0024` (4 o) | `bra` vers l'épilogue `0x4005dea0` |
+
+Le reste des 42 octets n'est **jamais exécuté** (le `bra` le saute) : il reste tel quel, `7206`
+compris, et `57` garde son écriture. Le **contrôle de recouvrement** du générateur compare nos
+écritures à celles de 56 et de 57 et refuse tout chevauchement — vu échouer sur ce site précis.
+
+#### c) Ce que le banc ajoute : la redirection, dans l'image construite `[FAIT]`
+
+La section **E** de `tools/re/test_groove_chain.py` construit l'image 56+57+58, vérifie que le code
+est bien dans le masque, que `0x4005de74` porte `jsr 0x4016cb8c` + `bra 0x4005dea0` et que le `7206`
+de 57 est intact — puis **appelle la redirection** avec la pile arrangée comme l'épilogue de la
+chaîne la lit (32 o de registres sauvés, 16 o, l'adresse de retour) et l'allocateur et le
+libérateur remplacés par des stubs : le bloc devient un bloc v7 valide, le drapeau est posé, et le
+résultat est `1` dans l'octet bas de `d0`. Elle a attrapé une faute de plus — la mienne, dans le
+banc : `7206` -> `7207` change le **second** octet, pas le premier.
+
+#### d) Le build `[FAIT]`
+
+`56 + 57 + 58` = **427 écritures**, 1 754 octets modifiés, MAIN OS
+**`1e15286aa91a849e97f6d6950a718e7e1504663e1793bc76e32d8b61e880bd4a`**. `build.py` signale la
+zone 0xFF utilisée et la référence neutralisée, et rien d'autre.
+
+#### e) Ce que le banc ne prouve toujours pas `[HYP]`
+
+La **chaîne entière dans l'OS** — le démarrage, les constructeurs, les sémaphores, l'allocateur —
+reste hors de l'émulateur (§3.46). Ce que la machine doit dire, et que personne d'autre ne peut :
+est-ce que l'OS démarre sur son propre projet d'usine, et est-ce que le projet converti se charge ?
 
 ## 4. Le chemin menant au premier firmware Groove
 
@@ -3204,6 +3262,14 @@ que le chemin de chargement ne lit que l'**octet bas**.
 `66930c1052c5641ba992f48ca1fa6445f3a8d9a2ef645d7490c2efb8abcbb9c9`, `.syx` 894 624 o. C'est le
 candidat **après** le plantage : les deux générateurs passent `--check`, et les trois contrôles du
 second (géométrie, version, comptes) nomment leurs sites quand on les désactive.
+
+**Jalon 3 : conversion des projets** (16/10, §3.58 et §3.59) : `56 + 57 + 58` (**427 écritures**,
+1 754 octets), MAIN OS
+`1e15286aa91a849e97f6d6950a718e7e1504663e1793bc76e32d8b61e880bd4a`. Le convertisseur **v6 -> v7**
+(288 o d'assembleur, dans le masque de sprite libéré `0x4016cae8`) prend la place du contrôle de
+fin de chaîne, qui **refusait** le bloc à chaque démarrage ; son banc (`test_groove_chain.py`, A à
+E) passe, y compris la redirection exécutée dans l'image construite. C'est le candidat **après**
+le second plantage — le premier dont on sait qu'il convertit au lieu de refuser.
 
 ## 5. Ce qui compte pour la suite
 

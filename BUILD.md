@@ -412,11 +412,16 @@ construction en ligne de commande seulement, jalon par jalon, chacun publiant so
 ```sh
 python3 tools/gen_groove_8.py --cycles model-cycles_OS1.13.syx
 python3 tools/gen_groove_pattern.py --cycles model-cycles_OS1.13.syx
-python3 tools/build.py --cycles model-cycles_OS1.13.syx --tweaks 56-groove-8tracks,57-groove-patterns
+python3 tools/gen_groove_convert.py --cycles model-cycles_OS1.13.syx
+python3 tools/build.py -i model-cycles_OS1.13.syx --tweaks groove-8tracks,groove-patterns,groove-convert
+python3 tools/gen_groove_page.py --cycles model-cycles_OS1.13.syx
 python3 tools/re/test_groove.py --cycles model-cycles_OS1.13.syx
 python3 tools/re/test_groove_pattern.py --cycles model-cycles_OS1.13.syx
 python3 tools/re/test_load8.py --cycles model-cycles_OS1.13.syx
+python3 tools/re/test_groove_chain.py --cycles model-cycles_OS1.13.syx
 ```
+
+(`build.py` prend `-i/--input` et les **ids** des tweaks, pas les noms de fichiers.)
 
 Jalon 1 ([note 56](../../notes/56-coeur-8-pistes.md) §3.10) : le moteur compte huit pistes et toutes
 les lignes par piste sont relogées dans la fenêtre DDR `0x4230dc10..0x4232d1a8` (128 Ko, dans le BSS
@@ -483,6 +488,36 @@ des patterns déployés**, que le moteur et l'interface lisent. Le générateur 
 **`GEOMETRY`**, le contrôle **inverse** du balayage : toute la géométrie d'origine est reprise et aucun
 de ses immédiats ne doit survivre hors de la chaîne de versions. Le contrôle a été **vu échouer** (les
 quatre valeurs retirées, il nomme les 12 sites) avant de passer.
+
+**Jalon 3 : conversion des projets (notes/56 §3.58, §3.59)** : un projet écrit par l'OS officiel
+n'était pas seulement *refusé* — le projet d'usine, lui, est un bloc **v5** écrit dans l'image, que
+la chaîne des convertisseurs de version passe en **v6**, et que le contrôle de fin de chaîne
+(exigeant 7) refusait donc **à chaque démarrage**. Le refus n'était pas une option sûre : c'était la
+cause du second plantage. Le firmware **convertit** maintenant. `58-groove-convert.json`
+(**4 écritures**) pose un convertisseur **v6 -> v7** de 288 octets
+(`tools/machines/groove/convert_chain.S`) dans un **masque de sprite libéré** (`0x4016cae8`,
+1 024 o, redirigé vers le masque partagé — le rendu ne change pas) et remplace le début du contrôle
+de fin de chaîne (`0x4005de74`) par un `jsr` vers la colle suivi d'un `bra` vers l'épilogue. On
+n'écrit que ces **10 octets** : le reste du contrôle n'est jamais exécuté, et l'écrire entrerait en
+collision avec le `moveq #6` de `0x4005de94`, que 57 patche aussi — le générateur refuse tout
+recouvrement avec 56 et 57 (contrôle **vu échouer** sur ce site précis). Le contrat de registres de
+la colle (a2 = le bloc, a3 = le drapeau, `fp` = l'allocateur, `a5` = le libérateur, résultat dans
+l'**octet bas** de d0) est lu dans le prologue de la chaîne elle-même, pas supposé.
+
+`tools/re/test_groove_chain.py` prouve le convertisseur : la transformée rend **exactement** la
+référence Python octet pour octet, les 80 patterns sont un à un ceux du convertisseur d'élément
+déjà prouvé, la colle s'exécute (allocateur et libérateur remplacés par des stubs) et laisse un bloc
+v7 valide dans l'image, et la **redirection elle-même** est exécutée dans l'image construite. Ce
+banc a attrapé **quatre** fautes réelles, dont deux invisibles à la relecture : un saut de créneau
+de kit confondu entre source (**586**) et destination (**386**), un `jsr` que GNU as sort en absolu
+sans édition de liens (la cible valait 0), les arguments de `groove_v7` inversés, et le résultat lu
+comme un entier alors que le chargement ne lit que l'octet bas.
+
+MAIN OS (jalons 1+2+3, 427 écritures) : `1e15286aa91a849e97f6d6950a718e7e1504663e1793bc76e32d8b61e880bd4a`
+
+Ce qui reste : la **chaîne entière dans l'OS** ne s'émule pas — le démarrage, les constructeurs, les
+sémaphores, l'allocateur (notes/56 §3.46) — et c'est l'essai machine qui le dira. La banque F
+(16 patterns) reste perdue à la conversion, comme partout dans ce mod.
 
 ## Flasher (rappel)
 

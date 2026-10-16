@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>8 track M:C — Model:Groove</title>
-<link rel="stylesheet" href="../flasher/style.css?v=2026-10-15-g5">
+<link rel="stylesheet" href="../flasher/style.css?v=2026-10-16-g6">
 <style>
   .wrap { max-width: 820px; }
   .warn { border-left: 4px solid var(--bad, #c0392b); }
@@ -27,7 +27,7 @@
     <ul>
       <li><strong>Experimental.</strong> The pattern format is proven in emulation; the <em>kit</em> is not. The kit is verified byte by byte, not proven.</li>
       <li><strong>A bank is traded.</strong> 80 patterns instead of 96 — bank F is exchanged for tracks 7–8. This is the mod's only data loss.</li>
-      <li><strong>Your existing projects will be refused.</strong> Cleanly: nothing is erased, and restoring the official OS brings everything back.</li>
+      <li><strong>Your existing projects are converted, not refused.</strong> A project written by the official OS is converted to the new format when it is loaded. Bank F is lost in that conversion — the same trade as everywhere in this mod. If anything goes wrong, restoring the official OS brings everything back.</li>
       <li><strong>Tracks 7–8 are selectable from the track menu</strong> (the menu now lists eight, and the index bounds follow). Kevin's <em>page 2</em> — pads T1–T2 lighting only LEDs 1–2 — is not written yet, so the <em>display</em> is still the six-track one.</li>
       <li><strong>Recovery needs a MIDI interface, not USB.</strong> If anything goes wrong, the STARTUP MENU restores the official OS — but it listens on the <strong>MIDI IN jack</strong>, and the USB port does nothing in that mode. Have a MIDI interface, or the experimental headphone-jack route (<code>tools/syx2wav.py</code>, untested), <strong>before</strong> you flash. The bootloader is never touched, so the machine is never lost — but it can be out of action until you can send over MIDI.</li>
       <li><strong>Rule deviation, stated plainly:</strong> this repo's rule is that unproven code does not go in a flasher. The owner has overruled it for this page.</li>
@@ -35,7 +35,7 @@
     <ul class="fr">
       <li><strong>Expérimental.</strong> Le format de pattern est prouvé en émulation ; le <em>kit</em> ne l'est pas. Le kit est vérifié octet par octet, pas prouvé.</li>
       <li><strong>Une banque est échangée.</strong> 80 patterns au lieu de 96 — la banque F contre les pistes 7-8. C'est la seule perte de données du mod.</li>
-      <li><strong>Vos projets existants seront refusés.</strong> Proprement : rien n'est effacé, et remettre l'OS officiel les rend lisibles.</li>
+      <li><strong>Vos projets existants sont convertis, pas refusés.</strong> Un projet écrit par l'OS officiel est converti au nouveau format au chargement. La banque F est perdue dans cette conversion — le même échange que partout dans ce mod. En cas de problème, remettre l'OS officiel rend tout.</li>
       <li><strong>Les pistes 7-8 sont sélectionnables depuis le menu de pistes</strong> (le menu en propose huit, et les bornages suivent). La <em>page 2</em> de Kevin — pads T1-T2 n'allumant que les LEDs 1-2 — n'est pas encore écrite : l'<em>affichage</em> reste celui de six pistes.</li>
       <li><strong>La récupération exige une interface MIDI, pas l'USB.</strong> En cas de problème, le STARTUP MENU remet l'OS officiel — mais il écoute sur la <strong>prise MIDI IN</strong>, et le port USB ne fait rien dans ce mode. Ayez une interface MIDI, ou la piste expérimentale par la sortie casque (<code>tools/syx2wav.py</code>, non testée), <strong>avant</strong> de flasher. Le bootloader n'est jamais touché, la machine n'est donc jamais perdue — mais elle peut rester hors service tant que vous ne pouvez pas envoyer par MIDI.</li>
       <li><strong>Écart à la règle, dit franchement :</strong> la règle du dépôt est que du code non prouvé ne va pas dans un flasher. Le propriétaire l'a écartée pour cette page.</li>
@@ -55,9 +55,9 @@
   <section class="step">
     <h2>2 — Build and check</h2>
     <p class="panel-text">
-      <span>Two tweaks are applied: <code>groove-8tracks</code> (the engine) then <code>groove-patterns</code> (the format). The result is checked against the expected MAIN OS; if it differs, nothing is sent.</span>
+      <span>Three tweaks are applied: <code>groove-8tracks</code> (the engine), <code>groove-patterns</code> (the format), then <code>groove-convert</code> (the project converter). The result is checked against the expected MAIN OS; if it differs, nothing is sent.</span>
     </p>
-    <p class="panel-text fr">Deux tweaks sont appliqués : <code>groove-8tracks</code> (le moteur) puis <code>groove-patterns</code> (le format). Le résultat est comparé au MAIN OS attendu ; s'il diffère, rien n'est envoyé.</p>
+    <p class="panel-text fr">Trois tweaks sont appliqués : <code>groove-8tracks</code> (le moteur), <code>groove-patterns</code> (le format), puis <code>groove-convert</code> (le convertisseur de projets). Le résultat est comparé au MAIN OS attendu ; s'il diffère, rien n'est envoyé.</p>
     <p><button type="button" class="btn" id="build" disabled>Build</button></p>
     <div class="status" id="build-status" aria-live="polite"></div>
   </section>
@@ -88,20 +88,27 @@
   <section class="step">
     <h2>What to look for</h2>
     <ul>
-      <li>Does it boot, and does it complain about the current project?</li>
+      <li>Does it boot straight to its usual screen, with the current project loaded — no exception screen?</li>
       <li>Can you reach the browser and create a new project?</li>
       <li>Do tracks 1–6 sound exactly as before?</li>
       <li>Do tracks 7–8 exist, play, and stay silent without a trig?</li>
-      <li>Try to load an original project: is it refused cleanly, with nothing erased?</li>
+      <li>Load a project written by the official OS: does it open, with tracks 1–6 sounding exactly as before?</li>
+    </ul>
+    <ul class="fr">
+      <li>Démarre-t-elle directement sur son écran habituel, projet courant chargé — sans écran d'exception ?</li>
+      <li>Le navigateur de projets est-il atteignable, et un nouveau projet se crée-t-il ?</li>
+      <li>Les pistes 1-6 sonnent-elles exactement comme avant ?</li>
+      <li>Les pistes 7-8 existent-elles, jouent-elles, et restent-elles muettes sans trig ?</li>
+      <li>Chargez un projet écrit par l'OS officiel : s'ouvre-t-il, les pistes 1-6 sonnant exactement comme avant ?</li>
     </ul>
   </section>
 
   <p class="foot"><a href="../flasher/">← the mods flasher</a> · <a href="../guide/">the guide</a></p>
 </main>
 
-<script src="tweaks.js?v=2026-10-15-g5"></script>
-<script src="../flasher/builder.js?v=2026-10-15-g5"></script>
-<script src="../flasher/flasher.js?v=2026-10-15-g5"></script>
-<script src="groove.js?v=2026-10-15-g5"></script>
+<script src="tweaks.js?v=2026-10-16-g6"></script>
+<script src="../flasher/builder.js?v=2026-10-16-g6"></script>
+<script src="../flasher/flasher.js?v=2026-10-16-g6"></script>
+<script src="groove.js?v=2026-10-16-g6"></script>
 </body>
 </html>
