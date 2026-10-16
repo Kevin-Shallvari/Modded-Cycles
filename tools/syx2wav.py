@@ -131,21 +131,45 @@ def render(ts, lv, total, fs, cutoff=0.45):
     et la version lente est celle qui produit le WAV de récupération. À reprendre un jour,
     avec le même garde-fou : tant que le WAV ne se décode pas, il ne s'écrit pas."""
     ratio = RATIOS[fs]
+    h = lowpass(cutoff * fs, FINE)
+    half = (len(h) - 1) // 2
     tg = np.arange(int((total + TAIL) * FINE)) / FINE
     idx = np.clip(np.searchsorted(ts, tg, side="right") - 1, 0, len(ts) - 1)
     x = np.where((tg >= ts[0]) & (tg < ts[-1] + BIT), lv[idx], 0.0)
-    y = convolve(x, lowpass(cutoff * fs, FINE))
+    # DE LA PLACE DEVANT : le filtre a un pré-écho (sa moitié avant). Sans cette marge, les
+    # tout premiers bits sont déformés — c'est ce que l'auto-contrôle a signalé à 48 kHz
+    # (« premier écart à 4 ») alors que les 890 016 octets se décodaient tous, sans erreur de
+    # trame. Le pré-écho se perd dans ce silence au lieu de mordre sur le premier octet.
+    x = np.concatenate([np.zeros(half), x])
+    y = convolve(x, h)[half:]
     return y[::ratio]
 
 
 # --- le décodeur (le contrôle) ----------------------------------------------------------
 
+def _sample_linear(space, k):
+    """Échantillonne `space` aux positions FRACTIONNAIRES `k`, par interpolation linéaire.
+
+    C'est ce que fait le filtre de reconstruction du DAC entre deux échantillons — et c'est ce
+    que la machine voit. Sans elle, on décode la quantification du fichier : à 48 kHz il n'y a
+    que 1,5 échantillon par bit, et le contrôle refusait alors un signal que l'appareil reçoit
+    parfaitement (les 890 016 octets se décodaient, « premier écart à 4 »)."""
+    i = np.floor(k)
+    f = k - i
+    i = i.astype(np.int64)
+    i0 = np.clip(i, 0, len(space) - 1)
+    i1 = np.clip(i + 1, 0, len(space) - 1)
+    return space[i0] * (1.0 - f) + space[i1] * f
+
+
 def uart_decode(space, rate, phase=0.3):
     """Décode |v| > seuil en octets, UART 16x avec vote majoritaire au centre du bit.
     Renvoie (octets, erreurs de trame). Même principe que la simulation de la note."""
     tick = 1.0 / (16 * BAUD)
-    k = ((phase + np.arange(int(len(space) / (tick * rate)) - 1)) * tick * rate).astype(np.int64)
-    s = space[np.minimum(k, len(space) - 1)]
+    k = (phase + np.arange(int(len(space) / (tick * rate)) - 1)) * tick * rate
+    s = _sample_linear(space, k) >= 0.5      # interpoler AVANT de comparer : la rampe linéaire
+                                             # entre deux échantillons, franchie à mi-course,
+                                             # c'est le front reconstruit par le DAC
     maj = np.zeros(len(s), bool)
     maj[1:-1] = (s[:-2].astype(int) + s[1:-1] + s[2:]) >= 2
     out, bad, nxt = [], 0, 0

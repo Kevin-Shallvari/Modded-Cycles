@@ -204,6 +204,36 @@ Il vaut donc la peine d'être tenté quand une machine est bloquée et qu'on n'a
 en gardant en tête le risque du §3.7 (un octet corrompu passé inaperçu dans la section
 *bootstrap*), qui croît avec le taux d'erreur du lien.
 
+### 3.10 Les outils, corrigés et complétés `[FAIT]` (16/10)
+
+Trois retouches, toutes nées d'un même constat : **le signal était bon, le contrôle ne le voyait
+pas**, et un lecteur audio n'est pas un générateur.
+
+- **`syx2wav.py` — le pré-écho du filtre.** Le filtre à bande limitée a une **moitié avant** : sans
+  marge, les tout premiers bits sont déformés. Le rendu ajoute donc `half` échantillons de silence
+  devant, et le pré-écho se perd dedans au lieu de mordre sur le premier octet de l'image. C'est ce
+  que l'auto-contrôle signalait à 48 kHz (« premier écart à 4 ») alors que les 890 016 octets se
+  décodaient **sans une seule erreur de trame**.
+- **`syx2wav.py` — le décodeur interpole.** `_sample_linear` échantillonne la grille fine aux
+  positions **fractionnaires**, par interpolation linéaire, *avant* de comparer au seuil : c'est la
+  rampe entre deux échantillons, franchie à mi-course, que le filtre de reconstruction du DAC
+  fabrique — donc ce que la machine voit. Sans elle, le contrôle décodait la **quantification du
+  fichier** : à 48 kHz il n'y a que ~1,5 échantillon par bit, et il refusait un signal que
+  l'appareil reçoit parfaitement.
+- **`tools/syx2wav_48k.py`** — dérive un WAV **48 kHz** d'un WAV 96 kHz **déjà vérifié** (filtre
+  anti-repliement puis un échantillon sur deux) : le même signal, en quelques secondes au lieu de
+  ~20 minutes de rendu. Ce que ça coûte : la bande au-dessus de ~21 kHz, où vivent les fronts
+  raides du MIDI — c'est le compromis du 48 kHz, et il est inévitable.
+- **`tools/wav_pad.py`** — ajoute du **silence** devant et derrière. Le WAV commence à
+  l'échantillon 0 : or un lecteur met un temps variable à démarrer sa sortie, et la machine peut
+  n'être en réception qu'une seconde ou deux plus tard. Ce qui est mangé au début est mangé **dans
+  l'image** (~1 750 octets/s : dix secondes perdues ≈ 17 Ko, préambule compris) et la somme de
+  contenu échoue à la fin.
+
+**Ce qui reste `[HYP]`**, inchangé : le **niveau de la sortie casque face au seuil de
+l'optocoupleur** (§3.3). Le script garantit le signal, pas l'électricité — et seul un essai sur la
+machine tranche.
+
 ## 4. Pour mémoire : l'USB
 
 - **Menu de démarrage** : non (manuel §13.4).
