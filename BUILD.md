@@ -423,6 +423,17 @@ python3 tools/re/test_groove_chain.py --cycles model-cycles_OS1.13.syx
 
 (`build.py` prend `-i/--input` et les **ids** des tweaks, pas les noms de fichiers.)
 
+Le build sort un conteneur **`0x11`** (clé Cycles), celui du `.syx` d'entrée : c'est le fichier de
+la voie **USB**, une fois qu'un OS Groove tourne. Pour le **STARTUP MENU** — la voie de secours,
+le **MIDI IN** et pas l'USB — il faut un conteneur **`0x0F`** signé avec la clé **Samples** dès que
+l'amorçage de la machine est celui du Samples :
+
+```sh
+python3 tools/groove_pack.py --built model-cycles_OS1.13_groove.syx \
+    --samples model-samples_OS1.13.syx --expect-mainos <MAIN OS attendu> \
+    -o model-groove_OS1.13_for-model-samples.syx
+```
+
 Jalon 1 ([note 56](../../notes/56-coeur-8-pistes.md) §3.10) : le moteur compte huit pistes et toutes
 les lignes par piste sont relogées dans la fenêtre DDR `0x4230dc10..0x4232d1a8` (128 Ko, dans le BSS
 remis à zéro au démarrage) ; bornes, 113 littéraux relogés et reconstruction des deux mini-zones.
