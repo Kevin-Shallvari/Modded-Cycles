@@ -3267,7 +3267,7 @@ l'image (`a2`) sans jamais toucher à ce qui a débordé **au-delà** d'elle. «
 à chaque démarrage » décrivait donc bien le contrôle, mais pas l'écriture — et c'est l'écriture
 qui plante.
 
-#### c) Le correctif `[HYP -> à faire]`
+#### c) Le correctif `[FAIT]` (16/10, appliqué)
 
 **Ne pas rapprocher l'en-tête.** Le bloc v7 est plus court, mais la **région** doit rester celle
 que la chaîne sait remplir :
@@ -3282,32 +3282,122 @@ que la chaîne sait remplir :
 | kits déployés | **`0x43dd0000`** (déménagés : la table des patterns, plus grande, ne leur laisse plus la place) |
 
 Ce qui tient : la table des patterns déployés (80 × 40 924 = **3 273 920**) se termine en
-`0x40a1ba80`, **dans** l'aire que les kits occupaient en stock (qui finissait en `0x40a6af00`) ;
-seuls les kits ont besoin d'ailleurs. Le bloc v7 (1 918 788) laisse alors 244 928 octets de marge
-dans la région, et la chaîne s'arrête au début de l'en-tête, intègre.
+`0x40a19500`, **dans** l'aire que les kits occupaient en stock (qui finit en `0x40a700c0` =
+`0x406fa040 + 96×30 710 + 96×7 094` ; les deux adresses de la première rédaction — `0x40a1ba80`
+et `0x40a6af00` — étaient des erreurs de calcul à la main, corrigées par le contrôle du
+générateur, qui calcule) ; seuls les kits ont besoin d'ailleurs. Le bloc v7 (1 918 788) laisse
+alors 244 928 octets de marge dans la région, et la chaîne s'arrête au début de l'en-tête,
+intègre. Les deux valeurs qui dépendent de l'en-tête sont recalculées : l'offset des kits
+**2 948 188 → 57 499 612** (`0x43dd0000 − 0x406fa024`) et la fin des kits déployés
+**3 629 212 → 58 083 132** (offset + 80 × 7 294).
 
-**Contrôle inverse à écrire** (§3.56 et §3.57 ont montré l'utilité) : la région
-`en-tête - image` doit être **≥** la taille du plus grand bloc que la chaîne produit, et
-`en-tête`, `patterns` et `taille d'enregistrement` doivent **survivre** au patch. Avec le
-générateur actuel, ce contrôle **échoue** — c'est la démonstration du bug.
+**L'audit demandé par le correctif est fait** : les **14 sites** de la taille d'image
+(`2 163 716 → 1 918 788`) sont tous du côté **bloc** — des allocations de l'image
+(`jsr 0x400802e0` en `0x4000fd74`, dont l'appel écrit ensuite le sceau `0xBEEFBACE` et la
+version : c'est la **création** de projet ; `jsr 0x400802e6` en `0x400641d8` et `0x4006a3f6`),
+des copies de l'image (`pea 0x404e9c20` en `0x4008d948`, la taille en argument), et un scalaire
+(`moveal #2163716,%a0` rangé en `fp@(-352)` en `0x400643a8`) — **aucun** ne dimensionne un
+transfert de stockage. Les sites de l'enregistrement stocké, eux, portent `2 163 988` et
+l'enveloppe **`0x404e9b10`** (`0x400431a8` : `movel #2163988` contre `pea 0x404e9b10` ;
+`0x4008da5c` : allocation) : le triage était juste sur les 14, et les trois sites de
+l'enregistrement ne sont plus patchés.
 
-#### d) Ce qu'il reste à faire `[HYP]`
+**Le contrôle inverse est écrit** (RÉGION, dans `tools/gen_groove_pattern.py`) : la région
+`en-tête - image` doit être **≥** la taille du plus grand bloc que la chaîne produit
+(`0x406fa024 − 0x404e9c20 = 2 163 716`, exactement), et `en-tête`, `patterns` et
+`taille d'enregistrement` doivent **survivre** au patch — aux mains de toute la ligne (56 et 58
+compris, leurs JSON sont appliqués pour le contrôle). **Vu échouer** sur l'ancien triage : il
+nommait les **16 sites** (7 + 6 + 3) avant le correctif. La table déployée doit en outre finir
+**dans** l'aire d'origine. Résultat : **57 = 228 écritures** (244 − 16), et le MAIN OS 1+2+3
+passe de `1e15286a…` à
+**`9c27c5d5bd06621430f708ef788f9323f0af8ba35c1bdd495546703721d7572b`** (411 écritures,
+1 690 octets modifiés).
 
-1. `tools/gen_groove_pattern.py` : garder `HEADER_OLD`, `PATTERNS_OLD` et `RECORD_OLD`
-   (retirer les trois entrées de `IMMEDIATES` et de `GEOMETRY`, et ajouter le contrôle du
-   §3.60.c), recalculer `KITS_NEW_OFFSET` et `DEPLOYED_TAIL_NEW` — les deux dépendent de
-   l'en-tête ;
-2. régénérer `57-groove-patterns.json`, relancer `gen_groove_page.py`, le build et les cinq bancs
-   (dont `test_groove_pattern.py`, qui code les adresses en dur) ;
-3. corriger `BUILD.md` et la page : le candidat `1e15286a…` **ne démarre pas** ;
-4. réemballer les deux `.syx` (0x11 clé Cycles, 0x0F conteneur Samples) et **faire flasher
-   Maxime**, récupération STARTUP MENU + MIDI IN sous la main ;
-5. demander la **valeur de `P`** de l'écran d'exception du 16/10 : si elle est toujours
-   `0x00300000`, elle confirme le pointeur pris dans les données de kit ; si elle a changé, elle
-   dit autre chose.
+#### d) Ce qu'il reste à faire
+
+1. `[FAIT]` `tools/gen_groove_pattern.py` : `HEADER_OLD`, `PATTERNS_OLD` et `RECORD_OLD`
+   gardés (les trois entrées retirées de `IMMEDIATES` et de `GEOMETRY`, le contrôle RÉGION du
+   §3.60.c ajouté — **vu échouer** sur l'ancien triage), `KITS_NEW_OFFSET` et
+   `DEPLOYED_TAIL_NEW` recalculés (57 499 612 et 58 083 132) ;
+2. `[FAIT]` `57-groove-patterns.json` régénéré (**228 écritures**), `gen_groove_page.py`
+   relancé (MAIN OS attendu `9c27c5d5…`, tampon `?v=2026-10-16-g7` sur la page), build refait
+   et les cinq bancs verts : `test_groove.py`, `test_groove_pattern.py` (ses adresses en dur —
+   `0x406fa040`, `0x404e9c20` — sont justement celles qui restent d'origine), `test_load8.py`,
+   `test_groove_convert.py`, `test_groove_chain.py` (A–E, dont la redirection exécutée dans
+   l'image construite) ; `test_groove_kit.py` inchangé (NON PROUVE, §3.54) ;
+3. `[FAIT]` `BUILD.md`, la note et la page corrigés : le candidat `1e15286a…` ne démarre pas,
+   le candidat corrigé est `9c27c5d5…` ;
+4. `[FAIT côté atelier — l'essai machine reste]` les deux `.syx` réemballés et vérifiés
+   (clé Cycles `0x11` : `model-cycles_OS1.13_groove.syx` ; conteneur Samples `0x0F` :
+   `model-groove_OS1.13_for-model-samples.syx`), et la page produit le même `.syx` que la
+   ligne de commande, **octet pour octet** (vérifié dans node) ; l'essai machine est à faire,
+   récupération STARTUP MENU + MIDI IN sous la main ;
+5. la question de l'OS en cours a sa réponse (16/10, Kevin) : la machine tournait **normalement**
+   (aucun firmware Groove) quand le `.syx` a été envoyé par USB, et l'upgrade **s'est
+   terminée** — le plantage est donc bien le nouvel OS **au démarrage**, et le candidat
+   `1e15286a…` a réellement été flashé. La machine tourne aujourd'hui un OS Cycles **modifié**
+   (branche `wave` de Kevin) : la voie USB reste disponible depuis lui pour le candidat
+   corrigé, et la récupération STARTUP MENU (MIDI IN, conteneur `0x0F`) reste sous la main.
+   La **valeur de `P`** de l'écran d'exception du 16/10 reste à demander : si elle est
+   toujours `0x00300000`, elle confirme le pointeur pris dans les données de kit ; si elle a
+   changé, elle dit autre chose.
 
 Si ça démarre, le convertisseur du §3.58 reprend son rôle — c'est lui qui **accepte** le bloc v6
 en le passant en v7 ; sans ce correctif, il ne s'exécute jamais sur un bloc intact.
+
+### 3.61 L'émulation du démarrage : le correctif ne suffit pas, le second défaut est dans le 57 `[FAIT]` (16/10)
+
+L'outil : **digiemu 0.4.1** (`irpina/digiemu`, GPL-2.0) — un émulateur ColdFire qui démarre le
+vrai firmware (testé avec le Model:Cycles OS 1.13, le même SHA-256 `44fe5862…` que le nôtre) et
+dont la commande `digiemu-console.exe --check BUILD.syx --baseline STOCK.syx` vérifie une
+construction **avant** le flash : le conteneur tel que l'appareil le reçoit, le bootstrap
+propre de la construction, le démarrage à froid jusqu'à l'interface stabilisée, puis une
+session scriptée en **mode strict** (plan mémoire du MCF5441x, les vraies exceptions : une
+*address error* ou un saut hors de l'OS est enregistré et fait échouer), avec mesure du
+rendu en cycles, et comparaison écran par écran contre la construction d'origine. Limites
+assumées par l'outil lui-même : ni le transfert de mise à jour, ni le second processeur
+(USB/MIDI), ni les caches — et un PASS reste un résultat d'émulateur, pas une preuve sur
+la machine. L'essai de Kevin reste le juge.
+
+L'échelle (chaque `.syx` est démarré à froid, le stock et la construction) :
+
+| construction | démarrage | session | verdict digiemu |
+|---|---|---|---|
+| stock 1.13 | passe (3 violations propres au stock) | passe | référence |
+| 56 seul (moteur, `d7ea09e2…`) | **passe** | échoue sur le jeu (erreurs d'exécution en `0x43b51eac`/`0x3fffe136`) | démarre et stabilise son interface ; l'échec de session est l'écart **documenté** du jalon 1 (« pas encore jouable depuis le panneau ») |
+| 56+57 (`15c8fcd2…`) | **ÉCHOUE — se fige** | — | ne rejoint jamais sa boucle d'attente (600M instructions) ; **aucune** violation mémoire : une boucle logique, pas un pointeur sauvage |
+| 56+57+58 corrigé (`9c27c5d5…`) | **ÉCHOUE — plante** | — | n'atteint jamais l'interface (`mainloop 0`), mêmes fautes que le mort |
+| 56+57+58 mort (`1e15286a…`) | **ÉCHOUE — plante** | — | **bit à bit les mêmes PCs et adresses** que le corrigé |
+
+Le mort échoue **exactement** comme sur la machine : le démarrage ne stabilise jamais
+l'interface, et les violations sont de la classe prédite au §3.60 — des octets de
+bloc/données lus comme pointeurs. L'émulateur est ainsi **validé contre notre défaut
+connu**, sur du matériel indépendant du nôtre.
+
+La faute du 56+57+58, dans les deux candidats, au PC près :
+
+| violation | pc | adresse | lecture |
+|---|---|---|---|
+| lecture + écriture de 4 o en `0xbeefbad2` | `0x400cf248` / `0x400cf250` | base `0xbeefbad0` | la fonction `0x400cf23c` (décrément de compteur/refcount : `movel %a2@(4),%d0`, `subql`, `movel %d1,%a2@(4)`) reçoit **`a2 = 0xBEEFBACE` — le sceau lui-même** dans un emplacement de pointeur |
+| lecture de 4 o en `0x0000000c` | `0x40069a8a` | base `0x00000000` | un parcours de liste (`0x40069a78`) tombe sur NULL et lit `[+12]` — la suite de l'effondrement |
+| 10 tâches créées sur 11 | — | — | la 11e (site `0x400689c8`, entrée `0x40068c78`, prio 2) n'est jamais créée ; `intro_done` tiré une fois, `mainloop 0`, `lit 3808` contre `4214` en stock |
+
+Le §3.60 reste vrai (l'arithmétique et la géométrie), mais il était **nécessaire et pas
+suffisant** : le défaut qui tue le démarrage des deux candidats avec convertisseur vit
+dans le **57**, et le 56+57 sans convertisseur le montre sous son autre face — un refus
+de projet qui boucle au lieu de rendre la main (le §3.56 supposait un « refus propre » ;
+au démarrage, le chemin de refus ne rend jamais la main : 5 tâches créées, la 6e jamais,
+`idle_spin_passes` 20 000 contre 4,2M en stock). Le premier démarrage sur une +Drive
+**vide** se fige de la même façon : ce n'est donc pas l'enregistrement v6 stocké, c'est
+la tuyauterie de projet elle-même. Avec le convertisseur (58), le refus est remplacé, la
+montée va plus loin — et elle heurte le défaut suivant (le sceau-pointeur).
+
+**Conséquence immédiate : le candidat `9c27c5d5…` ne doit PAS être flashé** (les deux `.syx`
+de `firmware/` sont renommés `*_DOES-NOT-BOOT-9c27c5d5.syx`, comme les morts précédents).
+La suite : les outils de traçage de digiemu depuis les sources (en cours d'installation
+dans WSL2 : `vendor/digiemu-src`, `uv sync`, Unicorn corrigé) — `bootcheck`, `addrtrace`,
+`bootwatch`, `steptrace` — pour nommer l'appel exact, corriger, et refaire passer
+l'échelle 56 → 56+57 → 56+57+58 **avant** tout nouveau flash.
 
 ## 4. Le chemin menant au premier firmware Groove
 
@@ -3361,9 +3451,17 @@ dans l'image construite.
 **Ce candidat ne démarre pas** (flash du 16/10) — et le §3.60 dit pourquoi : la chaîne écrit son
 bloc v6 (2 163 716 o) dans une région que le jalon 2 a rabaissée à 1 918 788, donc **par-dessus
 l'en-tête de projet et le début de la table des patterns déployés**, *avant* le contrôle de fin
-que le convertisseur remplace. Le correctif est décrit au §3.60.c : garder la géométrie de
-**stockage** (en-tête `0x406fa024`, patterns `0x406fa040`, enregistrement 2 163 988) et ne
-raccourcir que le **bloc**. **Aucun firmware Groove n'a encore démarré sur la machine.**
+que le convertisseur remplace.
+
+**Correctif appliqué** (16/10, §3.60.c) : la géométrie de **stockage** est gardée (en-tête
+`0x406fa024`, patterns `0x406fa040`, enregistrement stocké 2 163 988 — leurs 16 sites ne sont plus
+patchés), seuls le **bloc** et ce qui en dépend raccourcissent, les kits restent à `0x43dd0000`
+(offset 57 499 612, fin des kits déployés 58 083 132 relatifs à l'en-tête), et le générateur
+porte le contrôle inverse **RÉGION**, **vu échouer** sur l'ancien triage. Candidat corrigé :
+`56 + 57 + 58` = **411 écritures** (179 + 228 + 4), 1 690 octets, MAIN OS
+`9c27c5d5bd06621430f708ef788f9323f0af8ba35c1bdd495546703721d7572b`. Les cinq bancs sont verts, et
+la page produit le même `.syx` que la ligne de commande, octet pour octet. **Aucun firmware
+Groove n'a encore démarré sur la machine — l'essai du candidat corrigé reste à faire.**
 
 ## 5. Ce qui compte pour la suite
 

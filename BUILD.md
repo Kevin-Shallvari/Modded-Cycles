@@ -449,7 +449,8 @@ huit pistes — enregistrement déployé **40 924** octets (`4 + 8×722 + 8×438
 contre les pistes 7-8 — c'est le seul point de perte de données du mod). Le **conteneur du bloc
 projet** suit : **1 918 788** octets au lieu de 2 163 716, sceau de clôture **+1 918 784**, base des
 kits **1 303 872** (fichier) / **1 304 144** (image) — donc l'en-tête et la table des patterns
-descendent (`0x406be364` / `0x406be380`) et les kits vont dans la plage libre de `0x43dd0000`.
+descendaient (`0x406be364` / `0x406be380`, **erreur corrigée au §3.60** : ils restent désormais à
+leurs adresses d'origine) et les kits vont dans la plage libre de `0x43dd0000`.
 L'aire par piste d'un kit passe de 600 à 800 octets, donc **les deux champs qui la suivent décalent
 de +200** (628 → 828, 694 → 894 déployés ; 632 → 832, 708 → 908 rangés) — c'est ce qui rend le kit
 déployé égal à 7 294. La **chaîne des convertisseurs de version** (les six `v0…v5 → v6`) garde en
@@ -528,17 +529,49 @@ MAIN OS (jalons 1+2+3, 427 écritures) : `1e15286aa91a849e97f6d6950a718e7e150466
 
 **Ce candidat ne démarre pas** (flash du 16/10, écran d'exception). La cause est au
 [§3.60](../notes/56-coeur-8-pistes.md) : la **chaîne des convertisseurs de version** écrit son
-bloc v6 (**2 163 716** octets) dans l'image projet, et le jalon 2 a **rapproché l'en-tête** de
-cette même quantité — la région `image -> en-tête` n'est plus que **1 918 788**. La chaîne déborde
-donc de **244 928** octets **par-dessus l'en-tête de projet et le début de la table des patterns
-déployés**, à chaque démarrage, *avant* le contrôle de fin que le convertisseur remplace. Le
-correctif (à faire) : garder la géométrie de **stockage** de l'OS d'origine (en-tête `0x406fa024`,
-patterns `0x406fa040`, enregistrement stocké 2 163 988) et ne raccourcir **que le bloc**.
+bloc v6 (**2 163 716** octets) dans l'image projet, et le jalon 2 avait **rapproché l'en-tête**
+de cette même quantité — la région `image -> en-tête` n'était plus que **1 918 788**. La chaîne
+débordait donc de **244 928** octets **par-dessus l'en-tête de projet et le début de la table des
+patterns déployés**, à chaque démarrage, *avant* le contrôle de fin que le convertisseur remplace.
 
-Ce qui reste, après ce correctif : la **chaîne entière dans l'OS** ne s'émule toujours pas — le
-démarrage, les constructeurs, les sémaphores, l'allocateur (notes/56 §3.46) — et c'est l'essai
-machine qui le dira. La banque F (16 patterns) reste perdue à la conversion, comme partout dans ce
-mod. **Aucun firmware Groove n'a encore démarré sur la machine.**
+**Correctif du 16/10 (notes/56 §3.60.c, appliqué)** : la géométrie de **stockage** de l'OS
+d'origine est gardée — en-tête `0x406fa024`, patterns `0x406fa040`, enregistrement stocké
+**2 163 988** (leurs **16 sites** ne sont plus patchés) — et seul le **bloc** raccourcit. Les kits
+restent déplacés vers `0x43dd0000` (offset **57 499 612**, fin des kits déployés **58 083 132**,
+relatifs à l'en-tête) ; la table déployée (80 × 40 924 = **3 273 920** octets) finit à
+`0x40a19500`, **dans** l'aire que les kits occupaient en stock (qui finit à `0x40a700c0`) — rien
+d'autre ne bouge. L'audit des **14 sites** de la taille d'image est fait : tous sont du côté
+**bloc** (allocations de l'image `jsr 0x400802e0`/`0x400802e6`, copies avec `pea 0x404e9c20`, un
+scalaire) ; les trois sites de l'enregistrement (`0x400431c4`, `0x400431d0`, `0x4008da5e`,
+enveloppe `0x404e9b10`) sont du côté **stockage** et restent d'origine. Le générateur porte un
+**quatrième contrôle inverse**, la **RÉGION** : la région `image -> en-tête` doit tenir les
+2 163 716 octets de la chaîne, et l'en-tête, la base de la table et l'enregistrement stocké
+doivent **survivre** au patch — **vu échouer** sur l'ancien triage (il nommait les 16 sites)
+avant de passer. Les cinq bancs sont de nouveau verts, la redirection du convertisseur exécutée
+dans l'image construite comprise.
+
+MAIN OS (jalons 1+2+3 corrigés, **411 écritures** : 179 + 228 + 4, 1 690 octets modifiés) :
+`9c27c5d5bd06621430f708ef788f9323f0af8ba35c1bdd495546703721d7572b`
+
+**Ce candidat corrigé ne doit PAS être flashé** (notes/56 §3.61) : l'émulation du démarrage
+(digiemu 0.4.1, `digiemu-console.exe --check`, le même Model:Cycles OS 1.13 en référence) montre
+qu'il ne démarre pas non plus — le correctif §3.60 était nécessaire mais pas suffisant, et un
+second défaut fatal au démarrage vit dans le 57. L'échelle, démarrage à froid jusqu'à interface
+stabilisée : le **stock passe** ; **56 seul passe** (l'échec de session ensuite est l'écart
+documenté du jalon 1) ; **56+57 se fige** sans aucune violation mémoire (le chemin de refus de
+projet boucle au lieu de rendre la main : 5 tâches créées, la 6e jamais) ; **56+57+58 plante**
+comme le mort, **bit à bit les mêmes PCs** (`0x400cf248`/`0x400cf250` : le sceau `0xBEEFBACE`
+dans un emplacement de pointeur ; `0x40069a8a` : lecture en `[0xC]` ; la 11e tâche jamais
+créée). Le mort échoue exactement comme sur la machine : l'émulateur est validé contre notre
+défaut connu. Les deux `.syx` de `firmware/` sont renommés `*_DOES-NOT-BOOT-9c27c5d5.syx` pour
+que personne ne les flashe. La suite : traçage depuis les sources de digiemu, correction, et
+refaire passer l'échelle **avant** tout nouveau flash.
+
+Ce qui reste : la **chaîne entière dans l'OS** ne s'émule toujours pas avec nos propres outils —
+le démarrage, les constructeurs, les sémaphores, l'allocateur (notes/56 §3.46) — mais digiemu
+le fait, et c'est lui qui mène la chasse maintenant. La banque F (16 patterns) reste perdue à
+la conversion, comme partout dans ce mod. **Aucun firmware Groove n'a encore démarré, ni sur
+la machine ni en émulation de démarrage.**
 
 ## Flasher (rappel)
 

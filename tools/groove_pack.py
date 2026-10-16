@@ -16,7 +16,7 @@ repris **tel quel**, rien n'est recompressé) et la remet dans le conteneur du S
   identiques à celles du Samples, section 3 décompressée identique, HMAC avec la clé Samples.
 
     python3 tools/groove_pack.py --built model-cycles_OS1.13_groove.syx \\
-        --samples model-samples_OS1.13.syx --expect-mainos 1e15286a... \\
+        --samples model-samples_OS1.13.syx --expect-mainos 9c27c5d5... \\
         -o model-groove_OS1.13_for-model-samples.syx
 
 Le `.syx` d'entrée est celui de `tools/build.py --tweaks groove-8tracks,groove-patterns,groove-convert` ;

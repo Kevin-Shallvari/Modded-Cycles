@@ -20,6 +20,12 @@ Ce que fait ce jalon :
      rangés passent à 16 292 et le nombre à 80 :
          `[512][80 × 16 292][80 × 7 680][512][4]`
      d'où la base des kits : 1 303 872 dans le fichier (512 + 80×16 292) et 1 304 144 dans l'image.
+  5. **la géographie de stockage ne bouge pas** (§3.60) : l'en-tête de projet (`0x406fa024`), la
+     base de la table des patterns (`0x406fa040`) et l'enregistrement stocké (2 163 988) restent
+     d'origine, parce que la chaîne des convertisseurs écrit 2 163 716 octets dans l'image
+     À CHAQUE DÉMARRAGE, avant tout contrôle : la région image → en-tête doit tenir ce bloc.
+     Rapprocher l'en-tête (le jalon 2 original) laissait la chaîne écraser l'en-tête et le
+     début de la table déployée — le plantage du 16/10. Le contrôle de la REGION l'exige.
 
 **Le point capital de ce générateur** : la **chaîne des convertisseurs de version** (les six
 `v0…v5 → v6`, leurs éléments, et les six blocs de `0x4005d9f6`) décrit **un bloc v6** — sa sortie.
@@ -53,27 +59,31 @@ BASE = build.BASE
 IMAGE_OLD = 2163716
 IMAGE_NEW = 1918788                 # 512 + 80x16292 + 80x7680 + 512 + 4
 GROWTH = IMAGE_NEW - IMAGE_OLD      # -244928
+# §3.60 : l'en-tete et la table des patterns RESTENT a leurs adresses d'origine. La chaine
+# des convertisseurs ecrit son bloc v6 (2 163 716, une constante de SON code, dans LEGACY)
+# dans l'image A CHAQUE DEMARRAGE, avant tout controle ; si l'en-tete descend, elle l'ecrase
+# — c'est le plantage du 16/10. Seul le BLOC raccourcit ; la GEOGRAPHIE DE STOCKAGE reste.
 HEADER_OLD = 0x406FA024
 PATTERNS_OLD = 0x406FA040
-HEADER_NEW = HEADER_OLD + GROWTH
-PATTERNS_NEW = PATTERNS_OLD + GROWTH
 PATTERN_SIZE = 40924                # deploye : 4 + 8 x 722 + 8 x 4385 + 64
 PATTERN_COUNT = 80
 KITS_OLD_OFFSET = 2948188           # offset des kits, relatif a l'en-tete
 KITS_NEW = 0x43DD0000               # les kits ne tiennent plus apres les patterns : plage libre
-KITS_NEW_OFFSET = KITS_NEW - HEADER_NEW
+KITS_NEW_OFFSET = KITS_NEW - HEADER_OLD
 
-# --- LES VALEURS DERIVEES : L'ENREGISTREMENT STOCKE (§3.56) ------------------------------
+# --- LES VALEURS DERIVEES : L'ENREGISTREMENT STOCKE (§3.56, §3.60) ------------------------
 # Le projet n'est pas seulement « un bloc » : sur le +Drive (et en MRAM) il est STOCKE dans un
 # ENREGISTREMENT = une enveloppe de 272 o suivie de l'image, et le bloc se termine par une
-# « queue » de 512 o qui finit sur le sceau de cloture. Ces valeurs sont DERIVEES (image + 272,
-# sceau - 512, somme des deux tables) : le balayage par valeur ne les voit que si on les lui
-# donne. Oubliees, le chemin sauvegarde/chargement ecrit 244 928 o AU-DELA de l'enregistrement
-# — c'est-a-dire dans l'en-tete de projet et la table des patterns deployes, que le moteur et
-# l'interface lisent. C'est le plantage du 16/10 (notes/56 §3.56).
+# « queue » de 512 o qui finit sur le sceau de cloture. Les valeurs du COTE BLOC (la queue,
+# relative a l'image et a l'enregistrement) sont DERIVEES (image - 512) : le balayage par
+# valeur ne les voit que si on les lui donne, et le jalon 2 les avait oubliees (plantage du
+# 16/10, notes/56 §3.56).
+# La TAILLE DE L'ENREGISTREMENT, elle, garde sa valeur d'ORIGINE (§3.60) : c'est de la
+# GEOGRAPHIE DE STOCKAGE, comme l'en-tete et la base de la table. Le stock depose 2 163 716 o
+# d'image dans un enregistrement de 2 163 988 ; le bloc v7 (1 918 788) y tient avec de la
+# marge — et la chaine garde la place d'ecrire son bloc v6 ENTIER dans l'image.
 ENVELOPE = 272                      # l'enveloppe de l'enregistrement stocke (0x404e9b10)
-RECORD_OLD = IMAGE_OLD + ENVELOPE   # 2 163 988
-RECORD_NEW = IMAGE_NEW + ENVELOPE   # 1 919 060
+RECORD_OLD = IMAGE_OLD + ENVELOPE   # 2 163 988 — et il RESTE 2 163 988 (§3.60 : pas de patch)
 CLOSING_OLD = IMAGE_OLD - 4         # 2 163 712 : le sceau de cloture est les 4 derniers octets
 CLOSING_NEW = IMAGE_NEW - 4         # 1 918 784
 TAIL_OLD = CLOSING_OLD - 512        # 2 163 200 : la queue de 512 o, relative a l'image
@@ -86,7 +96,7 @@ TAIL_REC_NEW = TAIL_NEW + ENVELOPE  # 1 918 544
 # a fait ecrire la mauvaise formule au §3.56, et le pointeur de la queue tombait alors dans les
 # donnees de l'OS. Voir notes/56 §3.57.
 DEPLOYED_TAIL_OLD = KITS_OLD_OFFSET + 96 * 7094                 # 3 629 212
-DEPLOYED_TAIL_NEW = KITS_NEW_OFFSET + PATTERN_COUNT * 7294      # 58 328 060
+DEPLOYED_TAIL_NEW = KITS_NEW_OFFSET + PATTERN_COUNT * 7294      # 58 083 132
 
 # --- LES PLAGES DE LA CHAINE DE VERSIONS : geometrie d'ORIGINE, a NE PAS toucher --------
 # Leur sortie est un bloc **v6**, pas un bloc v7 : elles gardent 2 163 716, 14 848, 4 336, etc.
@@ -115,10 +125,14 @@ LEGACY = [
 # qu'aucun de ses immediats ne survive dans l'image patchee, hors de la chaine de versions
 # (dont la sortie est un bloc v6, et qui doit donc garder ses valeurs). Ajouter une valeur ici
 # quand la geometrie change : c'est ce qui empeche l'oubli de recommencer.
+#
+# Les trois valeurs de STOCKAGE — l'en-tete (0x406fa024), la base de la table des patterns
+# (0x406fa040) et l'enregistrement stocke (2 163 988) — sont volontairement ABSENTES (§3.60) :
+# elles ne doivent pas changer, et c'est le controle de la REGION qui exige qu'elles
+# SURVIVENT. Les mettre ici serait l'echec permanent du controle.
 GEOMETRY = [
     (IMAGE_OLD, "imm", "taille du bloc projet"),
     (CLOSING_OLD, "imm", "sceau de cloture du bloc"),
-    (RECORD_OLD, "imm", "taille de l'enregistrement stocke"),
     (TAIL_OLD, "imm", "queue de 512 o, relative a l'image"),
     (TAIL_REC_OLD, "imm", "queue de 512 o, relative a l'enregistrement"),
     (DEPLOYED_TAIL_OLD, "imm", "fin des kits deployes (relative a l'en-tete)"),
@@ -132,8 +146,6 @@ GEOMETRY = [
     (30710, "imm", "enregistrement deploye"),
     (14848, "imm", "creneau range"),
     (7094, "imm", "kit deploye"),
-    (HEADER_OLD, "imm", "en-tete de projet"),
-    (PATTERNS_OLD, "imm", "table des patterns deployes"),
     # les memes pas, vus en deplacement de 16 bits (l'autre moitie du balayage)
     (14848, "tout", "creneau range (deplacement)"),
     (7094, "tout", "kit deploye (deplacement)"),
@@ -212,16 +224,23 @@ IMMEDIATES = [
     (2948160, 3273920, 2, "fin de la table des patterns deployes"),
     (26310, 35080, 3, "borne de la queue deployee (6 x 4385 -> 8 x 4385) — §3.39.c"),
     (681024, 583520, 1, "fin de la table des kits deployes"),
-    (PATTERNS_OLD, PATTERNS_NEW, 6, "base de la table des patterns"),
-    (HEADER_OLD, HEADER_NEW, 7, "en-tete de projet"),
+    # L'EN-TETE DE PROJET (0x406fa024) ET LA BASE DE LA TABLE DES PATTERNS (0x406fa040) NE
+    # SONT PLUS PATCHES (§3.60) : la chaine des convertisseurs ecrit 2 163 716 o dans l'image
+    # a chaque demarrage, AVANT tout controle, et la region image -> en-tete doit tenir ce
+    # bloc. Le controle de la REGION (plus bas) exige que leurs sites SURVIVENT — c'est lui
+    # qui a ete vu echouer sur l'ancien triage (7 et 6 sites, le plantage du 16/10).
     (KITS_OLD_OFFSET, KITS_NEW_OFFSET, 6, "offset des kits (relatif a l'en-tete)"),
-    # LES VALEURS DERIVEES DE L'ENREGISTREMENT STOCKE (§3.56) : l'enregistrement stocke n'est
-    # pas une constante, c'est une SOMME (image + enveloppe), et la queue de 512 o se termine
-    # sur le sceau de cloture. Le triage du jalon 2 ne les avait pas : le chemin
-    # sauvegarde/chargement ecrivait donc 244 928 o au-dela de l'enregistrement — dans l'en-tete
-    # de projet et la table des patterns deployes. Plantage du 16/10 sur la machine. GEOMETRY
-    # (plus bas) est le controle qui rend cet oubli impossible a refaire.
-    (RECORD_OLD, RECORD_NEW, 3, "taille de l'enregistrement stocke (enveloppe 272 + image)"),
+    # LES VALEURS DERIVEES DU BLOC (§3.56) : la queue de 512 o se termine sur le sceau de
+    # cloture, et la fin des kits deployes est un DECALAGE qui suit les kits. Le triage du
+    # jalon 2 ne les avait pas : le chemin sauvegarde/chargement ecrivait donc 244 928 o
+    # au-dela de l'enregistrement — dans l'en-tete de projet et la table des patterns
+    # deployes. Plantage du 16/10 sur la machine. GEOMETRY (plus bas) est le controle qui
+    # rend cet oubli impossible a refaire.
+    # L'ENREGISTREMENT STOCKE, lui, n'est PAS patche (§3.60) : sa taille (2 163 988) est de
+    # la geographie de stockage, comme l'en-tete et la base de la table. Le bloc v7
+    # (1 918 788 o) y tient avec de la marge. Ses trois sites (0x400431c4, 0x400431d0,
+    # 0x4008da5e — l'enveloppe 0x404e9b10) sont couverts par le controle de la REGION,
+    # qui exige qu'ils SURVIVENT.
     (TAIL_OLD, TAIL_NEW, 4, "queue de 512 o, relative a l'image"),
     (TAIL_REC_OLD, TAIL_REC_NEW, 1, "queue de 512 o, relative a l'enregistrement"),
     (DEPLOYED_TAIL_OLD, DEPLOYED_TAIL_NEW, 4, "fin des kits deployes (relative a l'en-tete)"),
@@ -480,8 +499,9 @@ def main():
         raise SystemExit("!! ce n'est pas le MAIN OS 1.13 officiel")
 
     print("conteneur : bloc %d -> %d (%+d)" % (IMAGE_OLD, IMAGE_NEW, GROWTH))
-    print("            en-tete %#x -> %#x, patterns %#x -> %#x"
-          % (HEADER_OLD, HEADER_NEW, PATTERNS_OLD, PATTERNS_NEW))
+    print("            en-tete %#x et patterns %#x : ADRESSES D'ORIGINE (§3.60)"
+          % (HEADER_OLD, PATTERNS_OLD))
+    print("            enregistrement stocke %d o : TAILLE D'ORIGINE (§3.60)" % RECORD_OLD)
     print("            kits -> %#x (offset %d -> %d, relatif a l'en-tete)"
           % (KITS_NEW, KITS_OLD_OFFSET, KITS_NEW_OFFSET))
     print("chaine de versions (geometrie d'origine, NON touchee) :")
@@ -646,6 +666,64 @@ def main():
     print("controle : aucune des %d valeurs de la geometrie d'origine ne survit hors de la "
           "chaine" % len(GEOMETRY))
 
+    # --- LE CONTROLE DE LA REGION (§3.60) ---------------------------------------------------
+    # La chaine des convertisseurs ecrit son bloc v6 (2 163 716 o, une constante de SON
+    # code, dans LEGACY) DANS l'image, A CHAQUE DEMARRAGE, AVANT tout controle : le projet
+    # d'usine est un bloc v5 qui traverse la chaine. La region image -> en-tete doit donc
+    # tenir ce bloc. Le jalon 2 avait rapproche l'en-tete d'autant que le bloc avait
+    # raccourci : la chaine ecrasait l'en-tete et le debut de la table deployee (plantage
+    # du 16/10, notes/56 §3.60). Ce controle est l'INVERSE du precedant : la region doit
+    # tenir le bloc, et la GEOGRAPHIE DE STOCKAGE — l'en-tete, la base de la table des
+    # patterns et l'enregistrement stocke — doit SURVIVRE au patch, aux mains de toute la
+    # ligne (56 et 58 compris).
+    IMAGE_VA = 0x404E9C20            # ou l'OS depose l'image projet
+    CHAIN_BLOCK = 2163716            # le plus grand bloc que la chaine ecrit (v5 -> v6)
+    if HEADER_OLD - IMAGE_VA < CHAIN_BLOCK:
+        raise SystemExit(
+            "!! la region image -> en-tete ne tient que %d o, et la chaine en ecrit %d : "
+            "notes/56 §3.60" % (HEADER_OLD - IMAGE_VA, CHAIN_BLOCK))
+    line = [{"id": "x", "order": 57, "section": 3, "device": "Model:Cycles", "os": "1.13",
+             "writes": uniq}]
+    for name in ("56-groove-8tracks.json", "58-groove-convert.json"):
+        sib = OUT.parent / name
+        if sib.exists():
+            line.append(json.loads(sib.read_text(encoding="utf-8")))
+    patched_line, _ = build.apply_writes(stock, sorted(line, key=lambda t: t["order"]))
+    moved = []
+    for value, what in ((HEADER_OLD, "l'en-tete de projet"),
+                        (PATTERNS_OLD, "la base de la table des patterns deployes"),
+                        (RECORD_OLD, "la taille de l'enregistrement stocke")):
+        before = sorted(va for va in find_imm_sites(stock, value)
+                       if va not in EXCLUDE and in_legacy(va) is None)
+        after = sorted(va for va in find_imm_sites(patched_line, value)
+                      if va not in EXCLUDE and in_legacy(va) is None)
+        if not before:
+            moved.append("%s (%#x) : AUCUN site dans le stock — la constante est fausse"
+                         % (what, value))
+            continue
+        gone = [va for va in before if va not in after]
+        if gone:
+            moved.append("%s (%#x) : %d site(s) reecrit(s) : %s"
+                         % (what, value, len(gone), ", ".join("%08x" % va for va in gone)))
+    if moved:
+        for m in moved:
+            print("  !! " + m)
+        raise SystemExit(
+            "!! la geographie de stockage a ete deplacee : l'en-tete, la table des patterns\n"
+            "   et l'enregistrement stocke doivent rester a leurs adresses et tailles\n"
+            "   d'ORIGINE (notes/56 §3.60) : la chaine des convertisseurs ecrit 2 163 716 o\n"
+            "   dans l'image a chaque demarrage, AVANT le controle de fin de chaine.")
+    span_end = PATTERNS_OLD + 96 * 30710 + 96 * 7094   # fin de l'aire deployee d'origine
+    table_end = PATTERNS_OLD + PATTERN_COUNT * PATTERN_SIZE
+    if table_end > span_end:
+        raise SystemExit(
+            "!! la table des patterns deployes finit a %#x, hors de l'aire d'origine "
+            "(%#x) : notes/56 §3.60" % (table_end, span_end))
+    print("controle : la region tient le bloc de la chaine (%d o) ; en-tete, table et "
+          "enregistrement stocke restent d'origine, et la table deployee finit a %#x, "
+          "dans l'aire d'origine (%#x)"
+          % (HEADER_OLD - IMAGE_VA, table_end, span_end))
+
     # --- LE CONTROLE DE LA VERSION (§3.57) -------------------------------------------------
     seal_sites = []
     for pat, what in ((struct.pack(">I", 0xBEEFBACE), "sceau de bloc"),
@@ -713,31 +791,43 @@ def main():
             "7-8, le seul point de perte de donnees du mod).",
             "Le conteneur du bloc projet suit : 2 163 716 -> 1 918 788 octets, sceau de cloture "
             "+2 163 712 -> +1 918 784, base des kits 1 303 872 (fichier) et 1 304 144 (image). "
-            "La chaine des convertisseurs de version (les six v0..v5 -> v6) garde la geometrie "
-            "d'origine : sa sortie est un bloc v6, et c'est ce qui garantit qu'elle ne deborde "
-            "pas de son tampon.",
-            "L'ENREGISTREMENT STOCKE suit aussi (notes/56 §3.56) : sa taille passe de 2 163 988 "
-            "a 1 919 060 (l'enveloppe de 272 o + l'image), la queue de 512 o de 2 163 200 a "
-            "1 918 272 (2 163 472 -> 1 918 544 relative a l'enregistrement) et la fin des kits "
-            "deployes de 3 629 212 a 58 328 060 (c'est un DECALAGE — kit_offset + kit_size —, "
-            "pas la somme des deux tables : les kits ont demenage). Ce sont des valeurs "
-            "DERIVEES : le triage du jalon 2 les avait oubliees, et le chemin "
-            "sauvegarde/chargement ecrivait 244 928 o au-dela de l'enregistrement — dans "
-            "l'en-tete de projet et la table des patterns deployes (plantage du 16/10).",
+            "L'EN-TETE DE PROJET ET LA BASE DE LA TABLE DES PATTERNS RESTENT AUX ADRESSES "
+            "D'ORIGINE (0x406fa024 et 0x406fa040), et l'enregistrement stocke garde sa taille "
+            "d'origine (2 163 988) : la chaine des convertisseurs de version ecrit son bloc v6 "
+            "(2 163 716 octets) dans l'image A CHAQUE DEMARRAGE, avant tout controle, et la "
+            "region image -> en-tete doit tenir ce bloc (notes/56 §3.60 ; c'est le plantage "
+            "des premiers candidats : l'en-tete avait descendu, la chaine l'ecrasait). La "
+            "table deployee (80 x 40 924 = 3 273 920 octets) finit DANS l'aire que les kits "
+            "occupaient en stock ; seuls les kits demenagent, vers la plage libre de "
+            "0x43dd0000.",
+            "Les valeurs DERIVEES DU BLOC suivent (notes/56 §3.56) : la queue de 512 o passe "
+            "de 2 163 200 a 1 918 272 (2 163 472 -> 1 918 544, relative a l'enregistrement) et "
+            "la fin des kits deployes de 3 629 212 a 58 083 132 — un DECALAGE "
+            "(kit_offset + kit_size), pas la somme des deux tables, les kits ayant demenage. "
+            "Le triage du jalon 2 les avait oubliees : le chemin sauvegarde/chargement ecrivait "
+            "244 928 o au-dela de l'enregistrement — dans l'en-tete de projet et la table des "
+            "patterns deployes (plantage du 16/10). La TAILLE de l'enregistrement stocke, elle, "
+            "ne change PAS : c'est de la geographie de stockage (§3.60), et le bloc v7 "
+            "(1 918 788 o) y tient avec de la marge.",
             "La revue du 16/10 (notes/56 §3.57) a trouve DEUX autres sites de version restes "
             "en 6 — une ecriture de bloc et le VALIDEUR DU DEPLOIEMENT, qui refusait donc le "
             "bloc v7 que la chaine venait d'accepter — et DOUZE comptes de patterns/kits "
             "oublies (boucles sur les creneaux de kit, bornes d'indice de pattern range, "
-            "clamps d'indice de kit). Le generateur porte maintenant trois controles inverses : "
-            "GEOMETRY (toute la geometrie d'origine doit avoir change), les 36 sites de sceau "
-            "(la version doit etre 7) et les comptes proches de la geometrie (96 -> 80, 95 -> "
-            "79). Chacun a ete vu echouer avant de passer.",
+            "clamps d'indice de kit). Le generateur porte maintenant QUATRE controles "
+            "inverses : GEOMETRY (la geometrie de bloc d'origine doit avoir change), la "
+            "REGION (§3.60 : l'en-tete, la base de la table et l'enregistrement stocke "
+            "doivent SURVIVRE — la chaine ecrit 2 163 716 o dans l'image a chaque demarrage), "
+            "les 36 sites de sceau (la version doit etre 7) et les comptes proches de la "
+            "geometrie (96 -> 80, 95 -> 79). Chacun a ete vu echouer avant de passer.",
             "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). Les kits "
             "demenagent vers la plage libre de 0x43dd0000.",
-            "La conversion des projets d'origine n'est PAS faite dans le firmware : la version du "
-            "bloc courant passe a 7, donc un projet d'origine est refuse proprement (code "
-            "d'erreur dedie). Construit en ligne de commande seulement, hors flasher. Genere par "
-            "tools/gen_groove_pattern.py, notes/54-56.",
+            "Avec ce tweak seul, la version du bloc courant passe a 7 : un projet d'origine "
+            "est refuse proprement (code d'erreur dedie), ni lu de travers ni efface — et "
+            "revenir a l'OS officiel le rend lisible. La CONVERSION v6 -> v7 est le tweak "
+            "suivant (58-groove-convert, notes/56 §3.58 et §3.59) : la chaine produit un bloc "
+            "v6, et le convertisseur l'accepte en le passant en v7. Construit en ligne de "
+            "commande seulement, hors flasher. Genere par tools/gen_groove_pattern.py, "
+            "notes/54-56.",
         ],
         "device": "Model:Cycles",
         "os": "1.13",
