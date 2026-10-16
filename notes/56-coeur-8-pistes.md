@@ -3399,6 +3399,89 @@ dans WSL2 : `vendor/digiemu-src`, `uv sync`, Unicorn corrigé) — `bootcheck`, 
 `bootwatch`, `steptrace` — pour nommer l'appel exact, corriger, et refaire passer
 l'échelle 56 → 56+57 → 56+57+58 **avant** tout nouveau flash.
 
+### 3.62 Le correctif : cinq sites, et la liste ouverte des tailles 16 bits `[FAIT]` (16/10)
+
+L'instrumentation depuis les sources (`uv run`, Unicorn corrigé, `emu.fwcheck.prepare` +
+`emu.bootstrap.first_run` avec crochet `UC_HOOK_BLOCK`) a nommé la boucle : **92,2 % des
+155M blocs du démarrage figé sont le corps de `memcpy`** (`0x4008f206`), et **99,4 % des
+315 501 appels reviennent à `0x400617ac`** — la boucle d'init des kits. Lecture :
+
+```
+memcpy(dst = d2+d3+2955282, src = d4 = d2+2948188, n = 7094)   ; le kit 0 vers les suivants
+d3 += 7094                                                    ; passe a 7 294
+tant que d3 != 673930                                         ; 95 x 7094 — JAMAIS ATTEINT
+```
+
+La borne `673930` (`cmpil` 32 bits en `0x400617be`) est une valeur **dérivée**
+(96 créneaux − 1, en unités 7 094) que le triage ne listait pas, troisième instance du
+même angle mort (§3.56, §3.60) ; le pas et `n` étaient passés à 7 294 sans elle. L'audit
+systématique des produits `C x S` (32 bits : une seule autre valeur manquée, la base
+source `2955282 = 2948188 + 7094` en `0x400617a4`, site unique ; 16 bits : `pea`/`lea`
+`30710` et le champ `30734`, invisibles aux deux balayages) donne le correctif complet
+de la fonction — cinq sites, tous relus rôle par rôle (§3.61) :
+
+| site | avant | après | rôle |
+|---|---|---|---|
+| `0x400617be` (`cmpil`) | 673 930 | **576 226** (`IMMEDIATES`, 1 site) | borne : 95 créneaux → 79 (80 − 1), au pas 7 294 |
+| `0x400617a4` (`addil`) | 2 955 282 | **57 506 906** (`IMMEDIATES`, 1 site) | base source : offset + 7 094 → offset + 7 294 |
+| seconde boucle entière | `pea/lea/movel` 16 bits | **cave `groove_fill`** (jsr + bra + nop + 58 o en `0x4018a788`) | n = pas = 40 924, index 40 948 en 32 bits : les formes 16 bits étendent le signe |
+
+Les champs 16 bits hors boucle (fin `0x4005b94a` + 4 sites `30706`, `-68` 3 sites)
+retournent au stock : leurs nouvelles valeurs (40 920, 40 856) étendent le signe aussi —
+lot d'exécution, avec formes 32 bits (cave ou audible), avant de parler de `tested`.
+
+`GEOMETRY` gagne les deux valeurs 32 bits (22 valeurs) ; `--check` est vert, les quatre
+contrôles passent, et **57 passe à 233 écritures**. Le MAIN OS 1+2+3 devenait
+`c10beb39bde3a3298503590547e4d45b5dc4532ca96cb8c2f62b2534585f9472` (416 écritures) —
+remplacé ci-dessous après le revers.
+
+**Revers (§3.62, même nuit) : trois des cinq sites sont faux.** `pea $9fdc` ne pousse pas
+40924 : l'absolu court ETEND LE SIGNE et pousse **-24612** (vu par piège memcpy :
+`n = 0xFFFF9FDC`, destinations reculant de `0x6024` par tour — copie vide et écritures à
+rebours, sans aucune violation). Idem pour le pas et l'index, et pour les champs 16 bits
+hors boucle (fin 40 920, −68 40 856 : **11 sites** au total, dont les bancs
+`test_groove_pattern` ne voient rien — ils prouvent la stabilité de l'aller-retour, pas
+le placement des champs). ColdFire n'a d'ailleurs pas de déplacement 32 bits (seuls
+`d16` signé et `d8` + index) : aucune forme 16 bits ne peut porter ces valeurs, et le
+code n'a pas la place des formes longues. **Réponse : la boucle part en cave**
+(`tools/machines/groove/fill_patterns.S`, 56 o : `n`/pas en immédiats 32 bits de
+*données*, pas en index `d2 = 40924`, `jsr` + `bra` par-dessus, corps mort en nop —
+même mécanisme que le convertisseur §3.58, dans le masque damier inverse `0x4018a788`
+libéré par sa redirection, pas dans celui de 58 pour garder 56+57 constructible seul) ;
+les champs hors boucle retournent au stock en attendant le lot d'exécution ; et le
+générateur **refuse désormais toute écriture 16 bits d'adresse ≥ 0x8000** (contrôle du
+signe, vu échouer sur les 11 fautes — dont une par provenance `moveq`, `0x77xx`
+commençant aussi par `0x77` — **et toute écriture qui change de taille**, qui aurait pris
+le remplissage de nop). Deux fautes de jeunesse du stub, attrapées par son banc :
+`d1` ne survit pas aux appels (memcpy l'écrase — le pas est en `d2`, callee-saved) et le
+curseur ne survit pas non plus (`a0/a1` idem — il est en `a2`, comme la boucle). **57 = 227 écritures**, MAIN OS 1+2+3
+`dbcf6d9f4d844797a3ec9a524cca0ce97c4b3231f2c17e7f2f74b8bcc5b7cf81` (410 écritures).
+Le banc `tools/re/test_groove_fill.py` prouve le stub en isolation (vrai `memcpy` de
+l'OS, référence Python octet pour octet, garde anti-débordement, modèle à zéros).
+
+**Résultat d'échelle (digiemu `--check`, 56+57 corrigé) : la boucle a disparu** — le
+démarrage va jusqu'en `intro` (`lit 3808`, 10 tâches sur 11) au lieu de se figer — **mais
+il meurt sur une marche NULL** : une seule violation, lecture en `[0xC]` depuis
+`0x40069a8a` (parcours de liste d'objets générique, `a0 = NULL`). La paire
+`sceau-pointeur` (`0xbeefbad2`) a disparu avec la boucle. La chasse continue avec les
+sondes depuis les sources (comparaison écriture par écriture stock/mod d'un objet
+marcheur : le mod initialise en voix — coeffs DSP, `+12 = 0x400FEFA4` — un objet que le
+stock laisse simple ; code d'init identique, donc divergence par les données).
+
+**Liste ouverte — le lot d'exécution** (même famille, rôles à prouver un par un, chemins
+d'interface/sons hors démarrage ; à valider par `run`/`compare` digiemu quand le
+démarrage passera, pas au jugé) : le pas `lea 30710` en `0x40006dfe` (boucle `moveq #96`
+en `0x40006dfa`, table en `0x40701832` : compte 80 ? pas 40 924 ?), le pas
+`move.w #30710` en `0x400083c0` (`base 0x406fa040 + i x pas`, garde `#79` à côté),
+l'allocation `pea 30710` en `0x4000d216`, les `pea 30710` + `memcpy` en `0x4000ec40`,
+`0x40010aee`, `0x40010b60`, `0x40010d30`, `0x40011990`, `0x40011b0e`, le champ
+`a0@(30710)` en `0x40010b52`, et toute la famille `+4` (`30714 → 40928` :
+`0x40010b1a`, `0x40010b86`, `0x40010d56`, `0x400119c0`, `0x40011b52` — code objet des
+banques de sons, §3.54 : invérifiable en émulation nue). Rien de tout cela ne fige le
+démarrage (terminaison par compteur ou chemins d'interface), mais chacun corromprait ses
+données en silence avec la mauvaise taille : à traiter en lot propre, avec preuves
+d'exécution, avant de parler de `tested`.
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone
@@ -3459,9 +3542,17 @@ patchés), seuls le **bloc** et ce qui en dépend raccourcissent, les kits reste
 (offset 57 499 612, fin des kits déployés 58 083 132 relatifs à l'en-tête), et le générateur
 porte le contrôle inverse **RÉGION**, **vu échouer** sur l'ancien triage. Candidat corrigé :
 `56 + 57 + 58` = **411 écritures** (179 + 228 + 4), 1 690 octets, MAIN OS
-`9c27c5d5bd06621430f708ef788f9323f0af8ba35c1bdd495546703721d7572b`. Les cinq bancs sont verts, et
-la page produit le même `.syx` que la ligne de commande, octet pour octet. **Aucun firmware
-Groove n'a encore démarré sur la machine — l'essai du candidat corrigé reste à faire.**
+`9c27c5d5bd06621430f708ef788f9323f0af8ba35c1bdd495546703721d7572b`.
+
+**Ce candidat corrigé ne démarre pas non plus** (digiemu §3.61 : boucle d'init des kits, pas
+de violations — le §3.60 était nécessaire mais pas suffisant). **Second correctif appliqué**
+(§3.62) : borne 673 930 → 576 226, base source 2 955 282 → 57 506 906, n/pas/index 16 bits
+30 710 → 40 924 / 30 734 → 40 948 — **57 = 233 écritures**. Nouveau candidat `56 + 57 + 58` :
+**416 écritures**, MAIN OS
+`c10beb39bde3a3298503590547e4d45b5dc4532ca96cb8c2f62b2534585f9472`, en cours de passage
+à l'échelle digiemu (56 → 56+57 → 56+57+58) **avant** tout flash ; les `.syx` `9c27c5d5…`
+sont renommés `*_DOES-NOT-BOOT-9c27c5d5.syx`. **Aucun firmware Groove n'a encore démarré,
+ni sur la machine ni en émulation de démarrage.**
 
 ## 5. Ce qui compte pour la suite
 

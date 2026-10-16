@@ -40,7 +40,9 @@ import argparse
 import json
 import pathlib
 import struct
+import subprocess
 import sys
+import tempfile
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -49,6 +51,7 @@ sys.path.insert(0, str(HERE / "emu"))
 import build                       # noqa: E402
 import test_sdvintage as T         # noqa: E402
 import capstone                    # noqa: E402
+import sprites                     # noqa: E402
 
 OUT = HERE.parent / "tweaks" / "model-cycles_OS1.13" / "57-groove-patterns.json"
 BASE = build.BASE
@@ -98,6 +101,27 @@ TAIL_REC_NEW = TAIL_NEW + ENVELOPE  # 1 918 544
 DEPLOYED_TAIL_OLD = KITS_OLD_OFFSET + 96 * 7094                 # 3 629 212
 DEPLOYED_TAIL_NEW = KITS_NEW_OFFSET + PATTERN_COUNT * 7294      # 58 083 132
 
+# --- L'INIT DES KITS ET DES PATTERNS : DES VALEURS DERIVEES MANQUEES (§3.61) --------
+# La fonction 0x40061738 (appelee au chargement/materiel avec l'en-tete) initialise les
+# kits 1..95 depuis le kit 0, puis les 80 patterns depuis le pattern 0. Le triage ne
+# listait que les valeurs DE BASE (offset des kits, fin des kits, 7 094, 30 710) : trois
+# valeurs DERIVEES et deux deplacements 16 bits manquaient, et le demarrage se figeait
+# (digiemu : 99,4 % des 315 501 memcpy du demarrage reviennent a la boucle, sans aucune
+# violation memoire).
+#
+#   borne 673930 = 96 x 7094 - 7094 (tous les creneaux sauf le modele). Le pas est passe
+#       a 7 294 mais la borne est restee : d3 ne l'atteint plus jamais -> BOUCLE INFINIE.
+#       Nouveau : 80 creneaux - 1, au pas 7 294 : 79 x 7294 = 576 226 ;
+#   base source 2955282 = 2948188 + 7094 (offset des kits + un creneau : le modele est
+#       le creneau 0). Nouveau : 57499612 + 7294 = 57 506 906 ;
+#   n et pas 30710 (pea/lea 16 bits : invisibles au balayage 32 bits) -> 40 924 ;
+#   champ d'index 30734 = 30710 + 24 (la fin de l'enregistrement, moins 4 : le contenu
+#       commence a +28) -> 40 924 + 24 = 40 948.
+KIT_INIT_BOUND_OLD = 95 * 7094             # 673 930
+KIT_INIT_BOUND_NEW = (PATTERN_COUNT - 1) * 7294    # 79 x 7294 = 576 226 (80 creneaux)
+KIT_INIT_SRC_OLD = KITS_OLD_OFFSET + 7094         # 2 955 282
+KIT_INIT_SRC_NEW = KITS_NEW_OFFSET + 7294         # 57 506 906
+
 # --- LES PLAGES DE LA CHAINE DE VERSIONS : geometrie d'ORIGINE, a NE PAS toucher --------
 # Leur sortie est un bloc **v6**, pas un bloc v7 : elles gardent 2 163 716, 14 848, 4 336, etc.
 # Elles restent dans l'image (le controle de fin de chaine les rend inoffensives : il exige la
@@ -133,6 +157,11 @@ LEGACY = [
 GEOMETRY = [
     (IMAGE_OLD, "imm", "taille du bloc projet"),
     (CLOSING_OLD, "imm", "sceau de cloture du bloc"),
+    # L'INIT DES KITS (§3.61) : la borne (95 x 7094) et la base source (offset + 7094) sont
+    # des valeurs DERIVEES que le triage ne listait pas — la borne oubliee figeait le
+    # demarrage. Le controle les exige disparues, comme le reste de la geometrie de bloc.
+    (KIT_INIT_BOUND_OLD, "imm", "borne de la boucle d'init des kits (95x7094)"),
+    (KIT_INIT_SRC_OLD, "imm", "base source de l'init des kits (offset+7094)"),
     (TAIL_OLD, "imm", "queue de 512 o, relative a l'image"),
     (TAIL_REC_OLD, "imm", "queue de 512 o, relative a l'enregistrement"),
     (DEPLOYED_TAIL_OLD, "imm", "fin des kits deployes (relative a l'en-tete)"),
@@ -244,7 +273,18 @@ IMMEDIATES = [
     (TAIL_OLD, TAIL_NEW, 4, "queue de 512 o, relative a l'image"),
     (TAIL_REC_OLD, TAIL_REC_NEW, 1, "queue de 512 o, relative a l'enregistrement"),
     (DEPLOYED_TAIL_OLD, DEPLOYED_TAIL_NEW, 4, "fin des kits deployes (relative a l'en-tete)"),
+    # L'INIT DES KITS (§3.61) : la borne et la base source sont des valeurs DERIVEES
+    # (total moins un creneau, offset plus un creneau) que le triage ne listait pas. La
+    # borne restee en 95 x 7094 avec un pas de 7 294 figeait le demarrage (boucle infinie
+    # sans aucune violation : 99,4 % des memcpy du demarrage). Sites uniques, vus a
+    # l'audit (0x400617be, 0x400617a4).
+    (KIT_INIT_BOUND_OLD, KIT_INIT_BOUND_NEW, 1,
+     "borne de la boucle d'init des kits : 95x7094 -> 79x7294 (§3.61)"),
+    (KIT_INIT_SRC_OLD, KIT_INIT_SRC_NEW, 1,
+     "base source de l'init des kits : kits_off+7094 (§3.61)"),
 ]
+
+# --- tailles et decalages en deplacement 16 bits -------------------------
 
 # --- tailles et decalages en deplacement 16 bits -------------------------
 # ATTENTION : le tri par « usage absolu » ne suffit pas — il depend de la VALEUR.
@@ -254,8 +294,10 @@ IMMEDIATES = [
 DISPLACEMENTS = [
     # decalages dans l'enregistrement : usage par registre, a changer
     (4336, 5780, "registre", 5, "offset de la queue dans le pattern range"),
-    (30706, 40920, "registre", 4, "champ a la fin de l'enregistrement deploye (le 5e est PATCHES)"),
-    (30642, 40856, "registre", 3, "enregistrement deploye - 68"),
+    # 30706 -> 40920 et 30642 -> 40856 : RETIRES (§3.62). Les nouvelles valeurs
+    # depassent 0x7FFF et l'adressage 16 bits ETEND LE SIGNE (le piege a signe) : sept
+    # sites ecrivant/lisant a -24xxx au lieu de +40xxx, sans aucune violation. Le lot
+    # d'execution reverra chaque site avec une forme 32 bits (cave ou audible).
     (14736, 16180, "registre", 6, "pattern range - 112 (14848 -> 16292)"),
     # tailles absolues, a changer
     (7094, 7294, "tout", 8, "taille de kit deploye"),
@@ -277,8 +319,8 @@ PATCHES = [
     (0x4000C62E, "10ec", "1690", "deplacement 4332 -> 5776"),
     (0x4005CDB2, "10f0", "1694", "lecture 4336 -> 5780"),
     # Le champ ecrit en fin d'enregistrement par le depliage : `movel %sp@(44),%a2@(30706)`
-    # (0x4005b946). Son deplacement est le 5e site de 30706, manque par le triage du §3.36.
-    (0x4005B94A, "77f2", "9fd8", "champ de fin : 30706 -> 40920"),
+    # (0x4005b946). RETIRE (§3.62) : 40920 ne tient pas en deplacement 16 bits (signe).
+    # Le lot d'execution reverra ce site avec une forme 32 bits (cave).
     # Le NOMBRE DE PATTERNS du bloc courant, en trois endroits (§3.51) : le balayage par
     # immediat ne voit pas un `moveq`. La garde de 0x400083ba (`moveq #95`) est traitee a part.
     (0x4005D502, "7060", "7050", "bloc courant : 96 -> 80 patterns (marcheur range/deploye)"),
@@ -295,10 +337,33 @@ PATCHES = [
     # pouvait donc pas materialiser son propre projet.
     (0x4005D3C4, "7006", "7007", "ecriture d'un bloc : version 6 -> 7 (sceau et sceau de cloture)"),
     (0x4005D43A, "7006", "7007", "valideur du deploiement : version 6 -> 7"),
+    # L'INIT DES PATTERNS (§3.61) : trois deplacements 16 bits que les balayages par valeur
+    # ne voyaient pas (ni IMMEDIATES 32 bits, ni ligne DISPLACEMENTS pour 30 710).
+    # RETIRES (§3.62) : 40924/40948 ne tiennent pas en 16 bits signes (le piege a signe :
+    # `pea $9fdc` pousse -24612). La boucle entiere part en cave (FILL, plus bas).
 ]
 
 # La garde du nombre de patterns : `moveq #95` -> `moveq #79` (l'index maximal).
+
+# La garde du nombre de patterns : `moveq #95` -> `moveq #79` (l'index maximal).
 GUARD_VA = 0x400083BA
+
+# --- LE REMPLISSAGE EN CAVE (§3.62) -----------------------------------------------------
+# La seconde boucle de 0x40061738 (80 patterns depuis le modele) demande n = pas =
+# 40 924 et index 40 948 : trois 16 bits qui ETENDENT LE SIGNE. La boucle part en cave :
+# le masque de sprite 0x4018a788 (damier inverse, 1024 o tout 0xFF — le registre des
+# masques tools/sprites.py, meme mecanisme que 58 : son constructeur est redirige vers
+# le masque partage, identique octet pour octet, donc le rendu ne change pas). Son
+# masque a lui, pas celui de 58 : la combinaison 56+57 seule reste constructible
+# (la colle n'y tourne que sur le chemin de refus, justement celui que 56+57 exerce).
+FILL_SRC = HERE / "machines" / "groove" / "fill_patterns.S"
+FILL_MASK = 0x4018A788
+FILL_OFF = 0
+FILL_RESERVE = 64                    # assez pour la boucle (~58 o) ; garde-fou
+FILL_LOOP = 0x400617DA               # `clrl %d3` : tete de la seconde boucle
+FILL_LOOP_END = 0x40061800           # l'epilogue (moveml), cible du bra
+FILL_LOOP_DEAD = (0x400617E2, 0x400617FA)   # corps mort, remplace par des nop
+FILL_SIBLINGS = ("56-groove-8tracks.json", "58-groove-convert.json")
 
 # --- LES COMPTES DE PATTERNS/KITS OUBLIES (§3.57) ---------------------------------------
 # Le triage du jalon 2 n'en listait que TROIS (plus la garde ci-dessus). La revue complete des
@@ -485,6 +550,38 @@ def find_disp_sites(stock, value, mode):
     return out
 
 
+def assemble(src):
+    """Assemble et LIE fill_patterns.S (natif, sinon WSL — comme gen_groove_convert).
+
+    Le lien est obligatoire (§7 du HANDOFF) : un appel absolu non resolu sauterait a
+    l'adresse zero. Ici tout est relatif ou par registre, et le lien le prouve.
+    """
+    def native():
+        with tempfile.TemporaryDirectory() as d:
+            o, b = pathlib.Path(d) / "c.o", pathlib.Path(d) / "c.bin"
+            subprocess.run(["m68k-linux-gnu-gcc", "-mcpu=54418", "-c", str(src), "-o", str(o)],
+                           check=True, capture_output=True)
+            subprocess.run(["m68k-linux-gnu-ld", "-Ttext=0", "-e", "0", "--oformat=binary",
+                            "-o", str(b), str(o)], check=True, capture_output=True)
+            return b.read_bytes()
+
+    try:
+        return native()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        pass
+    with tempfile.TemporaryDirectory() as d:
+        sh = pathlib.Path(d) / "asm.sh"
+        unix = str(src).replace("\\", "/").replace("C:", "/mnt/c", 1)
+        sh.write_text('set -e\nT=$(mktemp -d)\n'
+                      'm68k-linux-gnu-gcc -mcpu=54418 -c "%s" -o $T/c.o\n'
+                      'm68k-linux-gnu-ld -Ttext=0 -e 0 --oformat=binary -o $T/c.bin $T/c.o\n'
+                      'od -An -tx1 -v $T/c.bin | tr -d " \\n"\n' % unix,
+                      encoding="utf-8", newline="\n")
+        unix_sh = str(sh).replace("\\", "/").replace("C:", "/mnt/c", 1)
+        out = subprocess.run(["bash", unix_sh], capture_output=True, text=True, check=True).stdout
+    return bytes.fromhex(out.strip())
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cycles", required=True, help="model-cycles_OS1.13.syx officiel")
@@ -616,6 +713,71 @@ def main():
         print("\n--audit : rien n'a ete ecrit.")
         return
 
+    # --- LE REMPLISSAGE EN CAVE (§3.62) ------------------------------------------------
+    code = assemble(FILL_SRC)
+    stub_va = FILL_MASK + FILL_OFF
+    mask_size = sprites.MASKS[FILL_MASK][0]
+    mask_ref = sprites.MASKS[FILL_MASK][1]
+    bra_disp = FILL_LOOP_END - (FILL_LOOP + 8)   # depuis 0x400617e2 : +30 -> `601e`
+    nop_lo, nop_hi = FILL_LOOP_DEAD
+    nop_old = stock[nop_lo - BASE:nop_hi - BASE]
+    nop_new = b"\x4e\x71" * (len(nop_old) // 2)   # 24 o = DOUZE nop (2 o chacun)
+    print("remplissage : %d octet(s) assembles et lies -> %#x (masque %#x, %d o)"
+          % (len(code), stub_va, FILL_MASK, mask_size))
+    fill_bad = []
+    if len(code) > FILL_RESERVE:
+        fill_bad.append("le remplissage (%d o) depasse sa reserve (%d o en %#x)"
+                        % (len(code), FILL_RESERVE, stub_va))
+    if stock[stub_va - BASE:stub_va - BASE + len(code)] != b"\xff" * len(code):
+        fill_bad.append("la cave %#x n'est pas en 0xFF dans l'image d'origine" % stub_va)
+    if stock[FILL_MASK - BASE:FILL_MASK - BASE + mask_size] != b"\xff" * mask_size:
+        fill_bad.append("le masque %#x (%d o) n'est pas entierement 0xFF : pas libre"
+                        % (FILL_MASK, mask_size))
+    if stock[mask_ref - BASE:mask_ref - BASE + 4] != FILL_MASK.to_bytes(4, "big"):
+        fill_bad.append("la constante du constructeur en %#x ne vaut pas %#x"
+                        % (mask_ref, FILL_MASK))
+    if not (-128 <= bra_disp <= 127):
+        fill_bad.append("le bra vers %#x sort du .b : %d" % (FILL_LOOP_END, bra_disp))
+    if stock[FILL_LOOP - BASE:FILL_LOOP + 6 - BASE].hex() != "4283487877f6":
+        fill_bad.append("la tete de boucle en %#x n'est pas `clrl %%d3; pea $77f6`"
+                        % FILL_LOOP)
+    if stock[FILL_LOOP + 6 - BASE:FILL_LOOP + 8 - BASE].hex() != "2f04":
+        fill_bad.append("l'octet du bra en %#x n'est pas `movel %%d4,%%sp@-`" % (FILL_LOOP + 6))
+    # recouvrement : nos ecritures contre les JSON valides de 56 et 58 (comme 58).
+    # Tout en offsets (w["off"] est un offset) : ne pas melanger avec des VA.
+    spans = [(FILL_LOOP - BASE, FILL_LOOP - BASE + 8),
+             (nop_lo - BASE, nop_hi - BASE),
+             (stub_va - BASE, stub_va - BASE + len(code)),
+             (mask_ref - BASE, mask_ref - BASE + 4)]
+    for name in FILL_SIBLINGS:
+        sib = json.loads((OUT.parent / name).read_text(encoding="utf-8"))
+        for w in sib["writes"]:
+            lo, hi = w["off"], w["off"] + len(bytes.fromhex(w["old"]))
+            for a, b in spans:
+                if lo < b and a < hi:
+                    fill_bad.append("%s ecrit en %#x..%#x, qui recouvre notre %#x..%#x"
+                                    % (name, lo + BASE, hi + BASE, a + BASE, b + BASE))
+    if fill_bad:
+        for b in fill_bad:
+            print("  !! " + b)
+        raise SystemExit("!! le logement du remplissage est faux (notes/56 §3.62).")
+    writes.append((FILL_LOOP, bytes.fromhex("4283487877f6"),
+                   bytes.fromhex("4eb9%08x" % stub_va),
+                   "init des patterns : jsr vers le remplissage en cave (§3.62)"))
+    writes.append((FILL_LOOP + 6, bytes.fromhex("2f04"),
+                   bytes.fromhex("60%02x" % (bra_disp & 0xFF)),
+                   "init des patterns : bra par-dessus la boucle morte (§3.62)"))
+    writes.append((nop_lo, nop_old, nop_new,
+                   "init des patterns : boucle morte neutralisee (%d nop, §3.62)"
+                   % (len(nop_old) // 2)))
+    writes.append((stub_va, b"\xff" * len(code), code,
+                   "init des patterns : la boucle en 32 bits (%d o, §3.62)" % len(code)))
+    writes.append((mask_ref, struct.pack(">I", FILL_MASK),
+                   struct.pack(">I", sprites.SHARED_MASK),
+                   "init des patterns : le sprite damier inverse vers le masque partage (§3.62)"))
+    print("logement    : jsr %#x, bra %#x, %d nop, cave %#x (%d o) + redirection %#x"
+          % (FILL_LOOP, FILL_LOOP_END, len(nop_old) // 2, stub_va, len(code), mask_ref))
+
     if bad:
         for b in bad:
             print("  !! " + b)
@@ -665,6 +827,36 @@ def main():
             "   coincidence de donnee.")
     print("controle : aucune des %d valeurs de la geometrie d'origine ne survit hors de la "
           "chaine" % len(GEOMETRY))
+
+    # --- LE CONTROLE DU SIGNE (§3.62) ---------------------------------------------------
+    # Les formes d'adressage 16 bits (absolu court, deplacement) ETENDENT LE SIGNE : une
+    # valeur >= 0x8000 y devient negative. `pea $9fdc` pousse -24612 au lieu de 40924, et
+    # `lea %a2@(0x9fdc)` recule au lieu d'avancer — copie vide et ecritures a rebours,
+    # sans aucune violation (vu par piege memcpy : n = 0xFFFF9FDC, pas de -24612).
+    # Sont exempts : les moveq (donnee, pas adresse — reconnus par PROVENANCE, pas par
+    # octet : 0x77f2 commence aussi par 0x77 !) et les immediats 32 bits. Ce controle
+    # aurait pris les 11 sites fautifs a la generation.
+    moveq_offs = {GUARD_VA - BASE}
+    moveq_offs.update(va - BASE for va, _, _, _ in PATTERN_COUNTS)
+    moveq_offs.update(va - BASE for va, _, _, _ in UI_TRACK_BOUNDS)
+    badsign = []
+    for w in uniq:
+        ob = bytes.fromhex(w["old"])
+        nb = bytes.fromhex(w["new"])
+        if len(nb) != len(ob):
+            badsign.append("off %-8d  %d o -> %d o : une ecriture ne change jamais de taille"
+                           % (w["off"], len(ob), len(nb)))
+            continue
+        if len(ob) == 2 and int(nb.hex(), 16) >= 0x8000 and w["off"] not in moveq_offs:
+            badsign.append("off %-8d  %s -> %s" % (w["off"], w["old"], w["new"]))
+    if badsign:
+        for b in badsign:
+            print("  !! " + b)
+        raise SystemExit(
+            "!! une ecriture 16 bits porte >= 0x8000 hors moveq : l'adressage 16 bits\n"
+            "   ETEND LE SIGNE (notes/56 §3.62). Le site demande 32 bits (cave) ou une\n"
+            "   valeur qui tient.")
+    print("controle : aucune ecriture 16 bits d'adresse ne porte >= 0x8000")
 
     # --- LE CONTROLE DE LA REGION (§3.60) ---------------------------------------------------
     # La chaine des convertisseurs ecrit son bloc v6 (2 163 716 o, une constante de SON
@@ -819,6 +1011,20 @@ def main():
             "doivent SURVIVRE — la chaine ecrit 2 163 716 o dans l'image a chaque demarrage), "
             "les 36 sites de sceau (la version doit etre 7) et les comptes proches de la "
             "geometrie (96 -> 80, 95 -> 79). Chacun a ete vu echouer avant de passer.",
+            "L'INIT DES KITS ET DES PATTERNS (notes/56 §3.61) : la fonction 0x40061738 "
+            "remplit les creneaux depuis le creneau 0 au chargement. Le triage ne listait que "
+            "les valeurs de base : la borne (95 x 7 094 = 673 930, restee avec un pas passe a "
+            "7 294 — boucle infinie SANS aucune violation, 99,4 % des memcpy du demarrage, le "
+            "demarrage ne stabilisait jamais) devient 79 x 7 294 = 576 226, la base source "
+            "(offset + 7 094 = 2 955 282) devient 57 506 906. La seconde boucle (80 patterns, "
+            "n = pas = 40 924, index 40 948) ne tient pas en 16 bits signes (§3.62 : `pea "
+            "$9fdc` pousse -24612) et ColdFire n'a pas de deplacement 32 bits : elle part en "
+            "cave (boucle `groove_fill`, 58 o en 0x4018a788 — le masque damier inverse, "
+            "libere par redirection de son constructeur comme 58, jsr + bra par-dessus, "
+            "corps mort en nop). Les champs 16 bits hors boucle (fin 40 920, -68 40 856) "
+            "attendent le lot d'execution. 57 = 227 ecritures, et le generateur refuse "
+            "desormais toute ecriture 16 bits d'adresse >= 0x8000 (controle du signe, qui "
+            "aurait pris les 11 fautes).",
             "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). Les kits "
             "demenagent vers la plage libre de 0x43dd0000.",
             "Avec ce tweak seul, la version du bloc courant passe a 7 : un projet d'origine "

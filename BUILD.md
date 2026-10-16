@@ -555,8 +555,14 @@ MAIN OS (jalons 1+2+3 corrigés, **411 écritures** : 179 + 228 + 4, 1 690 octet
 
 **Ce candidat corrigé ne doit PAS être flashé** (notes/56 §3.61) : l'émulation du démarrage
 (digiemu 0.4.1, `digiemu-console.exe --check`, le même Model:Cycles OS 1.13 en référence) montre
-qu'il ne démarre pas non plus — le correctif §3.60 était nécessaire mais pas suffisant, et un
-second défaut fatal au démarrage vit dans le 57. L'échelle, démarrage à froid jusqu'à interface
+qu'il ne démarre pas non plus — le correctif §3.60 était nécessaire mais pas suffisant : la
+boucle d'init des kits se fige sans aucune violation (borne 673 930 restée avec un pas passé
+à 7 294). **Second correctif appliqué** (notes/56 §3.62) : borne → 576 226 (79 × 7 294),
+base source → 57 506 906, n/pas/index 16 bits → 40 924 / 40 948 — **57 = 233 écritures**.
+Nouveau candidat `56 + 57 + 58` : **416 écritures**, MAIN OS
+`c10beb39bde3a3298503590547e4d45b5dc4532ca96cb8c2f62b2534585f9472`, en cours de passage
+à l'échelle digiemu (56 → 56+57 → 56+57+58) **avant** tout flash ; les `.syx` `9c27c5d5…`
+sont renommés `*_DOES-NOT-BOOT-9c27c5d5.syx`. L'échelle, démarrage à froid jusqu'à interface
 stabilisée : le **stock passe** ; **56 seul passe** (l'échec de session ensuite est l'écart
 documenté du jalon 1) ; **56+57 se fige** sans aucune violation mémoire (le chemin de refus de
 projet boucle au lieu de rendre la main : 5 tâches créées, la 6e jamais) ; **56+57+58 plante**
