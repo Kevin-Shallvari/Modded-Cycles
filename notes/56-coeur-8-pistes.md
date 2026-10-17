@@ -3482,6 +3482,180 @@ démarrage (terminaison par compteur ou chemins d'interface), mais chacun corrom
 données en silence avec la mauvaise taille : à traiter en lot propre, avec preuves
 d'exécution, avant de parler de `tested`.
 
+### 3.63 — Les jumeaux absolus et le démarrage (Bug B) — 17/10
+
+La suite de la liste ouverte, causée au désassemblage le 17/10 au matin (ordre de travail
+« Bug B »). Trois fautes le long du chemin du démarrage : la **base absolue des kits**
+`0x409c9c80` laissée en stock — les kits étaient lus DANS la table des patterns déployée ;
+la configuration machine/voix qui en sort plonge le mod dans une initialisation voix qu'il
+ne devrait pas faire (écritures exclusives au mod vues en write-watch, `pc=0x400d57da` et
+`0x400145dc`), l'objet initialisé porte en `+12` une table DSP là où la marche de listes
+attend une fin de plage → **marche NULL en `0x40069a8a`** —; le **pas du pattern i**
+`movew #30710` en `0x400083c0`; et la **numérotation des créneaux** `0x40006df2..0x40006e04`
+(96 paires index/fanion aux mauvaises adresses, piétinant la table déployée au boot).
+
+**L'audit des jumeaux absolus `[FAIT]`** — `vendor/probes/abs_twins_audit.py`, constantes sorties
+du générateur (pas d'arithmétique à la main) : le jumeau de la base des kits `0x409c9c80`
+a **4 sites de code, tous `[A TRAITER]`** — le chemin pattern+kit du démarrage `0x400083de`
+(`addil #0x409c9c80,%d0`) et trois constructeurs de la paire {pattern, kit} (tous dans la même
+logique que les pas déjà patchés 7094 → 7294, seule la base restait) : `0x400201a0` et `0x400203ca`
+(la paire par créneau, en boucle) et `0x40055e0e` (la paire du créneau 0 posée en clair, passée
+à la fonction d'aide `0x40055cd6`). `0x40055e0e` est hors `LEGACY` et hors la chaîne de versions.
+Aucun site au sens « fin des patterns » : **une seule ligne `IMMEDIATES` (N = 4)** et **une seule
+ligne `GEOMETRY`** — la même constante d'origine porte les deux sens (base des kits = fin de la
+table des patterns), la ligne interdit à la valeur de survivre sous n'importe lequel des deux.
+Jumeaux inchangés (comptes seulement) : base des patterns 6, image 9, en-tête 7. Jumeaux
+absolus voisins (base+créneau `0x409cb836`, fin des kits déployés `0x40a700c0`, fanion
+`0x4070180e`) : 0 site chacun ; l'**index du créneau 0** `0x40701832` : 1 site, `0x40006dee`
+(le `lea` de la numérotation, prévu).
+
+**La sonde des chemins de démarrage — contre-intuition à garder `[FAIT]`** —
+`vendor/probes/probe_bootpaths.py` sur le 56+57 d'AVANT la correction
+(MAIN OS `0271ef3a…`) : le démarrage froid s'arrête comme l'échelle le disait
+(`intro: no live user interface after 600M instructions (lit 3808, mainloop 0)`)
+**et AUCUN des sites surveillés n'a jamais tiré** — ni `pattern_kit_lookup` (`0x400083b0`),
+ni `pattern_stride_movew` (`0x400083c0`), ni `numbering_base` (`0x40006dec`), ni
+`voice_loop_64`. Le crochet est bon (la même forme `UC_HOOK_CODE begin=end` a produit
+l'histogramme des memcpy §3.62) : dans le démarrage froid profilé, ces sites ne s'exécutent pas
+(démarrage mort avant, ou chemin d'une autre étape). La correction repose donc sur le
+désassemblage seul — c'est ce qu'il faut dire à Kevin du **risque restant** : la théorie du
+« chemin du démarrage » n'est pas *confirmée* par sonde, elle est *cohérente* avec lui.
+Rappel de la signature d'échelle de référence (rapport `20261017-002238`) : erreurs
+`intro: no live user interface after 600M instructions (lit 3808, mainloop 0)` et
+`memory: read of 4 byte(s) at 0x0000000c … bus error` ; violations = la marche NULL
+(`pc 0x40069a8a`, compte 1, étape **`ladder`** — la séance scriptée, pas `intro`) et les
+écritures en `[0]` du *stock* lui-même (`0x400a7d0a`, `in_stock`, étape `ladder`).
+
+**La mise en œuvre `[FAIT]`** — `tools/gen_groove_pattern.py` :
+
+* bloc de constantes des jumeaux absolus (`KITS_BASE_ABS_*`, `PATS_END_ABS_*`,
+  `SLOT0_INDEX_ABS_*` — toutes issues des constantes du générateur) ;
+* ligne `IMMEDIATES` `(0x409c9c80 → 0x43dd0000, 4 sites)` et ligne `GEOMETRY` (valeur
+  d'origine seule, couvrant les deux sens) ;
+* `PATCHES` : le pas du pattern i `0x400083c2` (`"77f6" → "9fdc"`) — **immédiat de donnée**
+  (`move.w #imm` : pas d'extension de signe, 40924 tient dans un mot et le mot haut de `d1`
+  est à zéro après `moveq`) — et la base `lea` de la numérotation `0x40006dee`
+  (`0x40701832 → 0x40704018`) ;
+* `PATTERN_COUNTS` : `0x40006dfa` (96 → 80), la boucle de numérotation ;
+* **garde du signe, exemption `move.w #imm`** : le contrôle §3.62 refusait l'écriture du pas.
+  Exemption par l'octet d'opération qui précède l'immédiat (premier octet pair
+  `0x30..0x3E`, second `0x3C`). **Vu échouer** de deux manières : le site leurre prescrit
+  `0x400617de` est refusé *avant* par la cohérence des écritures (ses octets d'origine
+  appartiennent déjà au `jsr` du remplissage : `octets 'old' attendus 77f6 mais trouves a788`
+  — preuve de cohérence, pas de la garde) ; le vrai test, `0x4000d218` (un `pea $77f6`,
+  précédé de `48 78`), est refusé **par la garde** (`!! off 52760 77f6 -> 9fdc … l'adressage
+  16 bits ETEND LE SIGNE`). La garde tient.
+
+**La numérotation en cave `[FAIT]`** — deuxième fonction du même fichier source : `groove_number`
+appendu à `tools/machines/groove/fill_patterns.S` (a0 = index du créneau 0 ; index en fin-4,
+fanion en fin-40 ; **80** itérations ; `d0 = 80` en sortie — l'origine laissait `d0 = 96` — ;
+`d2` sauve/restauré). **Correction d'octets de l'ordre de travail** : la « signature » proposée
+`4283 243c 0000 9fdc` n'existe pas — `clrl %d1` assemble `4281` (`4283` = `clrl %d3`) et le
+stub commence par le push `movel %d2,%sp@-` (`2f02`) : la **signature réelle unique** est le
+prologue `2f02 4281 243c 0000 9fdc` (même leçon qu'au §3.57 : l'assembleur fait foi, pas la
+prose hexadécimale). Assemblé et lié : **92 o** (remplissage 56 o intact à l'offset 0 +
+numérotation 36 o), zéro relocalisation. Écritures de splices :
+
+* tête `0x40006df2..df8` (`clrl %d1; moveb %d1,%a0@(-36); movel %d1,%a0@`, 8 o)
+  → `jsr cave + bra 600c` ; le `bra` pose en `0x40006df8` et retombe sur
+  `0x40006dfa + 0x0c = 0x40006e06` (le `pea 0x10`, sortie de boucle) — l'arithmétique est
+  vérifiée par le générateur (`NUMBER_LOOP + 8 + 0x0C != NUMBER_LOOP_END` → erreur) ;
+* **écart assumé au splice §4.7.2 de l'ordre de travail** : le splice d'un bloc de 20 o
+  (jsr + bra + 12 nop) écraserait le `moveq #96 → 80` en `0x40006dfa` que la §4.5 pose **vive**
+  (le contrôle des comptes §3.57 exige de le voir changé) — la seconde écriture mourrait sur
+  ses octets d'origine (`7060` déjà devenu nop). Résolu comme le remplissage §3.62 l'a déjà
+  fait (`FILL_LOOP_DEAD` s'arrête juste avant son `moveq` vivant en `0x400617fa`) : jsr+bra
+  sur la tête (8 o), le **moveq reste une écriture vive** (PATTERN_COUNTS), et le corps mort
+  restant (`addql %d1` 0x40006dfc, `lea %a0@(30710)` 0x40006dfe, `cmpl %d1,%d0` 0x40006e02,
+  `bnes` 0x40006e04 — 10 o) part en **nop** (5). Toute la zone demeure morte ; le `moveq`
+  mort-but-vivant porte la valeur 80 que le contrôle des comptes voit ;
+* zone en cave : le remplissage `[0x4018a788, +56)` et la numérotation `[0x4018a7c0, +36)` —
+  deux écritures adjacentes, aucune n'écrase l'autre (le contrôle `seen` et l'ordre de
+  tri des écritures passent) ;
+* **scan « saut dans la zone »** `[0x40006df4, 0x40006e06)` : formes `Bcc` 8 bits (déplacement
+  signé) et 16 bits (`6x 00 hh ll`), avance de 2 (instructions paires) — **aucun** saut du
+  dehors ne retombe dans la zone (vérifié par le générateur ; le `lea` en `0x40006dec` reste
+  hors zone, c'est l'entrée) ;
+* étendues `spans` élargies (zone de la boucle, zone du stub en cave) — **aucun recouvrement**
+  avec 56 et 58.
+
+**Bancs `[FAIT]`** — `tools/re/test_groove_fill.py` gagne la **section E** (la numérotation) :
+`groove_number` appelé en `CODE_AT + 56` sur une table scratch (a0 = `TABLE_AT + 40920`) :
+80 index gros-boutiens en fin-4, 80 fanions en fin-40, la réserve après la table intacte
+(garde `0xAA`), `d0 = 80`. Le premier jet appelait sans avoir posé le code dans la fenêtre
+(`UC_ERR_EXCEPTION` — le banc ne recopiait pas `code` en `CODE_AT`, corrigé en miroir de la
+section B). **`test_groove_fill.py` : TOUT OK (A–E)**, **`test_groove_chain.py` : TOUT OK**
+(56+57+58).
+
+**Le banc du format — rouge, par un élément de la liste ouverte `[FAIT, consigné, pas corrigé]`**
+— `tools/re/test_groove_pattern.py` : les sections C et E échouent sur
+**« queue de la piste 5 différente »**. Diagnostic :
+
+* **préexistant** : le banc rend la même sortie sous le JSON de HEAD (227 écritures) et sous
+  le nouveau (237) — diff complet vérifié, seules les lignes par-design changent (le compte
+  d'écritures et le hash jalon-2). Pas une régression de ce lot ;
+* mécanisme : le site de **fin d'enregistrement** reverti §3.62, `0x4005b94a`
+  (`movel %sp@(44),%a2@(30706)`), écrit 4 octets en `a2+30706`. Au stock c'est la fin de
+  l'enregistrement à 30710 (en dehors des régions de verrous) ; en groove l'enregistrement
+  fait 40924 et l'écriture reste en **30706** — qui tombe **dans la tranche des verrous de la
+  piste 5** (elle commence à `5776 + 5×4385 = 27701` ; `27701 + 3005 = 30706` — l'arithmétique
+  tombe juste) : l'argument (0 au banc) écrase deux mots `0xFFFF` « pas de verrou » que le
+  gestionnaire de queue avait écrits. Différence mesurée : exactement **4 octets** (rel
+  3005–3008 de la tranche, alignés adresse = les 4 octets du `movel` ; la tranche démarre sur
+  un offset impair, la lecture de contrôle y compte donc trois mots faussés, la machine deux) ;
+* le reste du banc est identique au stock (bloc des pas 0–5, piste 7 remplie en groove,
+  garde D, format range stable) ;
+* traitement : **rien à corriger ici** — ces sites ne peuvent pas revenir en déplacements
+  16 bits (`0x9fd8` étend le signe — le piège §3.62, la raison du revert) ; ils attendent le
+  lot d'exécution (en cave/32 bits, avec preuves d'exécution). Le banc du format restera rouge
+  jusque-là ; son attente (pistes 0–5 identiques au stock, octet pour octet) reste le critère
+  juste pour la machine. La faille de processus est aussi à noter : le revert §3.62 a été
+  validé par `--check` + banc du stub + construction (commit `e926b3f`) **sans repasser le
+  banc du format** — `HANDOFF.md` disait « les cinq bancs » verts, c'était périmé à HEAD.
+  `HANDOFF.md` et ce paragraphe le corrigent.
+
+**Construction `[FAIT]`** — `python tools/build.py --tweaks groove-8tracks,groove-patterns` :
+cave unique `0x4018a788..0x4018a7e3` (92 o — remplissage + numérotation), référence
+neutralisée `0x400ad1aa → 0x4018a788`, « references … : aucune », 1550 octets changés.
+**MAIN OS 56+57 : `918c3544d3901301d0d04880c1f41fd6af14bc2b9381ecb2590643fabf456619`**.
+Ligne complète attendue par `gen_groove_page.py` (420 écritures) :
+`f90716f1e9502d8dd79be4de3628cfea6db1e78228f5aaaee3baec97af18c7c9`.
+
+**Verdict d'échelle (digiemu `--check`, rapport `20261017-091830`)** : **ÉCHEC — signature
+identique à la précédente**. Erreurs de boot du build, verbatim :
+`the firmware did not boot to a settled user interface: intro: no live user interface
+after 600M instructions (lit 3808, mainloop 0)` et `memory: read of 4 byte(s) at
+0x0000000c: FlexBus space with no chip select configured: the bus monitor ends it with
+a bus error`. Violations : la même marche NULL (lecture de 4 o en `[0xC]`,
+`pc 0x40069a8a`, compte 1, étape `ladder`, `in_stock=false`) et les trois écritures
+bus du *stock* lui-même (écritures de 4 o en `0x0`, `0x10`, `0x20` depuis `0x400a7d0a`,
+compte 32 chacune, `in_stock=true`, étape `ladder`). La correction n'a rien changé
+au démarrage vu d'ici — cohérent avec la sonde du démarrage froid : les sites corrigés
+n'y ont jamais tiré. Suite prévue par l'ordre (§6) : re-sonder (chemins, mcret,
+wwatch) sur CE build, puis comité et arrêt.
+
+**Re-sondage du build corrigé (l'ordre §6, sur le MAIN OS `918c3544…`)** :
+
+* **`probe_bootpaths.py` — les sites corrigés ne tirent toujours pas** : même arrêt
+  (`intro: no live user interface after 600M instructions (lit 3808, mainloop 0)`),
+  les dix créations de tâches seulement, **aucun** site surveillé (pattern+kit
+  `0x400083b0`, pas `0x400083c0`, numérotation `0x40006dec`, voix 64) n'a tiré — ni
+  avant l'arrêt, ni dans la fenêtre profilée. La correction est posée mais reste non
+  *confirmée* par profil d'exécution — la confirmation demande des sondes sur d'autres
+  étapes du ladder, ou une sonde de flux de contrôle ;
+* **`groove_probe_mcret.py` — le classement a changé de dominant** : 9 016 appels `memcpy`
+  (contre 315 501 au blocage d'origine). Le site d'origine `0x400617ac` ne fait plus
+  que **79 appels** (la borne fixe tient). **Le remplissage en cave s'exécute au
+  démarrage** : 80 appels revenant à `ret=0x4018a7a0` (cave + 0x18, le retour du
+  `memcpy` du stub) — 80 itérations, la grotte vit. Le plus gros appelant est
+  maintenant **`ret=0x4005afde`, 5 760 appels (63,9 %)** — hors `LEGACY`
+  (`0x4005afde < 0x4005bdc0`), jamais dominant avant (il était éclipsé à 99,4 % par
+  la boucle) ; suite : `0x400f93d8` 953 (10,6 %), `0x4005be9a` 576 (6,4 %),
+  `0x4007b480` 460 (5,1 %), `0x4005a688` 169, `0x4005c2bc/ca/be6c/beba/bec8` 96
+  chacun (dans `LEGACY`, stock), `0x4005ba38` et `0x4005b2da` 80, `0x40061962` 63,
+  l'intro `0x40053e10` 79. La piste de la chasse suivante : **`0x4005afde`**
+  (5 760 = 96 × 60 ou 80 × 72 — à trancher au désassemblage) ;
+
 ## 4. Le chemin menant au premier firmware Groove
 
 1. **Liste d'édition des mini-zones** `[FAIT]` (§3.8) : les trois constructions de la zone

@@ -122,6 +122,21 @@ KIT_INIT_BOUND_NEW = (PATTERN_COUNT - 1) * 7294    # 79 x 7294 = 576 226 (80 cre
 KIT_INIT_SRC_OLD = KITS_OLD_OFFSET + 7094         # 2 955 282
 KIT_INIT_SRC_NEW = KITS_NEW_OFFSET + 7294         # 57 506 906
 
+# --- LES JUMEAUX ABSOLUS (§3.63) ---------------------------------------------------
+# Chaque valeur relative a une forme ABSOLUE (base + offset) dans le code : le
+# balayage par valeur ne voit que la forme relative. La base absolue des kits
+# (0x409c9c80 = en-tete + 2 948 188 — AUSSI la fin de la table des patterns)
+# etait restee en stock : le chemin pattern+kit du demarrage lisait les kits
+# DANS la table des patterns (Bug B, digiemu : marche NULL en 0x40069a8a).
+# L'audit complet est vendor/probes/abs_twins_audit.py ; la GEOMETRY gagne la
+# valeur pour qu'elle ne puisse plus survivre.
+KITS_BASE_ABS_OLD = HEADER_OLD + KITS_OLD_OFFSET      # 0x409C9C80
+KITS_BASE_ABS_NEW = KITS_NEW                          # 0x43DD0000
+PATS_END_ABS_OLD = PATTERNS_OLD + 96 * 30710         # 0x409C9C80 aussi (kits suivent)
+PATS_END_ABS_NEW = PATTERNS_OLD + PATTERN_COUNT * PATTERN_SIZE   # 0x40A19500
+SLOT0_INDEX_ABS_OLD = PATTERNS_OLD + 30710 - 4       # 0x40701832
+SLOT0_INDEX_ABS_NEW = PATTERNS_OLD + PATTERN_SIZE - 4  # 0x40704018
+
 # --- LES PLAGES DE LA CHAINE DE VERSIONS : geometrie d'ORIGINE, a NE PAS toucher --------
 # Leur sortie est un bloc **v6**, pas un bloc v7 : elles gardent 2 163 716, 14 848, 4 336, etc.
 # Elles restent dans l'image (le controle de fin de chaine les rend inoffensives : il exige la
@@ -162,6 +177,14 @@ GEOMETRY = [
     # demarrage. Le controle les exige disparues, comme le reste de la geometrie de bloc.
     (KIT_INIT_BOUND_OLD, "imm", "borne de la boucle d'init des kits (95x7094)"),
     (KIT_INIT_SRC_OLD, "imm", "base source de l'init des kits (offset+7094)"),
+    # LE JUMEAU ABSOLU (§3.63) : une seule ligne couvre les DEUX sens de
+    # 0x409c9c80 — base ABSOLUE des kits ET fin absolue de la table des patterns
+    # deployes (le meme constant en stock). L'audit n'a pas trouve de site au
+    # sens « fin des patterns » ; la ligne interdit a la valeur de survivre sous
+    # n'importe lequel des deux sens.
+    (KITS_BASE_ABS_OLD, "imm",
+     "base absolue des kits (= fin absolue des patterns ; jumeau §3.63, "
+     "PATS_END_ABS_OLD a la meme valeur d'origine)"),
     (TAIL_OLD, "imm", "queue de 512 o, relative a l'image"),
     (TAIL_REC_OLD, "imm", "queue de 512 o, relative a l'enregistrement"),
     (DEPLOYED_TAIL_OLD, "imm", "fin des kits deployes (relative a l'en-tete)"),
@@ -282,6 +305,15 @@ IMMEDIATES = [
      "borne de la boucle d'init des kits : 95x7094 -> 79x7294 (§3.61)"),
     (KIT_INIT_SRC_OLD, KIT_INIT_SRC_NEW, 1,
      "base source de l'init des kits : kits_off+7094 (§3.61)"),
+    # LE JUMEAU ABSOLU (§3.63) : la BASE ABSOLUE des kits dans le code — quatre sites
+    # (l'audit vendor/probes/abs_twins_audit.py) : le chemin pattern+kit du demarrage
+    # (0x400083de) et trois constructeurs de la paire {pattern, kit} (0x400201a0,
+    # 0x400203ca, 0x40055e0e — le creneau 0 en clair). Tous verifis en desassemblage :
+    # le pas du kit les avoisine deja patche (7094 -> 7294), seule la base restait.
+    # GEOMETRY porte la meme valeur d'origine (plus bas) : aucune des deux formes
+    # (base de kits, fin de table des patterns) ne peut survivre au patch.
+    (KITS_BASE_ABS_OLD, KITS_BASE_ABS_NEW, 4,
+     "base absolue des kits (en-tete + offset, forme absolue — §3.63)"),
 ]
 
 # --- tailles et decalages en deplacement 16 bits -------------------------
@@ -341,6 +373,20 @@ PATCHES = [
     # ne voyaient pas (ni IMMEDIATES 32 bits, ni ligne DISPLACEMENTS pour 30 710).
     # RETIRES (§3.62) : 40924/40948 ne tiennent pas en 16 bits signes (le piege a signe :
     # `pea $9fdc` pousse -24612). La boucle entiere part en cave (FILL, plus bas).
+    # LE CHEMIN PATTERN+KIT DU DEMARRAGE (§3.63) : le pas du pattern i, a cote de la garde
+    # #99 -> #79 deja corrigee. `move.w #30710,%d1` est un immediat de DONNEE (pas une
+    # adresse) : l'octet d'operation precedant l'immediat est `303c` (movew #imm), la
+    # valeur 40924 tient dans un mot (0x9fdc) et le mot haut de d1 est a zero (moveq
+    # avant) — pas d'extension de signe. La geometrie veut la fin du pattern i.
+    (0x400083C2, "77f6", "9fdc",
+     "adresse du pattern i : pas 30710 -> 40924 (movew #imm : DONNEE, pas adresse — "
+     "pas de piege a signe) (§3.63)"),
+    # LA NUMEROTATION DES CRENEAUX (§3.63) : la base de la boucle 0x40006df4 reste au
+    # pattern 0 stockois (0x40701832 = base + 30710 - 4) ; les 96 creneaux a ce pas
+    # trampleaient la table deployee au boot. La boucle part en cave (NUMBER, plus bas) ;
+    # ici la BASE `lea` du creneau 0, a la nouvelle position de son index.
+    (0x40006DEE, "40701832", "40704018",
+     "numerotation des creneaux : base = index du creneau 0 (§3.63)"),
 ]
 
 # La garde du nombre de patterns : `moveq #95` -> `moveq #79` (l'index maximal).
@@ -359,11 +405,22 @@ GUARD_VA = 0x400083BA
 FILL_SRC = HERE / "machines" / "groove" / "fill_patterns.S"
 FILL_MASK = 0x4018A788
 FILL_OFF = 0
-FILL_RESERVE = 64                    # assez pour la boucle (~58 o) ; garde-fou
+FILL_RESERVE = 192                   # le remplissage (~58 o) + la numerotation (~30 o), marge ; garde-fou
 FILL_LOOP = 0x400617DA               # `clrl %d3` : tete de la seconde boucle
 FILL_LOOP_END = 0x40061800           # l'epilogue (moveml), cible du bra
 FILL_LOOP_DEAD = (0x400617E2, 0x400617FA)   # corps mort, remplace par des nop
 FILL_SIBLINGS = ("56-groove-8tracks.json", "58-groove-convert.json")
+
+# --- LA NUMEROTATION DES CRENEAUX EN CAVE (§3.63) ---------------------------------------
+# La boucle 0x40006df2 numerote les 80 creneaux au boot (la base `lea` passe a
+# SLOT0_INDEX_ABS_NEW). Son pas 30710 est un deplacement 16 bits (le piege a signe :
+# 40 924 ne tient pas) : elle part en cave elle aussi, deuxieme fonction du meme
+# fichier (groove_number, apres groove_fill — sa place est marquee par SIG).
+NUMBER_SIG = "2f024281243c00009fdc"  # movel %d2,%sp@- ; clrl %d1 ; movel #40924,%d2
+#   (unique au stub — prologue de groove_number ; le §3.63 du workorder ecrivait
+#   4283 %d3 au lieu de 4281 %d1 et sans le push : correction d'octets, §3.63)
+NUMBER_LOOP = 0x40006DF2             # clrl %d1 : tete de la boucle (le lea reste)
+NUMBER_LOOP_END = 0x40006E06         # le `pea 0x10`, cible du bra
 
 # --- LES COMPTES DE PATTERNS/KITS OUBLIES (§3.57) ---------------------------------------
 # Le triage du jalon 2 n'en listait que TROIS (plus la garde ci-dessus). La revue complete des
@@ -389,6 +446,11 @@ PATTERN_COUNTS = [
     (0x4005D556, 96, 80, "boucle des kits : deploye 7 094 et creneau range 7 680"),
     (0x400617FA, 96, 80, "boucle des kits ranges (pas 7 094)"),
     (0x4006A418, 96, 80, "bloc courant : borne d'indice de pattern"),
+    # LA NUMEROTATION AU DEMARRAGE (§3.63) : la boucle 0x40006df4 numerote TOUTES les
+    # creneaux, 96 fois — sa borne reste en stock trample la table deployee. La boucle
+    # part en cave (NUMBER, plus bas), le moveq reste pour l'ordre d'ecriture (la
+    # valeur 80 est aussi le d0 attendu a la sortie de le stub).
+    (0x40006DFA, 96, 80, "numerotation des creneaux au demarrage (boucle 0x40006df4)"),
 ]
 
 # Le controle des comptes (§3.57) : tout `moveq #96/#95` dont le voisinage (COUNT_WINDOW)
@@ -548,6 +610,36 @@ def find_disp_sites(stock, value, mode):
                     out.append(va)
         i += 1
     return out
+
+
+def branch_into(stock, zlo, zhi, src_lo, src_hi):
+    """Les Bcc/bra/bsr dont la cible tombe dans [zlo, zhi) depuis hors de [src_lo, src_hi).
+
+    Un saut qui retombe dans une zone remplacee jsr+bra executerait du corps mort :
+    la tete (le jsr) doit etre le SEUL chemin. Les formes : Bcc 8 bits (`6x xx`,
+    deplacement signe 8 bits) et Bcc 16 bits (`6x 00 hh ll`, signe ; le deuxieme
+    octet nul marque la forme longue — un deplacement nul court n'existe pas).
+    Les instructions sont paires (ColdFire) : le balayage avance de 2.
+    """
+    hits = []
+    o = 0
+    while o < len(stock) - 3:
+        op = stock[o]
+        if 0x60 <= op <= 0x6F:
+            va = BASE + o
+            d8 = stock[o + 1]
+            if d8 == 0:
+                tgt = va + 4 + struct.unpack(">h", stock[o + 2:o + 4])[0]
+                step = 4
+            else:
+                tgt = va + 2 + (d8 - 256 if d8 >= 128 else d8)
+                step = 2
+            if zlo <= tgt < zhi and not (src_lo <= va < src_hi):
+                hits.append((va, tgt))
+            o += step
+        else:
+            o += 2
+    return hits
 
 
 def assemble(src):
@@ -743,12 +835,45 @@ def main():
                         % FILL_LOOP)
     if stock[FILL_LOOP + 6 - BASE:FILL_LOOP + 8 - BASE].hex() != "2f04":
         fill_bad.append("l'octet du bra en %#x n'est pas `movel %%d4,%%sp@-`" % (FILL_LOOP + 6))
+    # --- LA NUMEROTATION (§3.63), les memes batteries que le remplissage --------------------
+    # signature unique du stub, octets de la boucle au boot, retombee du bra,
+    # aucun saut exterieur qui retombe dans la zone (le lea 0x40006dec reste hors
+    # zone : c'est l'entree), et la cave 0xFF a l'emplacement du stub.
+    number_sig = bytes.fromhex(NUMBER_SIG)
+    sig_n = code.count(number_sig)
+    if sig_n != 1:
+        fill_bad.append("la signature groove_number (%s) apparait %d fois dans le code "
+                        "assemble" % (NUMBER_SIG, sig_n))
+    number_off = code.find(number_sig)
+    if number_off <= 0:
+        fill_bad.append("la signature groove_number est en offset %d du code (attendu > 0)"
+                        % number_off)
+    number_va = FILL_MASK + max(number_off, 0)
+    ncode = code[max(number_off, 0):]
+    number_old = stock[NUMBER_LOOP - BASE:NUMBER_LOOP_END - BASE]
+    if number_old.hex() != "42811141ffdc20817060528141e877f6b08166ee":
+        fill_bad.append("la boucle de numerotation en %#x n'est pas celle attendue (%s)"
+                        % (NUMBER_LOOP, number_old.hex()))
+    if NUMBER_LOOP + 8 + 0x0C != NUMBER_LOOP_END:
+        # le bra `600c` pose en NUMBER_LOOP+6 : PC suivant = NUMBER_LOOP+8, +0x0c
+        fill_bad.append("le bra pose en %#x ne retombe pas sur %#x (arithmetique)"
+                        % (NUMBER_LOOP + 6, NUMBER_LOOP_END))
+    zone_hits = branch_into(stock, NUMBER_LOOP + 2, NUMBER_LOOP_END,
+                            NUMBER_LOOP, NUMBER_LOOP_END)
+    if zone_hits:
+        fill_bad.append("des sauts du dehors retombent dans la zone de numerotation : %s"
+                        % ", ".join("%#x->%#x" % h for h in zone_hits))
+    if stock[number_va - BASE:number_va - BASE + len(ncode)] != b"\xff" * len(ncode):
+        fill_bad.append("la zone groove_number (%#x, %d o) n'est pas en 0xFF dans l'image"
+                        % (number_va, len(ncode)))
     # recouvrement : nos ecritures contre les JSON valides de 56 et 58 (comme 58).
     # Tout en offsets (w["off"] est un offset) : ne pas melanger avec des VA.
     spans = [(FILL_LOOP - BASE, FILL_LOOP - BASE + 8),
              (nop_lo - BASE, nop_hi - BASE),
              (stub_va - BASE, stub_va - BASE + len(code)),
-             (mask_ref - BASE, mask_ref - BASE + 4)]
+             (mask_ref - BASE, mask_ref - BASE + 4),
+             (NUMBER_LOOP - BASE, NUMBER_LOOP_END - BASE),
+             (number_va - BASE, number_va - BASE + len(ncode))]
     for name in FILL_SIBLINGS:
         sib = json.loads((OUT.parent / name).read_text(encoding="utf-8"))
         for w in sib["writes"]:
@@ -770,13 +895,39 @@ def main():
     writes.append((nop_lo, nop_old, nop_new,
                    "init des patterns : boucle morte neutralisee (%d nop, §3.62)"
                    % (len(nop_old) // 2)))
-    writes.append((stub_va, b"\xff" * len(code), code,
-                   "init des patterns : la boucle en 32 bits (%d o, §3.62)" % len(code)))
+    writes.append((stub_va, b"\xff" * len(code[:number_off]), code[:number_off],
+                   "init des patterns : la boucle en 32 bits (%d o, §3.62)" % number_off))
     writes.append((mask_ref, struct.pack(">I", FILL_MASK),
                    struct.pack(">I", sprites.SHARED_MASK),
                    "init des patterns : le sprite damier inverse vers le masque partage (§3.62)"))
+    # LA NUMEROTATION (§3.63) : jsr + bra par-dessus la boucle morte, et la boucle
+    # en 32 bits dans la cave juste apres groove_fill. Le bra `600c` pose en
+    # 0x40006df8 retombe sur 0x40006dfa + 0x0c = 0x40006e06 (le `pea 0x10`), verifie
+    # par l'arithmetique ci-dessus.
+    #
+    # Ecart au plan litteral du §4.7.2 : le splice ne remplace PAS les 20 o d'un
+    # bloc, car le `moveq #96 -> #80` de la boucle (0x40006dfa) reste une ecriture
+    # VIVE (le controle des comptes §3.57 exige de la voir changee). Comme pour le
+    # remplissage (FILL_LOOP_DEAD s'arrete a 0x400617fa, juste avant son moveq
+    # vivant) : jsr+bra sur la tete (8 o), le moveq est patche par l'entree
+    # PATTERN_COUNTS, et le corps mort (addql/lea/cmpl/bnes) part en nop — la zone
+    # morte est morte dans les deux cas.
+    number_splice_old = number_old[:8]            # 4281 1141ffdc 2081 (la tete)
+    number_splice_new = bytes.fromhex("4eb9%08x" % number_va) + bytes.fromhex("600c")
+    number_nop_old = number_old[10:]              # 5281 41e877f6 b081 66ee (10 o)
+    number_nop_new = b"\x4e\x71" * (len(number_nop_old) // 2)
+    writes.append((NUMBER_LOOP, number_splice_old, number_splice_new,
+                   "numerotation des creneaux : jsr vers la cave + bra (§3.63)"))
+    writes.append((NUMBER_LOOP + 10, number_nop_old, number_nop_new,
+                   "numerotation des creneaux : corps mort en nop (%d nop, §3.63)"
+                   % (len(number_nop_old) // 2)))
+    writes.append((number_va, b"\xff" * len(ncode), ncode,
+                   "numerotation des creneaux : la boucle en 32 bits (§3.63)"))
     print("logement    : jsr %#x, bra %#x, %d nop, cave %#x (%d o) + redirection %#x"
           % (FILL_LOOP, FILL_LOOP_END, len(nop_old) // 2, stub_va, len(code), mask_ref))
+    print("numerotation: jsr %#x, bra %#x, %d nop, cave %#x (+%d o)   (§3.63)"
+          % (NUMBER_LOOP, NUMBER_LOOP_END, len(number_nop_old) // 2,
+             number_va, len(ncode)))
 
     if bad:
         for b in bad:
@@ -848,7 +999,14 @@ def main():
                            % (w["off"], len(ob), len(nb)))
             continue
         if len(ob) == 2 and int(nb.hex(), 16) >= 0x8000 and w["off"] not in moveq_offs:
-            badsign.append("off %-8d  %s -> %s" % (w["off"], w["old"], w["new"]))
+            # Exemption §3.63 : `move.w #imm,%dN` est un immediat de DONNEE, pas une
+            # forme d'adresse — pas d'extension de signe (les deux octets du mot et de
+            # l'operation precedant l'immediat le reconnaissent : `3x3c`, premier octet
+            # pair, 0x30..0x3E). La garde sur les MOUVEMENTS EtENDUS DU SIGNE reste.
+            b0, b1 = stock[w["off"] - 2], stock[w["off"] - 1]
+            is_movew_data = (b0 % 2 == 0 and 0x30 <= b0 <= 0x3E and b1 == 0x3C)
+            if not is_movew_data:
+                badsign.append("off %-8d  %s -> %s" % (w["off"], w["old"], w["new"]))
     if badsign:
         for b in badsign:
             print("  !! " + b)
@@ -1022,9 +1180,26 @@ def main():
             "cave (boucle `groove_fill`, 58 o en 0x4018a788 — le masque damier inverse, "
             "libere par redirection de son constructeur comme 58, jsr + bra par-dessus, "
             "corps mort en nop). Les champs 16 bits hors boucle (fin 40 920, -68 40 856) "
-            "attendent le lot d'execution. 57 = 227 ecritures, et le generateur refuse "
-            "desormais toute ecriture 16 bits d'adresse >= 0x8000 (controle du signe, qui "
-            "aurait pris les 11 fautes).",
+            "attendent le lot d'execution. Le generateur refuse desormais toute ecriture "
+            "16 bits d'adresse >= 0x8000 (controle du signe, qui aurait pris les 11 "
+            "fautes) — sauf les immediats de DONNEE `move.w #imm` (reconnus a l'octet "
+            "d'operation precedent, §3.63).",
+            "LES JUMEAUX ABSOLUS ET LE DEMARRAGE (notes/56 §3.63) : la base des kits "
+            "existe AUSSI en forme ABSOLUE dans le code (0x409c9c80 = en-tete + 2 948 188 "
+            "= la fin de la table des patterns deployes) : le balayage par valeur ne "
+            "regardait que la forme relative. Quatre sites au desassemblage (l'audit "
+            "vendor/probes/abs_twins_audit.py) : le chemin pattern+kit du demarrage "
+            "(0x400083de) et trois constructeurs de la paire {pattern, kit} "
+            "(0x400201a0, 0x400203ca, 0x40055e0e). Avec la base restee en stock, le "
+            "demarrage lisait les KITS DANS la table des patterns deployee — la machine "
+            "et la voix d'un objet que le stock laisse simple (Bug B, marche NULL en "
+            "0x40069a8a). La base passe a 0x43dd0000. Le pas du pattern i "
+            "(`move.w #30710` en 0x400083c0) passe a 40924 — un immediat de donnee, "
+            "sans piege a signe. Et la boucle de NUMEROTATION des creneaux "
+            "(0x40006df2, base 0x40006dee) part en cave elle aussi (groove_number, 36 o "
+            "a la suite du remplissage dans le meme masque, 5 nops apres le bra) : "
+            "80 creneaux, index en fin-4, fanion en fin-40, d0=80 en sortie. 57 = 237 "
+            "ecritures.",
             "S'applique APRES 56-groove-8tracks.json (jalon 1, le moteur audio). Les kits "
             "demenagent vers la plage libre de 0x43dd0000.",
             "Avec ce tweak seul, la version du bloc courant passe a 7 : un projet d'origine "

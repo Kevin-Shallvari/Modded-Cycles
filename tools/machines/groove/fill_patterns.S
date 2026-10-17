@@ -38,3 +38,25 @@ groove_fill:
 	bnes	1b
 	rts
 	.size	groove_fill, .-groove_fill
+
+/* La numerotation des creneaux (0x40006df2, §3.63) : 80 creneaux, index en
+ * fin-4, fanion en fin-40. Entree : a0 = position de l'index du creneau 0
+ * (0x40704018). Sortie : d0 = 80 (la boucle d'origine laissait d0 = 96), d1
+ * compte, a0 avance ; d2 sauve/restaure. */
+	.globl	groove_number
+	.type	groove_number, @function
+groove_number:
+	movel	%d2,%sp@-
+	clrl	%d1
+	movel	#40924,%d2
+1:
+	moveb	%d1,%a0@(-36)
+	movel	%d1,%a0@
+	lea	%a0@(0,%d2:l),%a0
+	addql	#1,%d1
+	cmpil	#80,%d1
+	bnes	1b
+	moveq	#80,%d0
+	movel	%sp@+,%d2
+	rts
+	.size	groove_number, .-groove_number

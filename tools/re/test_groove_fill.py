@@ -126,7 +126,8 @@ def main():
 
     print('\nA. le code')
     code = assemble(SRC)
-    check('le remplissage s\'assemble et se lie', 0 < len(code) <= 64, '%d octets' % len(code))
+    check('le remplissage s\'assemble et se lie', 0 < len(code) <= 192, '%d octets' % len(code))
+    # 192 = FILL_RESERVE (§3.63) : groove_fill (~56 o) + groove_number (~36 o), marge.
 
     stock = bytearray(mcfw.load_mainos(args.cycles))
 
@@ -164,6 +165,34 @@ def main():
     dead = bytes(both[0x400617E2 - build.BASE:0x400617E2 - build.BASE + 24])
     check('le corps mort est en nop', dead == b'\x4e\x71' * 12)
 
+    print('\nE. la numerotation ( groove_number, §3.63)')
+    number_sig = bytes.fromhex('2f024281243c00009fdc')   # movel %d2,%sp@- ; clrl %d1 ; movel #40924,%d2
+    check('la signature groove_number est unique', code.count(number_sig) == 1,
+          '%d fois' % code.count(number_sig))
+    number_off = code.index(number_sig)
+    eng = E.Engine(stock)
+    for base, size in ((0x43000000, 0x00800000),):
+        try:
+            eng.uc.mem_map(base, size)
+        except Exception:  # noqa: BLE001
+            pass
+    eng.uc.mem_write(CODE_AT, code)
+    eng.uc.mem_write(TABLE_AT, bytes(COUNT * N))
+    eng.uc.mem_write(GUARD_AT, b'\xAA' * 64)
+    eng.uc.reg_write(mk.UC_M68K_REG_A0, TABLE_AT + N - 4)   # l'index du creneau 0
+    eng.call(CODE_AT + number_off)
+    table = bytes(eng.uc.mem_read(TABLE_AT, COUNT * N))
+    guard = bytes(eng.uc.mem_read(GUARD_AT, 64))
+    d0 = eng.uc.reg_read(mk.UC_M68K_REG_D0)
+    idx_bad = [i for i in range(COUNT)
+               if struct.unpack('>I', table[i * N + N - 4:i * N + N])[0] != i]
+    flag_bad = [i for i in range(COUNT) if table[i * N + N - 40] != i]
+    check('80 index en fin-4 (gros boutien)', not idx_bad,
+          '' if not idx_bad else 'faux aux %s' % idx_bad[:5])
+    check('80 fanions en fin-40', not flag_bad,
+          '' if not flag_bad else 'faux aux %s' % flag_bad[:5])
+    check('le creneau apres la table est intact (garde 0xAA)', guard == b'\xAA' * 64)
+    check('d0 = 80 en sortie', d0 == 80, str(d0))
     print('\n%s' % ('TOUT OK' if not check.failed else 'ECHEC'))
     raise SystemExit(1 if check.failed else 0)
 
