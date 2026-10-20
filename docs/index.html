@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Modded Cycles</title>
-<meta name="description" content="Firmware mods for the Elektron Model:Cycles: 6-channel USB audio, Syntakt engines, latching mute, trig preview. Patched in your browser from your own OS file.">
+<meta name="description" content="Modded Cycles OS: one firmware for the Elektron Model:Cycles with a Sampler, the Syntakt engines, MACRO, ACID, an arpeggiator and more. Built in your browser from your own official files.">
 <meta name="theme-color" content="#e3e2de" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1b1b1b" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400..700&family=Tiny5&display=swap">
-<link rel="stylesheet" href="assets/site.css?v=2026-10-14-01">
+<link rel="stylesheet" href="assets/site.css?v=2026-10-20-02">
 <script>try{var l=localStorage.getItem("mc-lang"),t=localStorage.getItem("mc-theme")}catch(e){}document.documentElement.lang=l||(/^fr\b/i.test(navigator.language||"")?"fr":"en");if(t)document.documentElement.setAttribute("data-theme",t)</script>
 <style>
   .intro{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:20px 56px;align-items:end;padding:44px 0 36px}
@@ -55,7 +55,6 @@
   <nav aria-label="Site">
     <a href="flasher/">Flasher</a>
     <a href="guide/">Guide</a>
-    <a href="convert/">Convert</a>
     <a href="https://github.com/18nelli18/Modded-Cycles" target="_blank" rel="noopener">GitHub</a>
     <a href="https://discord.gg/hWegtJZcmm" target="_blank" rel="noopener">Discord</a>
     <a href="https://ko-fi.com/18nelli" target="_blank" rel="noopener">Ko-fi</a>
@@ -68,7 +67,7 @@
   <section class="intro">
     <h1><span data-l="en">Transform your machine.</span><span data-l="fr">Transformez votre machine.</span></h1>
     <div>
-      <p><span data-l="en">Flashing over USB in about 30 seconds, right in the browser.</span><span data-l="fr">Flash en USB en une trentaine de secondes, dans le navigateur.</span></p>
+      <p><span data-l="en">One OS with every mod, flashed over USB in about 30 seconds, right in the browser.</span><span data-l="fr">Un seul OS avec tous les mods, flashé en USB en une trentaine de secondes, dans le navigateur.</span></p>
       <div class="act">
         <a class="btn" href="flasher/"><span data-l="en">Open the flasher</span><span data-l="fr">Ouvrir le flasher</span></a>
         <a href="guide/"><span data-l="en">Read the guide</span><span data-l="fr">Lire le guide</span></a>
@@ -79,15 +78,39 @@
   <section class="bench">
     <figure>
       <div data-device="seq"></div>
-      <figcaption><span data-l="en">Hover over a mod: the controls it touches light up.</span><span data-l="fr">Survolez un mod : les commandes qu'il touche s'allument.</span></figcaption>
+      <figcaption><span data-l="en">Hover over a feature: the controls it touches light up.</span><span data-l="fr">Survolez une fonction : les commandes qu'elle touche s'allument.</span></figcaption>
     </figure>
     <div>
-      <h2><span data-l="en">The mods</span><span data-l="fr">Les mods</span></h2>
+      <h2><span data-l="en">In the OS</span><span data-l="fr">Dans l'OS</span></h2>
       <ol class="mods">
-        <li><a href="guide/#usb6" data-hl="pads" data-lcd="USB AUDIO/>6 CHANNELS">
-          <b><span data-l="en">6-channel USB audio</span><span data-l="fr">Audio USB 6 canaux</span></b>
-          <span><span data-l="en">Each track gets its own USB channel: six separate stems in your DAW.</span><span data-l="fr">Chaque piste a son propre canal USB : six pistes séparées dans votre logiciel.</span></span>
-          <em><span data-l="en">Based on the work of scottmetoyer</span><span data-l="fr">D'après le travail de scottmetoyer</span></em></a></li>
+        <li><a href="guide/#model-tg" data-hl="machines,func" data-lcd="07 Sampler/>Sample loaded/to Sampler">
+          <b><span data-l="en">Sampler machine</span><span data-l="fr">Machine Sampler</span></b>
+          <span><span data-l="en">Play your own samples, with resampling, slide trigs, master effects and a filter on every machine.</span><span data-l="fr">Jouez vos propres samples, avec le rééchantillonnage, les slide trigs, des effets master et un filtre sur toutes les machines.</span></span>
+          <em><span data-l="en">Model-TG, by TinyGregAudio</span><span data-l="fr">Model-TG, par TinyGregAudio</span></em></a></li>
+        <li><a href="guide/#syntakt" data-hl="lcd,machines,synth" data-lcd="08 SDVtg/>09 CPVtg/10 SYToy/11 SYBit">
+          <b><span data-l="en">Syntakt engines</span><span data-l="fr">Moteurs du Syntakt</span></b>
+          <span><span data-l="en">SD VINTAGE, CP VINTAGE, SY TOY, SY BITS and SY SWARM as extra machines, read from your Syntakt OS file.</span><span data-l="fr">SD VINTAGE, CP VINTAGE, SY TOY, SY BITS et SY SWARM en machines supplémentaires, lus dans votre fichier d'OS Syntakt.</span></span></a></li>
+        <li><a href="guide/#macro" data-hl="machines,shape,color,sweep" data-lcd="13 MACRO/>47 MODELS">
+          <b><span data-l="en">MACRO machine</span><span data-l="fr">Machine MACRO</span></b>
+          <span><span data-l="en">The 47 synthesis models of Braids in one machine, chosen with SHAPE.</span><span data-l="fr">Les 47 modèles de synthèse de Braids dans une seule machine, choisis avec SHAPE.</span></span>
+          <em><span data-l="en">Based on the code of Émilie Gillet</span><span data-l="fr">D'après le code d'Émilie Gillet</span></em></a></li>
+        <li><a href="guide/#acid" data-hl="machines,synth" data-lcd="14 ACID/>CUT RES ENV DRV">
+          <b><span data-l="en">ACID machine</span><span data-l="fr">Machine ACID</span></b>
+          <span><span data-l="en">An acid bass in the style of the TB-303, with slides programmed from your trigs.</span><span data-l="fr">Une basse acide à la manière de la TB-303, avec des slides programmés depuis vos trigs.</span></span>
+          <em><span data-l="en">Based on Open303 by Robin Schmidt</span><span data-l="fr">D'après Open303 de Robin Schmidt</span></em></a></li>
+        <li><a href="guide/#arp" data-hl="func,retrig" data-lcd=">Arp     UP/Oct      1">
+          <b><span data-l="en">Arpeggiator</span><span data-l="fr">Arpégiateur</span></b>
+          <span><span data-l="en">Hold several notes with RETRIG: they play one after another, at the retrig rate.</span><span data-l="fr">Tenez plusieurs notes avec RETRIG : elles se jouent l'une après l'autre, au rythme du retrig.</span></span></a></li>
+        <li><a href="guide/#lfo-plus" data-hl="lfo,lfospeed" data-lcd="LFO/>2">
+          <b><span data-l="en">LFO 2, 3, 4</span><span data-l="fr">LFO 2, 3, 4</span></b>
+          <span><span data-l="en">Three more LFOs on every track: press LFO again to set the next one.</span><span data-l="fr">Trois LFO de plus sur chaque piste : appuyez de nouveau sur LFO pour régler le suivant.</span></span>
+          <em><span data-l="en">Idea by DavidCaruso</span><span data-l="fr">Idée de DavidCaruso</span></em></a></li>
+        <li><a href="guide/#step-rec" data-hl="rec,s1" data-lcd="Step-rec:/>ON">
+          <b><span data-l="en">Step record</span><span data-l="fr">Step record</span></b>
+          <span><span data-l="en">Sequencer stopped, press REC twice and enter the notes one step at a time, with their p-locks.</span><span data-l="fr">Séquenceur à l'arrêt, deux appuis sur REC et entrez les notes pas à pas, avec leurs p-locks.</span></span></a></li>
+        <li><a href="guide/#tempo" data-hl="tempo,level" data-lcd="TEMPO/>546.0 BPM">
+          <b><span data-l="en">Tempo up to 546 BPM</span><span data-l="fr">Tempo jusqu'à 546 BPM</span></b>
+          <span><span data-l="en">The tempo goes past 300 BPM, up to 546.</span><span data-l="fr">Le tempo dépasse 300 BPM, jusqu'à 546.</span></span></a></li>
         <li><a href="guide/#mute" data-hl="track,func" data-lcd="MUTE/>LOCKED">
           <b><span data-l="en">Latching mute</span><span data-l="fr">Mute verrouillé</span></b>
           <span><span data-l="en">TRACK + FUNC locks the mute mode: no more holding FUNC.</span><span data-l="fr">TRACK + FUNC verrouille le mode mute : plus besoin de tenir FUNC.</span></span>
@@ -96,13 +119,10 @@
           <b><span data-l="en">Trig preview</span><span data-l="fr">Écoute d'un pas</span></b>
           <span><span data-l="en">Sequencer stopped, hold a step and press PAGE to hear it.</span><span data-l="fr">Séquenceur à l'arrêt, maintenez un pas et appuyez sur PAGE pour l'entendre.</span></span>
           <em><span data-l="en">By drumkilla</span><span data-l="fr">Par drumkilla</span></em></a></li>
-        <li><a href="guide/#scroll" data-hl="lcd" data-lcd="~Deep Ocean Pad Wash 02">
-          <b><span data-l="en">Scrolling names</span><span data-l="fr">Noms qui défilent</span></b>
-          <span><span data-l="en">Sound names too long for the screen scroll in the browser.</span><span data-l="fr">Les noms de sons trop longs pour l'écran défilent dans le navigateur.</span></span>
-          <em><span data-l="en">By drumkilla</span><span data-l="fr">Par drumkilla</span></em></a></li>
-        <li><a href="guide/#syntakt" data-hl="lcd,machines,synth" data-lcd="menu">
-          <b><span data-l="en">Syntakt engines</span><span data-l="fr">Moteurs du Syntakt</span></b>
-          <span><span data-l="en">SD VINTAGE, CP VINTAGE, SY TOY, SY BITS and SY SWARM as extra machines, read from your Syntakt OS file.</span><span data-l="fr">SD VINTAGE, CP VINTAGE, SY TOY, SY BITS et SY SWARM en machines supplémentaires, lus dans votre fichier d'OS Syntakt.</span></span></a></li>
+        <li><a href="guide/#mod-settings" data-hl="settings,level" data-lcd="USB AUDIO/>6CH">
+          <b><span data-l="en">USB audio: stereo or 6 tracks</span><span data-l="fr">Audio USB : stéréo ou 6 pistes</span></b>
+          <span><span data-l="en">SETTINGS › Mods: send the computer the stereo mix, or each track on its own channel to record stems.</span><span data-l="fr">SETTINGS › Mods : envoyez à l'ordinateur le mix stéréo, ou chaque piste sur son propre canal pour enregistrer des pistes séparées.</span></span>
+          <em><span data-l="en">6 channels based on ms-multi-output</span><span data-l="fr">6 canaux d'après ms-multi-output</span></em></a></li>
         <li><a href="guide/#samples" data-hl="lcd,pads" data-lcd="SAMPLES OS/>MODEL:SAMPLES">
           <b><span data-l="en">Samples OS</span><span data-l="fr">OS Samples</span></b>
           <span><span data-l="en">The Model:Cycles starts as a Model:Samples and plays your own samples.</span><span data-l="fr">Le Model:Cycles démarre en Model:Samples et joue vos propres samples.</span></span></a></li>
@@ -129,8 +149,8 @@
   </div>
 </footer>
 
-<script src="assets/release.js?v=2026-10-14-01"></script>
-<script src="assets/cycles.js?v=2026-10-14-01"></script>
-<script src="assets/site.js?v=2026-10-14-01"></script>
+<script src="assets/release.js?v=2026-10-20-02"></script>
+<script src="assets/cycles.js?v=2026-10-20-02"></script>
+<script src="assets/site.js?v=2026-10-20-02"></script>
 </body>
 </html>

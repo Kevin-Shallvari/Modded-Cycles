@@ -44,7 +44,7 @@ ou sans Model-TG) multiplient le tout. Mesuré le 07/10/2026 sur `main` et les P
 | toutes les PR ouvertes fusionnées | ≈ 300 000 [HYP, calcul] | ≈ 50 Mo [HYP] |
 
 `REF_MAINOS` n'était pas un verrou : une combinaison absente de la liste se construisait et s'envoyait quand même, sans
-la mention « Conforme au build de référence » (`prepareFirmware` de `app.js`) ; `docs/AGENTS.md` et `FLASH.md`
+la mention « Conforme au build de référence » (`prepareFirmware` de `app.js`) ; `docs/AGENTS.md` et `FLASH.md` (devenu `RECOVERY.md`)
 disaient le contraire, corrigés ici. Aucune note ni aucun commit ne rapporte un bug que seul ce test exhaustif aurait
 trouvé : les échecs enregistrés sont des manques de mémoire du conteneur ; les chevauchements entre mods ont été vus
 par les générateurs, le registre des pochoirs ou des comparaisons à la main (le 07/10/2026, chord-keys contre

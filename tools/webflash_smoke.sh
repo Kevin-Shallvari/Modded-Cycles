@@ -5,9 +5,9 @@
 # missing, and that building then sending works.
 #
 #   tools/webflash_smoke.sh                               # synthetic OS only
-#   tools/webflash_smoke.sh model-cycles_OS1.13.syx       # + the REF_MAINOS sample vs its reference hashes, each mod checked
+#   tools/webflash_smoke.sh model-cycles_OS1.13.syx       # + the real OS: asks for the Syntakt file (add it to build the OS)
 #   tools/webflash_smoke.sh model-cycles_OS1.13.syx model-samples_OS1.13.syx   # + the "Samples OS" tab
-#   tools/webflash_smoke.sh model-cycles_OS1.13.syx Syntakt_OS1.42.syx         # + the Syntakt engines (1.41 too)
+#   tools/webflash_smoke.sh model-cycles_OS1.13.syx Syntakt_OS1.42.syx         # + the Modded Cycles OS built and checked (1.41 too)
 #   SMOKE_JOBS=4 tools/webflash_smoke.sh ...                                  # real-OS combinations in 4 parallel parts
 # (official files are told apart by their names; any order)
 #

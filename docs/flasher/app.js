@@ -22,1755 +22,28 @@ const ELEKTRON_ST_DL = "https://www.elektron.se/support-downloads/syntakt";
 // REF_MAINOS: patched MAIN OS of a sample of combinations (each card alone, every pair, the largest ones); the drumkilla
 // tweaks alone also match drumkilla's own tweak.py byte for byte. Key = tweak ids joined with "+", in feature order.
 // A listed combination whose MAIN OS differs is refused. REF_MODS: for every tweak, the hash of its writes (w) and of
-// its appended payload (p), checked on every build: each ticked mod must be byte for byte the Python one, whatever
-// the combination (tools/check_overlaps.py proves that mods ticked together never write the same bytes, except the
+// its appended payload (p), checked on every build: each tweak of the OS must be byte for byte the Python one
+// (tools/check_overlaps.py proves that tweaks built together never write the same bytes, except the
 // same whole write or a mod applied on top of another through "requires").
 const REF_MAINOS = {
-  // each card alone: each variant, each combination of real Syntakt engines
-  "6ch-usbup": "57fa258f209c10359f6888af79087f656e994930ff86ffcc1e2e2e48512d9530",
-  "model-tg": "aa0740d714d502d440ec003cca8ca389c1ac9190de28395aef748ec9bf5c4c3a",
-  "model-tg+sample-preview": "b73428049e2779ff8c73d91787c6bbaffe0a97b4f77e6b2e3819f09e035d9353",
-  "latching-mute": "6903892ba3119ed161190dee315e41101634d588ce5aff47e4fa99a92b16c078",
-  "trig-preview": "b5733f5ddcee498a0e3bb74587979789c76216ef5dc03bbe0771b401a9d01410",
-  "browser-scroll": "4d7caf0d48b0deae53872400ffa98e3acf588f88b2b7684cf4971ead5f834d05",
-  "trig-hold": "bbb8a4217a888c46a60cfb17ae444bec9cf21d6ff2d2d36bf8d1f1cdb81d1ef4",
-  "arp": "e445bf895123d3fc94762a65739558b579ec8df3000c9bdf5747a3d73287e6a6",
-  "tempo-max": "5d6417b175e89b68c76743bbcad45306ba210969ad049fc1bfa6da46e432eaef",
-  "boot-anim": "388ed6c6ee65529e2dc2d2c93aadb37c6878324acf90ad931d5ca3f7c6b68b27",
-  "multiline-browser": "75a5054403de65968e07bed84f3fcb183719b965626fd0c042b29bc963f8af31",
-  "level-pan-values": "7fb415147e8605ab035e3fc064986b1c640cddc7ced972ad5b6ff6fcaa9f5eb7",
-  "trigless-dim": "ff47b71399d7ab72a53f73e2e0ff0f5759e4ef20fe1da1780eb0c28e85ed4631",
-  "midi-both": "5d0755ef0bd34617bcd5adbb54f09c77cd066e7439d26cc460bbadb0090bb75f",
-  "midi-live-both": "ca439a48cb8d818c8c09a8bfc8fa1ac391ffa5f9263e971db39ff602afce6742",
-  "macro": "d15698c455425b9ea3b5ba54f5ffded1fc914464fc9db4529f389e8efc6a1786",
-  "acid": "01e81a42dd24060d73b68e3abc0fc55d40b976a5fcef16f970b1bc4288aeade8",
-  "wavetable": "8730481066293379a183aa5ebd8d6f1919a0ffaf5363d472f21168323d92c652",
-  "chord-keys": "901675f5b8291f3b91d134208236e83431d6a079c73c2d5f1e4e54ebc334321f",
-  "track-filter": "f5db01334779499fc0932cfdc4a23c899319d333fed98fc5169972080b662967",
-  "lfo-plus": "61c48e85f74bca0387871df4bd82cd8bfa770759fbfab9dc629ec62e4b9dd26c",
-  "syntakt-sd": "6fc3e84db5e7a0203d1b838adc908ea555bc070f8214e8720e2bea3ad158dfde",
-  "syntakt-cp": "e9e3a8c7aa438a00cc028574b78dac33a6b7a44cdf98623eaa1edcf4668ac1ee",
-  "syntakt-toy": "a3d8fad221ed0920ec15ea0e791e3be3e869b04b147affefcda4108d0248796c",
-  "syntakt-bits": "0e73d4f76bb947db6392b7e1e1547f2951ec8fe1924668bec532ee9b531f93bd",
-  "syntakt-swarm": "b47c9d7d2fb8d9568503033a3d0f318396c4b52b8df34c081564005c92b69517",
-  "syntakt-sd-cp": "fd17eb81c33d762d22d62984fb8aff3caaea0844f5bd535a3167f8d024b61a2b",
-  "syntakt-sd-toy": "51aa1b291f53da5cfaf55eeb202364a92ad84a9b542e6b2d1ab627969a45675c",
-  "syntakt-sd-bits": "8e43d28c00c77ebeb04ddb45922c256864005e35b4678c66705dcc88c33fd98d",
-  "syntakt-sd-swarm": "a96c7c7405c10d674c9734057f10598fa93b648ea23a94eed21d199f059bd08e",
-  "syntakt-cp-toy": "78e9ac4189b8b71bbf58d1169bc8442e09b6e4878cafe7bbeb0ce61b232801bd",
-  "syntakt-cp-bits": "ada473fabbf4917498f59bedfde1307fddbb31d29dff819d4b775d7b26ce016e",
-  "syntakt-cp-swarm": "a575af52be2d9e67cc46dbc2a8682bdfa4f2c4d16ec37c8c904a9139ae4f8141",
-  "syntakt-toy-bits": "b27c68f82403cffbb934604c425a5df352ec646061a8939d01eb496830b7341c",
-  "syntakt-toy-swarm": "663f6d5e6173f82e4b723e6c779cbd34d47491202a505afe6cbb9ae2aa9d235e",
-  "syntakt-bits-swarm": "402d5ca26c51719af375c7014c8c2a813b6f32660dba5ea19f86c660b886b1c5",
-  "syntakt-sd-cp-toy": "ea04669bbe10d83505cd9c2b4654f46c53dd1fc55d4d5229d2cad33c6e5f0a0e",
-  "syntakt-sd-cp-bits": "3d6f879a83677b4567244e514d9fc972fa2ff5dc564427ea20bb1d03cf24003d",
-  "syntakt-sd-cp-swarm": "44da90ee77388a14cbb39d6b4b99d7efe17ee1ba6704c4d76bc9a15fc5c51feb",
-  "syntakt-sd-toy-bits": "71466ce7a425531cec4d6c47712db5d4970606fc2c7552373ee2ba7ff36e99a6",
-  "syntakt-sd-toy-swarm": "23d33610f55ba195298c26cd09581fd3c7abf549feff04c95e10e3b84f35b207",
-  "syntakt-sd-bits-swarm": "c679c8d2eb8c0870e19ecd514c0f050f7e8f8b717e27fa59ddfef10560c282b1",
-  "syntakt-cp-toy-bits": "7ddb975884b033b5eacaf9c6eefc8d5de3b1d6cacc6913407de6a8fc38e724b7",
-  "syntakt-cp-toy-swarm": "2b5ee0a0d29fe43353bd31d1ed962169a5b8e16a827f80777137c9d16a8331cc",
-  "syntakt-cp-bits-swarm": "db17f6630f680940f385c645f2ba3c1e0008a98b87ab819737ad3a88e2515a4e",
-  "syntakt-toy-bits-swarm": "0aa1ec16deb628fc05be1fe93ef143c79fa3de69ed8c6ba1d60724e0597ca88c",
-  "syntakt-sd-cp-toy-bits": "c6add70bea5a1f6d0d4bf6aa26ae454dc6f873c6ab55937edbd7d9ad7d96c86c",
-  "syntakt-sd-cp-toy-swarm": "9c069b611ea14ee87a560cb0660c747804482ae5340eec8ab6e1c47c124ba84d",
-  "syntakt-sd-cp-bits-swarm": "1331f1adf99a6fc65f3c5ee0d52c7f99f4b6925b2107a95e627b6d6bbd270453",
-  "syntakt-sd-toy-bits-swarm": "893100655328f54f036c63abd8728d1204f489768772f2509911e86d98699a96",
-  "syntakt-cp-toy-bits-swarm": "1877d1883272e5337f6892264bcafe83617c9a448560ad1100fb02d63f705174",
-  "syntakt-sd-cp-toy-bits-swarm": "c6cdfe22fe5a280c1e42ae1f11ae25156d86b36da1e9d0e83f1d6c3227117b7c",
-  // every pair of cards the page lets you tick together
-  "6ch-usbup+model-tg": "96b6aec20df7c66f4a8d84c3ab4358a92b01d754c319923927d272aed0d34322",
-  "6ch-usbup+model-tg+sample-preview": "4671f7b80784249d8e8c533d4546297fda2ff52b97c993fab7de83cbb5c60867",
-  "6ch-usbup+latching-mute": "55959997b8b7799b7697509707af0b95a1f2eca75f7153fe70a560a7051a6b7a",
-  "6ch-usbup+trig-preview": "10763d7423ce6f3cdbd5e652d01e12346057ff16d5e343a0942d16876587426f",
-  "6ch-usbup+browser-scroll": "977f6f864b3f331e395bac27746eeb3a52538b72b02fc7bb208e33d1f3cd3c56",
-  "6ch-usbup+trig-hold": "5be28240875818efd2b912680bb589300cd51a2c0aa4a86ae289b3241fbf7f44",
-  "6ch-usbup+arp": "39e9310742ce0e3c8d4cf394271ede0af1325249e12f83c4bff122c2ea103456",
-  "6ch-usbup+tempo-max": "0f7a47738be9a70aa3c8e586d28636c535d787693ddf6cc756c92b5824717d42",
-  "6ch-usbup+boot-anim": "76b1a532c8119ce222a3545b8a21b4cf0b2e12887e40c32f9a80b0d70975533e",
-  "6ch-usbup+multiline-browser": "ce1681cd208f4ca812f25b9386ad64fd0c4aa5957314cde5ba6f77a302d2c49f",
-  "6ch-usbup+level-pan-values": "e2d4d4be9b17c93894b7468da4e93e19945c7c89a526a80e973132522fcb5d6a",
-  "6ch-usbup+trigless-dim": "f137fab012bb193595bdfa3171a86d10f857643c28a349b46ae049e69f2fb27c",
-  "6ch-usbup+midi-both": "efc0f1c328f8b65eedd45bc20dd68b513eb091ea1c67d8d3fba0d0e60081b17a",
-  "6ch-usbup+midi-live-both": "09f5b51061b2d387c897824984618f7f8b92d2d5028750115b3f6cb3eb2748dc",
-  "6ch-usbup+macro": "7958b0c5ad0392977a5dee2c559460d5f2ee5ceb11632dd985ea102eda09f49e",
-  "6ch-usbup+acid": "990a083a302ee2559d7f7790132c842d1f189ae06eb3ae7156e4ccd3292d761b",
-  "6ch-usbup+wavetable": "de625a2cc7cd5ed795f22d9db37d33832d82766618d1c7a8cab64678a276dbff",
-  "6ch-usbup+chord-keys": "d6e43f0ca6a8df953df7a12da7458c70552f1b3a8de1bb39213f0c52168f0352",
-  "6ch-usbup+track-filter": "340fb353bacb25fc2923f836b7d685a704c710e43988258cdc2d21f42b997016",
-  "6ch-usbup+lfo-plus": "4d753f73d83f71f5ac0a5ecb5c3627337b4ba682a03a15df24ce2fdea79ee19c",
-  "6ch-usbup+syntakt-sd": "ab39c7e2e487831ecc54edcc3ae4c5d8e5171ebd2a32de64248f7fb270d83edd",
-  "6ch-usbup+syntakt-cp": "5e8441691c7de47566defb975c4e6b6db396218c5375fa70807eef72888d573b",
-  "6ch-usbup+syntakt-toy": "d023c6837c9b2427cad42581912c6062bd7ba5bbb073b2ca25bcda88d28695ff",
-  "6ch-usbup+syntakt-bits": "dbf5c8c5034aa8dfda1aa6d6314b81c22ac2789281b88eadc575b355886bc719",
-  "6ch-usbup+syntakt-swarm": "3bfba462a8cab1573c6137f1162f636d4302f29dc3569fdf2318f3420cc63f8a",
-  "6ch-usbup+syntakt-sd-cp": "8b932ec51cc7ab437766ca6e88d6e9cfa272bb4cb2aeb6e68dea7c6f6d3e41ea",
-  "6ch-usbup+syntakt-sd-toy": "3d1083f928461558529899f002b05df8d0b406b4206e01fc8a762d8ea755a4c8",
-  "6ch-usbup+syntakt-sd-bits": "8dd3989bc1b4b6317c9715c4dcc925ce5d287bdaa215259e010c9a3d18d0d73b",
-  "6ch-usbup+syntakt-sd-swarm": "19e36138453456323542db8926a51b697fc94446232aa77b63bc7e74b6bc4c82",
-  "6ch-usbup+syntakt-cp-toy": "aa6943de7e91054b66a28396528399955b8f54862339dcb9ccf440663f3263b9",
-  "6ch-usbup+syntakt-cp-bits": "daed0d02f343f0776468df844b7cca87534bc5a2906ff1ca4e5aac93552eebdf",
-  "6ch-usbup+syntakt-cp-swarm": "9949fa63c798e1878590d856a4c7150215b0d6257b17b32402764fe0efe7b06f",
-  "6ch-usbup+syntakt-toy-bits": "c81b04b1bea76257114b87380805857208ae167b0c6473b9459ba94d73b45960",
-  "6ch-usbup+syntakt-toy-swarm": "7122a33004f9c68df21340641d4788e7f66f321692645f8a89cab47df7ec17df",
-  "6ch-usbup+syntakt-bits-swarm": "8ef78c7da45310010612e623ad789e767774438c0982241e5cc08b80065f150f",
-  "6ch-usbup+syntakt-sd-cp-toy": "f75553a4b525d6c1b9a19b16ff0947f816a7c275f1c5bbcdd24aa87c8a6bc1f7",
-  "6ch-usbup+syntakt-sd-cp-bits": "a20200d4fcd5e65fa6c4c74a227a361fb6ecc71a7c73ccf97c97253edf06f31c",
-  "6ch-usbup+syntakt-sd-cp-swarm": "1ed1dc05e9161cfc91f121d55acffc24092823798f447748acbf27bcc76d8871",
-  "6ch-usbup+syntakt-sd-toy-bits": "0b20e4a757a7bc4e35ea8a841aaa96355c95bd3259cbb651021d9bb90d1d534f",
-  "6ch-usbup+syntakt-sd-toy-swarm": "8747d0062b36373e14c921d9e94bbd02f2f805bb7a7435cb7e19199e25cb39a8",
-  "6ch-usbup+syntakt-sd-bits-swarm": "ab992706275d1132c8da09c85e0099b978e8b6f18ced9ef6ecbab737ea21c1f6",
-  "6ch-usbup+syntakt-cp-toy-bits": "64e918bdaa11bb58591db5a1405d127a22dc03367349c4ee700ed05fcbd22f21",
-  "6ch-usbup+syntakt-cp-toy-swarm": "28ce588a6ccc7afd1096156af640d59f038e243af780c4c20c75e44eae77bedc",
-  "6ch-usbup+syntakt-cp-bits-swarm": "27d433fe7fe0f731263e243eb5d6d04f42caee7ab5fe8064425c237abe7f749a",
-  "6ch-usbup+syntakt-toy-bits-swarm": "7100b9d0724644de2d74537702e11996207d311cb87bfe0e7f916bc5d650b3e4",
-  "6ch-usbup+syntakt-sd-cp-toy-bits": "abb8da76fab0262f21156aa9c1cd810ff4493e3e679d2dd4af8fca34a65ecca1",
-  "6ch-usbup+syntakt-sd-cp-toy-swarm": "7bb99052e87af339f7a8d06b6a595977ba2ee3487d8ae62ebc5cf796fdc34906",
-  "6ch-usbup+syntakt-sd-cp-bits-swarm": "74a464c546936b54b250e7df2c930b86449d521827076faa5af05c5d98a8856a",
-  "6ch-usbup+syntakt-sd-toy-bits-swarm": "86b19a66897d9fc57f71f4182f63b17852c0b421f6270fafc7fe5a0cbfcb9bc7",
-  "6ch-usbup+syntakt-cp-toy-bits-swarm": "23adcfb38e91cfb0b6103dee9c5db334d777304572b0a36a9a5f2033eb4555e6",
-  "6ch-usbup+syntakt-sd-cp-toy-bits-swarm": "3988da1fbf1d365205e8a29240055269b4669e5518a58902325d1cd623864787",
-  "model-tg+trig-hold": "f71e6ea6d7bc530e3ad255b161babbfa388a93595d74c671a4ed9793bde5c87c",
-  "model-tg+arp": "062f16db10bae6d9d3c6fda89aff382bf2896b531a6b511c236bb07c632247be",
-  "model-tg+tempo-max": "97cc13b34d3f4b3440d42bdb1c692e64bf0aa8b2de54b806b14320914936ef4f",
-  "model-tg+boot-anim": "cbec181684805bf37dd07c62dc47f7daf35e6abab530a3f3b06ec5db590278ec",
-  "model-tg+multiline-browser": "428e7bc4f18fde071a201544266d97012dd41556220867b60b59df193d861221",
-  "model-tg+level-pan-values": "255625a4b4e7df3ba774a74f7b1df5b47b810612135c375f8605b514059b40de",
-  "model-tg+trigless-dim": "601be6982e9f0211ef4afc771cd69738bbe1045679ca3456349f66829e1be4bc",
-  "model-tg+midi-both": "e5959d5383f207e5e44a9b9c4b5247aaa8a77eccce588df159c1d4eefa471101",
-  "model-tg+midi-live-both": "29e4b13b5cf8a995c163ddfd8040c7e41567f687fde27bd6985d3bf2042ca048",
-  "model-tg-st+macro-tg": "12c5d004ec2faae36d96f8fa31593c77d3b9104d22b5f52c0bcb88f68dadd5bb",
-  "model-tg-st+acid-tg": "39b0b593eb8ee353a9bc8897ea67bdbe8975088d165ad5c32988e00c5a6220cf",
-  "model-tg+lfo-plus": "32a8bbfe233fb0440f9ef622b9ee5ede0eaf7e8258d63c10aa5fcc70aad07a61",
-  "model-tg-st+syntakt-tg-sd": "f09ab68d48b7cfb58604ce6dc31f0998def25390e0a02aa83ecd304754ef8321",
-  "model-tg-st+syntakt-tg-cp": "ff77c45ed61905291ae2e9526cccbc439d04b742a012b863ad7c850ba1cf37e2",
-  "model-tg-st+syntakt-tg-toy": "21b3cec0720a1b69ff352b2310e4f651b29ef1bfdfd408c5426e525a546d2175",
-  "model-tg-st+syntakt-tg-bits": "d544cbbd45c6441b4a593128a7c83131ac05a05b5306539f20bbd7fc4dfecd15",
-  "model-tg-st+syntakt-tg-swarm": "ffd912a6163cd564e68aa95c9d31d121e9c8b778340591f0847911f19ec2bf54",
-  "model-tg-st+syntakt-tg-sd-cp": "953d8c57e39306d5916514a16e0840a9a56d5a5f7b203ff08595490b1c3576d7",
-  "model-tg-st+syntakt-tg-sd-toy": "8fcbe0415c52fcac2409aa1015f9f71208b155a8ae0bc717eeca085db7834191",
-  "model-tg-st+syntakt-tg-sd-bits": "9a0020cda86306a32cfbcadfb2265aa03a3bddad12bf841dc449c8c864f1665e",
-  "model-tg-st+syntakt-tg-sd-swarm": "faf2e8cc8dcafb405f84f274edb3c7d21951e0ba4f7272567bf13ada78a9cb89",
-  "model-tg-st+syntakt-tg-cp-toy": "bf055a8b4d6b8fc8e1c537d1bb0e0a8dc9b9f4f942629fd7a5b0f02f6fea6f2f",
-  "model-tg-st+syntakt-tg-cp-bits": "fe4d6efcc79b185f010340223ad5a1b195e290318ca4eb11b82ef22e443f0d78",
-  "model-tg-st+syntakt-tg-cp-swarm": "75db2556b8e0d8851a3078ec72e19ba6bd13b939f79a7b84d24307dd7916b166",
-  "model-tg-st+syntakt-tg-toy-bits": "a9ac8951d29ec5904c0e7be1213d001a5e7a5bb0267ae92bf5db44a677b0aa64",
-  "model-tg-st+syntakt-tg-toy-swarm": "eca243cf7e0d693c61432f96c3875a87be393a61cdb417dc84dde3320c878dca",
-  "model-tg-st+syntakt-tg-bits-swarm": "a2f9dbfcbffb0de7ccea2018ba56a78b420b0dbd95358b1c3116fcd36ebb6521",
-  "model-tg-st+syntakt-tg-sd-cp-toy": "d38a18494e26e0e0d439b2c3afe0dd2115a2f8eb1556c31a4bf92ed5f31ba6b0",
-  "model-tg-st+syntakt-tg-sd-cp-bits": "2a37b3b3d7e480328006d732658f3c62664472a918076e0a6961d7f1605b332e",
-  "model-tg-st+syntakt-tg-sd-cp-swarm": "798341ca0c7f6f94d3facd9e955fa54552383f4f720981dc7d45e141aed11ecd",
-  "model-tg-st+syntakt-tg-sd-toy-bits": "f11bbf9c1389453034eeb7e64bb06e86978710360c0043bb996205e84afc1eae",
-  "model-tg-st+syntakt-tg-sd-toy-swarm": "5e958739969ccb68be94eafeb2abe4d1a613377a745e034419749109839b76ed",
-  "model-tg-st+syntakt-tg-sd-bits-swarm": "01a8dd4c7faf4808d0fdb8e2f9e1f9f8ffb8ad9286763ec9a8ce11413643efe6",
-  "model-tg-st+syntakt-tg-cp-toy-bits": "fd275d9285130ee1947908e630f9220b58ab63956de67ea772e4720cf1e9e3ab",
-  "model-tg-st+syntakt-tg-cp-toy-swarm": "8f4a0b0760d233e904ec0eed43becbcb3a2e16927edae7ae0d1bbb1f801f2ca9",
-  "model-tg-st+syntakt-tg-cp-bits-swarm": "1da12276d7f8d39d855e55f00f12365c751ed96a54f6b4de1edb7e96cd95e313",
-  "model-tg-st+syntakt-tg-toy-bits-swarm": "f66f78dd8c02f0d6dfbf5e15d850730ec0dc56e1d4fa8e90a2aeb3ca8883bdd9",
-  "model-tg-st+syntakt-tg-sd-cp-toy-bits": "da13efbdd805ca517d3f04dfb39ca1db6c719c555f98722a5e29138108b15a4d",
-  "model-tg-st+syntakt-tg-sd-cp-toy-swarm": "fc23c5119933e472623433ccaff7996575938091ed86f35d5b60c2e10761e374",
-  "model-tg-st+syntakt-tg-sd-cp-bits-swarm": "5b06d44a22dbe9657b7eac2bcbd3faf707416c8391d557aae2e98a2042a40a76",
-  "model-tg-st+syntakt-tg-sd-toy-bits-swarm": "b6b7403c2edc5126cdeed8bb13b564f404dfb01ecbb26997a612d3f047dbc23b",
-  "model-tg-st+syntakt-tg-cp-toy-bits-swarm": "69753012aa238c00219f10cb4e81abf0e27b779c5e742fff52ee9cc881613cdf",
-  "model-tg-st+syntakt-tg-sd-cp-toy-bits-swarm": "d5e73e10a07042a85e9022e87e488b6ca4960ecef69f49652d5c3dc706a1f6fc",
-  "model-tg+sample-preview+trig-hold": "b67fd634e62616e442f284994ec84010d28180b00d72726d5878bb927260b7cc",
-  "model-tg+sample-preview+arp": "7897fa6d2e467b9e2342d7505f7a8b7567e0ccc3d6919938e45d01df0cf0ab75",
-  "model-tg+sample-preview+tempo-max": "ab073068babe02ff2c43e6030bc4b47d44322770db35b1cf19361382ffc3cb5c",
-  "model-tg+sample-preview+boot-anim": "ab7bf2e9d758f6e8e396cd697eeb6dc057ddcb56aab5d2388f37c8049845be41",
-  "model-tg+sample-preview+multiline-browser": "cbafbc694faed6ab25ade9fabd7095b5266b868d35ff4fac81227af23f7f8646",
-  "model-tg+sample-preview+level-pan-values": "eb2f34f7ad79eeee8e3781afb3d9e9b6d39cd25fe5035fb572bd94f8cd2198b8",
-  "model-tg+sample-preview+trigless-dim": "55ff76730e1fec967d3ae43b8fdf3ecedfdf8ccc8783e51c70012a3059b197f5",
-  "model-tg+sample-preview+midi-both": "a0f8f33c03cd40609bab1474cf805e582256372ca506f654a6cb03695ce8dcaf",
-  "model-tg+sample-preview+midi-live-both": "8db403acf5760e8071ead00213c2436825ecdaa11a8980af9145ccf9a2946c60",
-  "model-tg-st+sample-preview-st+macro-tg": "0ecfbb4b7806e85e54e9a6b9fd33371354bdc5658d6351d8158d5d07e0bcc1a6",
-  "model-tg-st+sample-preview-st+acid-tg": "8e64883c007f2ff9d184e2c72fde3b1a946f9b546d181d11d30f415d9805dbac",
-  "model-tg+sample-preview+lfo-plus": "9318f0ea4bd118b7c69bb732b7db5dafcac1f6d28ee1b9753901843e52bd3663",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd": "2557d21b5d2f20cdd909e727ae458fa71ce59ed864ab701c43d1f86730c31d17",
-  "model-tg-st+sample-preview-st+syntakt-tg-cp": "4bd58aa6815923c15fefa6fd0972ba408af31d3b5c9aeaa698dde8823fb11ae6",
-  "model-tg-st+sample-preview-st+syntakt-tg-toy": "b63f887cbc32b1f5519f8ee2ff231a49934f3a6472b6ef41424456e8c84ce546",
-  "model-tg-st+sample-preview-st+syntakt-tg-bits": "0e7bb9636cf0def124b09769d4630ef487d7cd33236c7c6ed7d1fb98391a6dd9",
-  "model-tg-st+sample-preview-st+syntakt-tg-swarm": "3161b78c335eba90cf4e19593f1cf89ddd6b40bfd74457532c545067a4a22c9d",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-cp": "cec56bcc6804418b5c667315ab5e93ee0fea812560ce76b8cdcab8147c5f6cc8",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-toy": "e48ee44afcbea07d15f5c7095f28570078a9bbc1d0d7b997139d21dba8faf59a",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-bits": "5ed0ea2b19922337b6be01df75300f8a54a0d40e0a97c4e27ffa36f5633fa92f",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-swarm": "492a15144364a796b5f15fb91475c0ad7814e27bbcd5dec8c767d5927d1b2a86",
-  "model-tg-st+sample-preview-st+syntakt-tg-cp-toy": "8c4aa8e615135e56e71ebd71d377885836e62e65ccd456c28ae70ab06c5a357c",
-  "model-tg-st+sample-preview-st+syntakt-tg-cp-bits": "47b8ec611017a2777b9412935019197ff48487a5cd02b34cecfaff15c4348cf1",
-  "model-tg-st+sample-preview-st+syntakt-tg-cp-swarm": "1c46cc73269fd4f87daffee83401816398f30a9b75847cd289b328da43ebbcf5",
-  "model-tg-st+sample-preview-st+syntakt-tg-toy-bits": "fe1692fa4cf0ed5c315c61e3b060cdd3bbd0d3d0fce95ebcdb2e987cdca9afe9",
-  "model-tg-st+sample-preview-st+syntakt-tg-toy-swarm": "c3bc5001b9992ff029e6f5d8dbdafbce260f241860484d782624dc7599c65f80",
-  "model-tg-st+sample-preview-st+syntakt-tg-bits-swarm": "1f0775f6e003816de6f6b7d250c26fc1fda8c67a8f309313a1e8525c135393d4",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-cp-toy": "531a5747e59b864441536f75bd4da9f5f28619aa7bae88e752d8fc4d114dd2e4",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-cp-bits": "1406506b683787bca53f8dd58d0915653e29a307900584696376f5b6d89ab369",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-cp-swarm": "1827f522d592dc820d4f5d83c37d96dac7709ec269da8eaa54b9db576ab44a4b",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-toy-bits": "9a7159929525f1a6e0e37a8b0242f8af91c125656994800ff5d083fd59b70ca5",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-toy-swarm": "a6023cb1fe758d0db63d3022d03eeae585baa8670b9d1fdd3167165a0ed66a2d",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-bits-swarm": "a052f42017cbe853e36d39c9d6c99c8339972e3f1d114731027def26afa801c3",
-  "model-tg-st+sample-preview-st+syntakt-tg-cp-toy-bits": "e0f3930a376884b2c3b3d2cbbadc1fa23fd38dff70decacce8f34ae9e88ea813",
-  "model-tg-st+sample-preview-st+syntakt-tg-cp-toy-swarm": "61b6796012dd38a80183a597fcd59e7730ac98e460005246db24c5b69a97e719",
-  "model-tg-st+sample-preview-st+syntakt-tg-cp-bits-swarm": "46073198109382ae0b45b2f781daa34531bbfeef22c5eaa655a528116e15e609",
-  "model-tg-st+sample-preview-st+syntakt-tg-toy-bits-swarm": "5e2ffc9fa25246ac387ad03a75706d3ac9d90ca14aa2d0d6a487d6e9de97906d",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-cp-toy-bits": "89ca182540748c610bbce03841af21633fca715e4c119b619e3e44dcfc26d150",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-cp-toy-swarm": "2b18cc4c721720eef9955a102edf716e6f0955d5751d4f1803e67bdb0b74d9f3",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-cp-bits-swarm": "de316db4226afa1adcd9c613dfedd9d8a68c9041070c4e5e1356a7c57cfc427f",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-toy-bits-swarm": "b7e42876ae934a5b32a2e42bd52f0e84b3a031ad6a5ade0b83267f89b5ebc4ed",
-  "model-tg-st+sample-preview-st+syntakt-tg-cp-toy-bits-swarm": "502ded6cc41b1ad0d34aee097f339033a36d71ecee6b03dce560823c71049acd",
-  "model-tg-st+sample-preview-st+syntakt-tg-sd-cp-toy-bits-swarm": "cde4365ff392e68b373afe9fa2004dc5e275c7c15f8a3c732549478ca2d36ca4",
-  "latching-mute+trig-preview": "6b9989cec38b12f4100dc57ad72afabc50dc5919f9f9ea231afea7562a755c3c",
-  "latching-mute+browser-scroll": "2b52fec33202d5ba41ae50e1453efbb73f5de06b573de2d3ca8fce0b479aea60",
-  "latching-mute+trig-hold": "56b8e30b76180571c64c94a38e92c377a8f8227648c0529ebf23a5ee3d8bb846",
-  "latching-mute+arp": "4d3e93cdbc0c4c687b0dca870c2b53ab4e4469b7bcffdd0e946b5a4d57252d11",
-  "latching-mute+tempo-max": "4c463e5b2b9be4018ccee04c92b5f012fd353e880c9a2853d4b22df4995f4cf4",
-  "latching-mute+boot-anim": "6ba9610f1a15d98214cb1fc3ff4102da4d080b73563a45b2acf1e52a5fd58277",
-  "latching-mute+multiline-browser": "902dcb0f7eb0700b5d0557cce2b36c42b36ffe95311f76ce42ba94b261567c7e",
-  "latching-mute+level-pan-values": "ca54e3583697b9e64685edd26952fbfa0c6be0e1ee0400ea7219824ca99e56ac",
-  "latching-mute+trigless-dim": "8aa571483a407cf329a819e5eff10c4ab438517fcb19a2bec7274dced9d8a228",
-  "latching-mute+midi-both": "6aba63354d860af03ae58b1326d32822a4944a4db06d5a63e3244fdc1383565f",
-  "latching-mute+midi-live-both": "ceb6a700bf186703de284d75eb1a4ce8ab1f0383ad0d43d9391f96db73798b62",
-  "latching-mute+macro": "63579b4474467e2304664b42125ae0595307e011ec099328cbf2035223a938da",
-  "latching-mute+acid": "f2742f4e7c794a28b7b0509e4e2bbc1e9c37fb8b8c2ccbc3ab313d301889962b",
-  "latching-mute+wavetable": "3f5df9c06ac53c7a11f11fee582b82bf4dc3cf6f0824ca9bb108d15850b3a6ae",
-  "latching-mute+chord-keys": "ff8889bd827c0b9485ef46a17ba5f94afebf8637a9f20dff1294c35fff098bbc",
-  "latching-mute+track-filter": "0f1b518b047535970025f0ebdf924400e7a925addcab76c03608cff217f77a42",
-  "latching-mute+lfo-plus": "82193e0be0ab70607978afb9ffc7dfba9b89eb9e24eb45273976c4af6741d857",
-  "latching-mute+syntakt-sd": "3f2d760809f9f92b09fb7fc1dc2c8142f388b31ecca752cafbe54b5c29319fbb",
-  "latching-mute+syntakt-cp": "4934fafbfd89d4f2d7e8853662c8625fcc36d9eff549c619eda150635f8bec6a",
-  "latching-mute+syntakt-toy": "3fd8da15e5d8810fc92e771cf96a682644adcc6a9b8c23a8ecf19135dadbc008",
-  "latching-mute+syntakt-bits": "6b71345d73f1885b1e67db9c7639ed8e26353832d0dcc703db8b996b93d9e1ce",
-  "latching-mute+syntakt-swarm": "056756ed51c119c86e1cd2f29c6bc107c4a897bbde122817384db9828cd4b400",
-  "latching-mute+syntakt-sd-cp": "1a626379b77397f323783d30952c193bbf18400eff47f72e44c356297d143df6",
-  "latching-mute+syntakt-sd-toy": "f936f7d86057f0879b62d66ab78d217cdca8c33f7db265316cbd482c4331dfc6",
-  "latching-mute+syntakt-sd-bits": "6817ebcd827a35901652e274c2f8ecf11cdaddb6da3adea3f56639c4a32914a5",
-  "latching-mute+syntakt-sd-swarm": "756703dee3c87d5840960a45b6e443366336814f51694d8d46a9ad2c70db57ad",
-  "latching-mute+syntakt-cp-toy": "692fec4889d9702d183bc1b0bce0d5286d156dac1245ecab0db35eaac55bf04c",
-  "latching-mute+syntakt-cp-bits": "3b4488cb45bc707be5ec5209f04518c4d6f6c07a1906759751f02becb96117d4",
-  "latching-mute+syntakt-cp-swarm": "18b8f0840cf684546f0df6a7ce736db1ccb1d05e6dbba5c73827973ee947be5b",
-  "latching-mute+syntakt-toy-bits": "b1ea2ddf34d63532d991d89ce346d3ba76b15a7bfb16ea8823eb1785d7b30711",
-  "latching-mute+syntakt-toy-swarm": "db019ce3bbcd178497d045b44843479d5a55de94a6102781a73e2507e2665eb5",
-  "latching-mute+syntakt-bits-swarm": "4985ada1345c260c42560098c1277dde360199fd34607d33d005cdba3fa62f74",
-  "latching-mute+syntakt-sd-cp-toy": "f9b7bd623e43f3b769b04aed44212e594d1b927d0bd90b058f15b5fcaa25e1fe",
-  "latching-mute+syntakt-sd-cp-bits": "e0cd5a42ae56a8799d58a30152a4125b57b2e74bace67eb9c7b60b6a1c049d1b",
-  "latching-mute+syntakt-sd-cp-swarm": "f65cf00a17fa69dec9a7db3264c3e2f9ca297b8a36680f9e27ff6b7439bd3334",
-  "latching-mute+syntakt-sd-toy-bits": "10a9bdf205c94a6750dd8f7772ec367967d47093caab6c7ef389d798a8a17bfa",
-  "latching-mute+syntakt-sd-toy-swarm": "80a9379dbae304ae14b767bdfabe366f2b49089dc5649efebb29a403112024a8",
-  "latching-mute+syntakt-sd-bits-swarm": "48c1b9bc508ca16c49e307b8be345d3f4c4e8dfbfd4bac551e7f78e4f6a108b9",
-  "latching-mute+syntakt-cp-toy-bits": "16f1326b16c2d154b87c24383655666ab9bf5b62c8d1feacce60e433bcd78c08",
-  "latching-mute+syntakt-cp-toy-swarm": "11cf5538984b4d26ab8ac7557673627413624ef23e29cef1e2b19bd299796c47",
-  "latching-mute+syntakt-cp-bits-swarm": "ff5d2b43b34f761db4131aa939144f08950259ba930d01278e256ac3e8e39aa8",
-  "latching-mute+syntakt-toy-bits-swarm": "5f4332252420d4632d7fc374138ee161366a1a4d422c0df3a61c1799a474403b",
-  "latching-mute+syntakt-sd-cp-toy-bits": "01cbf9357a0cb0c76150605acbd94663ce31b06abd5a9c85493c59c3781dcc33",
-  "latching-mute+syntakt-sd-cp-toy-swarm": "b3c1b7a9c8a3e0a22db423d59f5d4c758703d95a3dae74a1477ad7bbd36b6706",
-  "latching-mute+syntakt-sd-cp-bits-swarm": "fcb54c5b2dc19c78c1ee97644ac11301d4394debaa9cc7edb031d712a13a35a4",
-  "latching-mute+syntakt-sd-toy-bits-swarm": "d5bd54ddb5f27a73f9b1e1d1099b5593868605f7192fc1b706966abd40d06a55",
-  "latching-mute+syntakt-cp-toy-bits-swarm": "85dadb38731a219489e76cf9c67207e70d787d6f740973c11f33eae5758861ee",
-  "latching-mute+syntakt-sd-cp-toy-bits-swarm": "897576792f7b8c3a071fbb905cd2bd68c58d10cdceb11756651a573d695b9a0a",
-  "trig-preview+browser-scroll": "f71c78850d0ca5fd9768eaec65497ed1f8284042488439239673e952bc2436ab",
-  "trig-preview+trig-hold": "fd59b5fbd30946c3b7e273d15c573f4ec07f5348d40c38b0d5899004b053317c",
-  "trig-preview+arp": "0bb021f4eee51a53708ccdbdec28110107434e19e32fff4acfc28e6c899fb2e3",
-  "trig-preview+tempo-max": "cdcd18fc77f89cb86f4f0794af9c1292e67c0cf41fb781c5e20096c4630bf64d",
-  "trig-preview+boot-anim": "53a59ee0c3ff77a689653acc32e349eb1872b147ba6ca73cad82941babed21f8",
-  "trig-preview+multiline-browser": "a79837fec5798b96cce12fcf5c11c3cc58422ff1b83fd7786b0b5aecfd88e866",
-  "trig-preview+level-pan-values": "fc7f130b82d77b8c0497244341f5d4123f04e3dac36cac348d9c197665b93c02",
-  "trig-preview+trigless-dim": "34fc78630d010c112962003c7e6f2959b35f942b17a7be2501b582a61b2bc3d1",
-  "trig-preview+midi-both": "96d068fab5495867f7ecf2fae11383dc825c0bf92480a881863d978a21997bb8",
-  "trig-preview+midi-live-both": "ae30fb293bcfb966cd302ac1d0a2d8fd3da5ef9a02aa5b95b7e481573af42d37",
-  "trig-preview+macro": "1caedd2c6f9b2c384ed4fc3fdc0e96640a95e22bbaa4753f7a8bdd01d2ae0210",
-  "trig-preview+acid": "768478e1d89d27d023dbbebddfe18779d49ca95c24ae55b30e0b697abf0f1b0a",
-  "trig-preview+wavetable": "23373f77ae7c8b868389efbe6c3887ec8c60a4a1a26c2f16d244c08adc2bd932",
-  "trig-preview+chord-keys": "f4f19229ae1aa8e463373140569f986160e5cbcee01af82144a960baa299bf83",
-  "trig-preview+track-filter": "cb71266baa397a06e4d5f14654845a60191821dc7ccbf9390f8b994599033b9c",
-  "trig-preview+lfo-plus": "e5081eec0eb66f34763505657b54be99e754261226f4725fa935522d91e91238",
-  "trig-preview+syntakt-sd": "cbaa9dba68fbee282b11b4ce0eef1d98dfa2473ff9beb0157e0086e04046462c",
-  "trig-preview+syntakt-cp": "dfc2f9890fa75a9dc438a39fb0bd29bdd71e9bdd9e0c0c46d504cc15054bfc3f",
-  "trig-preview+syntakt-toy": "8b6de4bf66b5746beb18801fb7a8234448b13b2baa715eee71266cb8678fce18",
-  "trig-preview+syntakt-bits": "6b9d25e5ee2da42f3b8eb0955192a3164254b2949788539e949ee3a1eb754976",
-  "trig-preview+syntakt-swarm": "e9e0badbde6a4a284daa45534c7dbd5db9ce2d9a2d1a38b5ed11941af8be66ee",
-  "trig-preview+syntakt-sd-cp": "e29e1724bb03f4465db4dcebb635c74bb7e97f5f0d0585769ec2c13d34b4c229",
-  "trig-preview+syntakt-sd-toy": "46aaa74dc74baeb3805e7c7e557b12e0cca8cda7de0fc1117dd6633446c2bc31",
-  "trig-preview+syntakt-sd-bits": "be0060e6aa40f8182fff1bc41858f23f5523c5bcbf3d7bdc982fbcfc63cb613b",
-  "trig-preview+syntakt-sd-swarm": "18e68e705dd4851c2bf0dbba124830de9000cf05a9599fcab45e97c0f395536e",
-  "trig-preview+syntakt-cp-toy": "33136c0d1957e4de35af20315d4783675221587b450548edee2eff4b3ee8c295",
-  "trig-preview+syntakt-cp-bits": "eee1a2a07e2c67a4fd54876b875ab643304b5403c6ae3b237a5d3d5f4a2e6fee",
-  "trig-preview+syntakt-cp-swarm": "73b0de3398a5a4551b03d039ab4693a81fda9ea3d1cb19c4a27a0ea0564fc4fa",
-  "trig-preview+syntakt-toy-bits": "811f1774e227a4291127b61624caa7d0b4b5d04d24eba973b5e683c5127d75ab",
-  "trig-preview+syntakt-toy-swarm": "17414aeb59fc3fd535108579b3ae048255cf8d4cc197c34a96163527d301e892",
-  "trig-preview+syntakt-bits-swarm": "8f1d30696fd2bc4e84401667549be071ed0cd8e71d55bfc69abad220434ea157",
-  "trig-preview+syntakt-sd-cp-toy": "97a7f91f5a53ff816892940c6cf49c396eb0de69625717a18a2c7bbf08086b1c",
-  "trig-preview+syntakt-sd-cp-bits": "e9e037d770702a9a2b24b3b76a6b14cddec81c8ad7f0bbf0f7c8f398eb5717ea",
-  "trig-preview+syntakt-sd-cp-swarm": "bc57dd10b3cdbe4a715f682dad53edd711376f9b22fe147970a8b89be352c78f",
-  "trig-preview+syntakt-sd-toy-bits": "e02b7339efe00a4a4f658c3798eacffd95b8622f38a808d53c7685a9b57e0db8",
-  "trig-preview+syntakt-sd-toy-swarm": "dbd402a86a9dcefe6309a2254a2154456a2778529956b5d742d286704d9e9b24",
-  "trig-preview+syntakt-sd-bits-swarm": "ad02d4dc2352d125be82379504930a34bf3f6e0e7f3d0c1d156e328cec60187c",
-  "trig-preview+syntakt-cp-toy-bits": "09a8cedefeacd5aefc7ea852898d0bab2960b7c42d9d25533a4b8c2b27249a24",
-  "trig-preview+syntakt-cp-toy-swarm": "e193adf94cb716236c6b3bff0171c27cbb6314ef0afcd7e7eb55f7b65d2c813b",
-  "trig-preview+syntakt-cp-bits-swarm": "78945b5f923337e3ba15ec400cfbefb1b2ebd393aea2dc1e975536034b35b09d",
-  "trig-preview+syntakt-toy-bits-swarm": "f33437b52b33db69caa7d9142ab08200d6ffd882ffe3542e546d913c0f3117d0",
-  "trig-preview+syntakt-sd-cp-toy-bits": "325066f0503e1b31153f2e3d4233590a8ce8c808dc2d1a87df463ce738a87cce",
-  "trig-preview+syntakt-sd-cp-toy-swarm": "4753d7482d3b6c16e764c01d6e17f9c21831899ff475bbaa991bb517a937d7e9",
-  "trig-preview+syntakt-sd-cp-bits-swarm": "b676d50f9e3dbe5f5e94d92adf78ef88bdfb50fc21227b01cefa58aa1eb3ffab",
-  "trig-preview+syntakt-sd-toy-bits-swarm": "75ec5d5c201a3d43b3890c96ac8064ca48753f1112236d889377c240df953e73",
-  "trig-preview+syntakt-cp-toy-bits-swarm": "f39c3c9b1fc4dfc005070c980c1dcd76d4bc29c1a56dbff107cd4ced07872008",
-  "trig-preview+syntakt-sd-cp-toy-bits-swarm": "2862ebde2560bf7fb2b5c2255855546766895611e6d9f9d0e2e308f81e26ec89",
-  "browser-scroll+trig-hold": "8903b2e9e61ea52ad14b4ecba346f1f3e17f3d154f38218a3794d2fbf529214b",
-  "browser-scroll+arp": "078402819d15e7a30ac90b04c841bf5db830b45690d5f7bd9a4bc73e49a982e5",
-  "browser-scroll+tempo-max": "66bfc2e72054de5ab8c18de7e6ba17e00a636d8e64736ce805c3c47e354278e8",
-  "browser-scroll+boot-anim": "e8fb9160de8d54eba2d833e70526344933df32bc181c37e6ce85bf8a76f85f32",
-  "browser-scroll+multiline-browser": "32e4a6b8e3897a1faa8ab12b33cd8e82b5a214cd3e91b80824ab17bc9d6042c1",
-  "browser-scroll+level-pan-values": "325574957260bf839171ef75630d56d095baa14a1163748528ce84c22f85839d",
-  "browser-scroll+trigless-dim": "fdcb22c31ff565adc593c3f9f0a502fb681451214ed685ff1c369a1f8a0b8248",
-  "browser-scroll+midi-both": "bf5bacceafb957b4744232b85a1bfd74d317693f1cb83d03627b22632035fa8e",
-  "browser-scroll+midi-live-both": "e4d0e26c293aae494fb8aa86cb623b733bd5d9a682c82f5e066bd65f2de7c7c2",
-  "browser-scroll+macro": "30d4bfed3c259bcf95817fdeed5d7bfa8d80cf85f52f34f88bbce496dd550599",
-  "browser-scroll+acid": "b063ec571ee72d60abf24d7e3042b4484ab549c004a55684609572e78624a8ed",
-  "browser-scroll+wavetable": "855dafe3a1b379448657fac94e9a7054d7e1ded176e74f7d0f0c68a4ba828093",
-  "browser-scroll+chord-keys": "5b592bdcec5ed3053d6ae1a839495780a7ff71e1cee8aa703f0f70088085f069",
-  "browser-scroll+track-filter": "06b5a31e5ec1063416a0144d062f5745ab2d7dd91a5bdfcc93b7f179a4830471",
-  "browser-scroll+lfo-plus": "4f5dde625c75a9ed5de3884bb5f83f684a37f016b79b37cc230d02bc0e1404c5",
-  "browser-scroll+syntakt-sd": "b8f0890b988420e274a8ce513f8d3ec2de667fedbd666477e598758274a161f2",
-  "browser-scroll+syntakt-cp": "efa1a490d081f60b7db4b93f73fdd11cfc4d8021cb483976831a83f6f73576ed",
-  "browser-scroll+syntakt-toy": "bb7afc5e12ec2bb59e30025dd9e5ad91149193c72344c7bcb0c11afa37d6e71b",
-  "browser-scroll+syntakt-bits": "afd93bf6bcdfa904ee89e3174d57f48fca6dfce2399fa05e354c4fa1e79d0328",
-  "browser-scroll+syntakt-swarm": "24d20ce1c4bf9ae5037814ed6183926b20ca79d5c860c071773c61b38d0e39a1",
-  "browser-scroll+syntakt-sd-cp": "d3f0052ceb0192558d0ef54f6bf45cbda789c997336cbe7708985cadca90c41a",
-  "browser-scroll+syntakt-sd-toy": "ed709a5dab141f97ca27fcf7b52f9b03acfe9b6df1a4b8064206d7d067d2bbcc",
-  "browser-scroll+syntakt-sd-bits": "2fc391243c0133e0f454b304824f1d64f83ed4a323efede7160b72464f0949aa",
-  "browser-scroll+syntakt-sd-swarm": "a4a91da8525c9b4d7340c630f3882bc6b63f8b02cd15eda268b5219454e9fec8",
-  "browser-scroll+syntakt-cp-toy": "45e4bbf567d63a29c894768ecba48276dca7e837b3668ed629b1d42c2fc9ca52",
-  "browser-scroll+syntakt-cp-bits": "d4e552b144020372f289fba26eaf8fbc6bab391d77cdf51d35098f0b8318e3b4",
-  "browser-scroll+syntakt-cp-swarm": "8da62b37760188056bc999bcccbcf9d82b80ccf788ec0a4014763f1ec09b0da7",
-  "browser-scroll+syntakt-toy-bits": "eacb212d3fc1d08cbbbbc1fe2f0eeef1442333ef006bee673ef17bbae3894008",
-  "browser-scroll+syntakt-toy-swarm": "bdeef32c0b3e7e82acf7cff0975c7405249b70d86850ee097287b4f52e3ba2b8",
-  "browser-scroll+syntakt-bits-swarm": "1d14bfe7aedecbf8747d36a8903c91b95870b4642bba1bcf92bbce2c20aaf86e",
-  "browser-scroll+syntakt-sd-cp-toy": "0f861719e49e649e28587c3f7f87ef0732879c7525a410476ff7cb3a7458fa5c",
-  "browser-scroll+syntakt-sd-cp-bits": "f000ff1e3ebd527c89914b6c47bc75364d3218cd18b6c5764ed50e8a786862d6",
-  "browser-scroll+syntakt-sd-cp-swarm": "cf24f53d3463da8b769c13a0c94400c6b7e7a6c043c82f5de4a670cce4616aaf",
-  "browser-scroll+syntakt-sd-toy-bits": "45a9f7cb0bd6d8bb23159e68344eb652d55db17a7d46c7b7edbe06010b5d9546",
-  "browser-scroll+syntakt-sd-toy-swarm": "5985c08c07d0f41323350625d7e126d892300207e90e0a0d52ec332d7d21f0e6",
-  "browser-scroll+syntakt-sd-bits-swarm": "48f5cb7ce6696d5dfcbdd8c9824567e7fc85ec7e3becc882804d07289b031c59",
-  "browser-scroll+syntakt-cp-toy-bits": "da0189d98a28bebf77d56412881b227e61d885c98a9bbb342a272bc42e83e122",
-  "browser-scroll+syntakt-cp-toy-swarm": "e129c6cccd7580476cad5446083b1710266380ee5111fdb2674a3dd9ff466d63",
-  "browser-scroll+syntakt-cp-bits-swarm": "4dba3f2a85d56e9fc2b392d98243f732fdd12df870902729a537ec404fd7d4b1",
-  "browser-scroll+syntakt-toy-bits-swarm": "ecbdc15c5fbfd56e3f76716386e51d392d8714516399163e91400f30b70dcd5c",
-  "browser-scroll+syntakt-sd-cp-toy-bits": "c735aee29d252d9dee3c6db7586977d55c46f49a7ff42581336bf84b0eada2d3",
-  "browser-scroll+syntakt-sd-cp-toy-swarm": "e12612370b343583e72f27c6428764ae243cb0e55a5ad732b0563b48a6a1a28f",
-  "browser-scroll+syntakt-sd-cp-bits-swarm": "73b0a2ceadb31c44cd1dfbdf972544093a7b90ec25e9d3a2dea722283d9cc10c",
-  "browser-scroll+syntakt-sd-toy-bits-swarm": "2d6e84bd88f98b8f20d2d8673aeb588634e22099e18d2e8214d07fbea827685a",
-  "browser-scroll+syntakt-cp-toy-bits-swarm": "c1b4db4c9a7688d5848f9b803f70c45c79bdb45399703d15a7c6bbf12a339aee",
-  "browser-scroll+syntakt-sd-cp-toy-bits-swarm": "4abf0bae65e16e19e2e8ff1259e44b3bb1a3e1b1a83926f8551ba5d5a653acfe",
-  "trig-hold+arp": "d6d58bccb4ae463dd3b7cff4880e712b4cab8c6c28d8cea3b169b9e77048cbdb",
-  "trig-hold+tempo-max": "f88b1d47e203b81bdde81a46f9ccc7edb6198008d1d6edc2537b6d2b199cc654",
-  "trig-hold+boot-anim": "440f6cd9c892a7d27637686b7c03e569a201eef8682d01e3973d55b65e8234a7",
-  "trig-hold+multiline-browser": "b6405e3854bf07bde429d8983b0d639142556e9f41daea0c6933dabc0f22a6a0",
-  "trig-hold+level-pan-values": "238dc5fba7231576fe00c8867e9ebbb9a3947bb3ecddd9df436b7ef57975a504",
-  "trig-hold+trigless-dim": "8a5e8c7507f75b18d4a667fdf3ad31183fb25a0abba34a2511cd165bb3fac55c",
-  "trig-hold+midi-both": "6e4a6a26678cbc6667c8d886c893c9f9d0dd7e52b15055e13ab6b0069fe79487",
-  "trig-hold+midi-live-both": "1eacd420b9ccd5d2e291b14f63ad08d26daf61f7851dceb8b91eaa6a0a3a9ad2",
-  "trig-hold+macro": "5f88775787fee923142eda2db114ed8823f43af616a963f3c96bc12704cbbd00",
-  "trig-hold+acid": "3ce834c789614ebe00871975b68eb5ea2ab2c76024a82df06d9ea6a1f8f9e72f",
-  "trig-hold+wavetable": "0bc3d5bd409345106d52f9de0403f03af741f651fdaf3e8b48e7a8018b767802",
-  "trig-hold+chord-keys": "cb2818ccecf7360d92525b5570d5adffce0639e23454cdca9d68d67328accdf5",
-  "trig-hold+track-filter": "148ba4d3bb80d593424762fb460f068c38ccec161f10108d6114216dbac7fead",
-  "trig-hold+lfo-plus": "01fb9049d916c44047b36465dd0babe1dcc8ac3324e4dad00ffea44e1e934c90",
-  "trig-hold+syntakt-sd": "08b91f801c205c30789463b2729e213b01af3c46c133b443611e6165d4703c8f",
-  "trig-hold+syntakt-cp": "db66ed33a127c6a91bdaeb88b88f3d8f17c77793625f74f7bf11fb73185c7c06",
-  "trig-hold+syntakt-toy": "aaf6a767086a2c6c45b3f3e3240a19b1d7479e686a95f2294d87b4cda4d7fbdf",
-  "trig-hold+syntakt-bits": "85bf841fc0f6df5b8c5d452db7406bbcf9309e27c0e1d49ff366e399a64cd9bf",
-  "trig-hold+syntakt-swarm": "e4b97de520d86cb5c9e20246a8f881cea91d4bc22a44ccc9a91260b439a99519",
-  "trig-hold+syntakt-sd-cp": "ae6cd79b75b3810040e814bd5953d24ebc340ed96dcf979a59108dd62ffc529a",
-  "trig-hold+syntakt-sd-toy": "7df6df0ced03644cb22419b270766c2a0925c095ecadd25e366e7365345cbf8c",
-  "trig-hold+syntakt-sd-bits": "da18b44c69e9b1f69256e3390a6984143ed5410f8bed9b00eccb7e95bf010d4a",
-  "trig-hold+syntakt-sd-swarm": "bd5b2523b820f0f99d427c4bf9f488ed557813a0e7651d60816960f1f1ec845b",
-  "trig-hold+syntakt-cp-toy": "19bc66c4d6e3c98bcef961af05e87e3a39ebebe233643caa8b0248c85a087956",
-  "trig-hold+syntakt-cp-bits": "4cefb2ccfea5129f78b2f46a953bf52fccc1f55666feedf4784c5453914d5ff8",
-  "trig-hold+syntakt-cp-swarm": "0f89124002d20421b6dee1c22d1df705cd6452441030b34dda258d78a94d034a",
-  "trig-hold+syntakt-toy-bits": "6d5b81b8eca7e5dbf6f21fdb640f251843ede9c31adfc10f5e370d88644ed8ad",
-  "trig-hold+syntakt-toy-swarm": "e174c8b0e686ffcfe14fb3a8cd205ca6436fe87894ba8a5fd088e65b38a0935f",
-  "trig-hold+syntakt-bits-swarm": "454493cd17822f55d85db3ac9ec5fa171a3c81031287d141e053d6655fcb2bcb",
-  "trig-hold+syntakt-sd-cp-toy": "eadcc65e0cd1517782e3843ad4c63224fc75aa678992aa4316e0845cdfbd67c9",
-  "trig-hold+syntakt-sd-cp-bits": "b75be4c790678a07ed0c49a39fc94ec5c2779adab549965e889d49ac39b5dd25",
-  "trig-hold+syntakt-sd-cp-swarm": "20f55f79d0bea8812693443890741357c34bb3283eaad13f443d83ca33bf2480",
-  "trig-hold+syntakt-sd-toy-bits": "acea6c1ea1cb1911438df73e6ba0203e251487580fcf493ec00b5a848d2d5e72",
-  "trig-hold+syntakt-sd-toy-swarm": "5586ca5bb2886dfe15667f9f7cc0d97a8e4e9c3b4a63c1912459d6204204bf4d",
-  "trig-hold+syntakt-sd-bits-swarm": "56fcd9c93351887077aa34209037e7ca862b6369d76eddd90fd5f978d4fa0f4f",
-  "trig-hold+syntakt-cp-toy-bits": "cdf4c5ca6774eca2f675fd4cf9683f0fe6bb3c407d15b653b87cd0682cf43f65",
-  "trig-hold+syntakt-cp-toy-swarm": "2337ff857ba69c6f3372afa4ade37a0a5f198895c35266b580c8326a8dc8921d",
-  "trig-hold+syntakt-cp-bits-swarm": "77da4a487254a1ed9e13b9df7c9b7575e49219246e4149e01469da6bff702a7f",
-  "trig-hold+syntakt-toy-bits-swarm": "60b982ee0b81f4fabae2e2bdec47a5e4c802ea97ef3529ab6c3c7420b625b581",
-  "trig-hold+syntakt-sd-cp-toy-bits": "f3dc5f77e36d27763cf97ff8894fce6779b85838fe9ad2b1e224a89daf72a564",
-  "trig-hold+syntakt-sd-cp-toy-swarm": "25ed71d11385d1d3973455a835f13c03f4062e2974cda838b3b8bd424cfc2a0f",
-  "trig-hold+syntakt-sd-cp-bits-swarm": "632a912cd8708476b825f3e9df9d27a1be54be92a5de47ad745b34341d13b490",
-  "trig-hold+syntakt-sd-toy-bits-swarm": "9d4633a818d32015022b88cc9ac9fec1f67297b232183223271864df4bdf8fac",
-  "trig-hold+syntakt-cp-toy-bits-swarm": "6d975074be9a6e6256ac5d6872b91e29a76bf76e9582841ee9bc3749432bf932",
-  "trig-hold+syntakt-sd-cp-toy-bits-swarm": "cced5c589d9d02e385d515a539678482dc99d9a1089c088bed90277a3fbd501f",
-  "arp+tempo-max": "a2286cddfd65ba0ee25611a6ac897a918b6b6e1702fab34ece5db24c263c6c51",
-  "arp+boot-anim": "31456b5966d95eeb26a9e83be8c570d7a6ed7b5bc30145361b76f994d5d6eb2e",
-  "arp+multiline-browser": "5f5718dccfa65f769c37f2effebcb7736408be5b751b05dde8518a2d71d2398f",
-  "arp+level-pan-values": "044129bd90b8f2cdf12b128d0e1dd406dbfe2988e38c43171a07dbafeb34c1b1",
-  "arp+trigless-dim": "08ca36945e0ba5647b39e854f607e7e7ee4eea239ef787abd6fd91ceeda2d55b",
-  "arp+midi-both": "cfa59aa15a282f37b171416818f5fee24b653b2d7e05b27c133b8c908bc8b8bb",
-  "arp+midi-live-both": "45a7adb7d6048ce331e83e742caad0eaf273f3c6715c03e14563e64ac7c8e4ad",
-  "arp+macro": "c2d7a4afc41c6cfbe804c902db42a95741d148071b2d19218e2ccff0a7856815",
-  "arp+acid": "448564bcd2cf262a0099e88dd4919edd271761e26746a6beb8996ed1936a0843",
-  "arp+wavetable": "69334f49fab1adfc8ea52a4e149f4514d48cb9509049fdbbb05ae69eda865d4f",
-  "arp+chord-keys": "adea870f07943ff0c0c89fd185c8a4e8c3729d8090b5fdbc9bb283e8d332bf41",
-  "arp+track-filter": "dbf3f7e4149d0d4f5d9697e395cd8d97810430cb4c9e842baf5694f05165db19",
-  "arp+lfo-plus": "0fda4fd64b6c0427f80a9fac5f93d194fb3ebde907197c274bf96a47281f46f3",
-  "arp+syntakt-sd": "fc2d1debe3b59d5f52740e840f553fb6645057dbd8cbb614ac2cb598332011ac",
-  "arp+syntakt-cp": "0a7f14e314555266dc4545aa7593fea9ed08e3e09eab2e77ac3e4a1c9237f6bf",
-  "arp+syntakt-toy": "1a58aecbee88aba903d04858f46b1d9a8ee012e1d7ed15e9a1d6096b2549c36d",
-  "arp+syntakt-bits": "eee8b49bc9326b5a98f0444e8c5697c132418c978b0cfb4674f5e18755ff4370",
-  "arp+syntakt-swarm": "3bfd1ebdaf8e975682ea8025bcbf568c342c7012657bfb37a767f7f5b377d657",
-  "arp+syntakt-sd-cp": "47f014faaeb54ed1e71c622b338ae87ff896713a9994b6ebe82c2019534cbe2f",
-  "arp+syntakt-sd-toy": "2c569b96bbcccc76b08664d4f7342ddc1433f671f7afa2a55625c5ce3c0843b8",
-  "arp+syntakt-sd-bits": "4d73c736bba10ee836af0c8605dd11e2ae200ac98ec1bb02a436003b8fc86d8a",
-  "arp+syntakt-sd-swarm": "e7bd21735368692dd06d412d1c97bef3e2b852b5a0d927d96270c33d32060900",
-  "arp+syntakt-cp-toy": "2fb517e035725b672873fb6c59783c7334abf622656d06a291d97541d3ffd3ce",
-  "arp+syntakt-cp-bits": "9a7759e03cc8f1ce6343cf93574bd5f83e5000dfc6795311b1254149a5d7acb9",
-  "arp+syntakt-cp-swarm": "cb2747f33970e9013b5f4d3e80a1c3d457ce7dcd6b726b2952e9ec398df00179",
-  "arp+syntakt-toy-bits": "4c53a3798d9ba2ad7c17b5a7a9a11db2d650ac1d4bd2ee7786fc7a5c842fc7dd",
-  "arp+syntakt-toy-swarm": "3594416e3f845e5270052f9e52b57b27757ebd472084fb48519dcdc69f6c78dd",
-  "arp+syntakt-bits-swarm": "09503d6ef0761ea702e02f95fe12c8290df0435c8b16e6b8d6398a5f5c9a5341",
-  "arp+syntakt-sd-cp-toy": "551dbfadec5ef0f6ce216e26f3dde6804464d7a369de6b42c261053e94f09942",
-  "arp+syntakt-sd-cp-bits": "1bfdcd9f4ba3b45da02d192fee75a4bc6cf2d90b9e3d2f286d4114914085e079",
-  "arp+syntakt-sd-cp-swarm": "90c6d08e5382821bbd67f24adb257bc043cf90444e731f7e1e789b6403281ff1",
-  "arp+syntakt-sd-toy-bits": "705d8d313984f884e7d0f87dbf160add4e211c944d7ac2d3b328317b5c1eee36",
-  "arp+syntakt-sd-toy-swarm": "843aa8d1c6d4848edf17dbc818f4af3f95a6880051ff5c8ba49bae5935e7d523",
-  "arp+syntakt-sd-bits-swarm": "f5971ba924458b51975b555ad8c63d448721cac03ec3b731518b266f885715cb",
-  "arp+syntakt-cp-toy-bits": "a3f1861676750dbbb7bda3c6911aa635c60e402639bf6165856a1a840bd67fe7",
-  "arp+syntakt-cp-toy-swarm": "080bf9c8cb0cabea3d77aa4528a474110da9bd693b9dcbf8a44e1b7b033747a2",
-  "arp+syntakt-cp-bits-swarm": "ce75f6a7e0512eaf1647c681516d9641f00e373169dcaf28a2a98be67c8e0e58",
-  "arp+syntakt-toy-bits-swarm": "845b7b17b99a546a6218b680141ba192134f999ab5c2e649b02ccc635eb29f0c",
-  "arp+syntakt-sd-cp-toy-bits": "3d72541eb3cb8ce22d9f1d58ed2fa8f81f504502d7a41adad0b66d029cd6a464",
-  "arp+syntakt-sd-cp-toy-swarm": "3c4a534ad13b7a3a284b6a306b0a7d1f3f46e459b5b6cc4a122e958988ce57cd",
-  "arp+syntakt-sd-cp-bits-swarm": "9311a4d787f3a66516831fdeb5107dddc6ffce2c86f6535c9d6152a2b99332f1",
-  "arp+syntakt-sd-toy-bits-swarm": "db22c93a551f319338d71fa7ed91ef53757b6676960f8b9a3a9cc8bb9f4526f1",
-  "arp+syntakt-cp-toy-bits-swarm": "5dc8819bcaad3ab1a766b4a0e37cd72e1072bbfb495d181000699a759f5e5187",
-  "arp+syntakt-sd-cp-toy-bits-swarm": "7686f7e97a0e31d5ca3181f62b37e63e0adee27c9bd3fcf37fec78d2de64a0d2",
-  "tempo-max+boot-anim": "69aec36e4e0729789af88ffbdd622306b31ce0e0716170c07e0ff9a296dac559",
-  "tempo-max+multiline-browser": "7a08717db1384a0364e8102e159fe0b85479aa66ceb7ed5dc10b9b98277947fe",
-  "tempo-max+level-pan-values": "1719c91004140ec1dff5f497c02109b6f7eb918278c8bf070c0845f652259765",
-  "tempo-max+trigless-dim": "d2f522b685ec4cc0e976959bf179998293e058e1331ac07222c1a219e9a60e42",
-  "tempo-max+midi-both": "9d27f7129bba42666c83c5d9446088addcf57d970e1913c7e6937f0acf9c7e66",
-  "tempo-max+midi-live-both": "9cd9151939f5524560b6f30352160f3b7d65482958d229dc5565b44dd52a31ae",
-  "tempo-max+macro": "a21aee61b4d6b789de88511961a0b733d21eec66669e364e9cde2e1b7bb15549",
-  "tempo-max+acid": "f2da6186e3d30382b4c9bf03b1d2e8e8e9c9b15ea0e0087089f78a88647d3b19",
-  "tempo-max+wavetable": "737a4a80e2a65a3bf6fdd03fe49d091051250fcb9bc688c0848d2ae9e4a3476c",
-  "tempo-max+chord-keys": "65b043025fa6c3d4ac50ae9c231aba98a0dc67e70a1e376e86529a6e21d6d9a8",
-  "tempo-max+track-filter": "1245bf05b121ae58006322269cf665a51188f4ace622e82daf8df75928bf6eb1",
-  "tempo-max+lfo-plus": "af577ba9f81b069598a23ae599f9dc1a5174c41db486dc325ca95d3a77d0e1fd",
-  "tempo-max+syntakt-sd": "c5779f0972acda3d188be7d2628bffcdb14e2fe0e3586bc38ff45495923497af",
-  "tempo-max+syntakt-cp": "5b2e37eb0a84b47a4c37c3ccc573dcc4f605a50271e92a6781bf80f5f4dc6f16",
-  "tempo-max+syntakt-toy": "101ad3d82e9b0961776f74cf3a9df91b297af2b4efbdc9070e9b7febd641b37e",
-  "tempo-max+syntakt-bits": "c6985f11ea437a6416caadc7faae1b636d6af1a7840c3d83d5bc1811402fc8fb",
-  "tempo-max+syntakt-swarm": "c4965881b9c77065372ac7892f8a2d6967826fde5a82ee3f438ac02c0de22d1b",
-  "tempo-max+syntakt-sd-cp": "79ca7e6aece9ca400ab31a5cbfdd8dd743ee392d57c859b5954eff54fb93438b",
-  "tempo-max+syntakt-sd-toy": "60d97514a780e92f8814d883e9ad1a8cc90f1d06575a3ccc6172e0866657d010",
-  "tempo-max+syntakt-sd-bits": "92dbdacbb28cfff85efc2505d1ae338c095ae99c29d1d8f28d2b57f9508b8e53",
-  "tempo-max+syntakt-sd-swarm": "736886a789498dc349bb743fac362990152db740f9caceb44f76d14beb30e155",
-  "tempo-max+syntakt-cp-toy": "8fd261459c472ce58f58ab44f31e638951919e143eabf2c75e3ba7351981d2c2",
-  "tempo-max+syntakt-cp-bits": "d65efe2d72b3a0bb6c2cff0abdb8e7d6ab9ee928edfbd5face82345b0255d463",
-  "tempo-max+syntakt-cp-swarm": "9b8370c2c2ec98d45b82362682400f949baf449ed949ea66b30b2fb07137c8c3",
-  "tempo-max+syntakt-toy-bits": "73f6add680e702f4923f04867564f4fe45968e03d449d3119e11440089b440f9",
-  "tempo-max+syntakt-toy-swarm": "966ccc7cba31b8446e84154846726080242d0fc08dcc7faf3e88fae3909fa68d",
-  "tempo-max+syntakt-bits-swarm": "8cdf390a5b8fbf05d31290b41e7478f6006ed3ce556f20f9584315619c7c9c2e",
-  "tempo-max+syntakt-sd-cp-toy": "398f8dead5f17d9d9160818988baf539b09b3342014d6efdd5e6e9fac92a36b1",
-  "tempo-max+syntakt-sd-cp-bits": "870f151d00fa3bfda1710a07933c26fad155c7873e1882e77561a2cbcd6e8887",
-  "tempo-max+syntakt-sd-cp-swarm": "78035bcec5957fd3339a097ff5b17377146e7a1652ac8e8da818c23ad51430f6",
-  "tempo-max+syntakt-sd-toy-bits": "75d169004e155b4eaaf0d2a8719011700db4129a7b17a52c9bf7cbf5531bc91e",
-  "tempo-max+syntakt-sd-toy-swarm": "c844f19bcd5c65fdf4e4eebadda221cff1627fc0f3b2d92a0fdb7d7e005f7311",
-  "tempo-max+syntakt-sd-bits-swarm": "8200635ec4b180fb33586931cd08093ae1dce63a1baabf971109863f4bf54aa1",
-  "tempo-max+syntakt-cp-toy-bits": "6ecb81bfc675ef96e1c5ed6615ffaeb348c038d64f770a2377acb834f65da5e9",
-  "tempo-max+syntakt-cp-toy-swarm": "6239e23033aef0d03216c1d7c1a7a35e527a7ae63bc3d2bc72e8d6d97b46b958",
-  "tempo-max+syntakt-cp-bits-swarm": "c3b1b5519942a5fa07f778939bbc794933743e61df41053d87c579792cae62b9",
-  "tempo-max+syntakt-toy-bits-swarm": "d3c612fe50d15ed5116e5d462d5fabca403d9d8f84d7a7a183c42104cc0b4454",
-  "tempo-max+syntakt-sd-cp-toy-bits": "c281e1eb53cf15e473c2ceb8aa34824b9f581b202fa191ed1d8003161bc8768c",
-  "tempo-max+syntakt-sd-cp-toy-swarm": "681be7b2612b9d02bac6bfebbf4d7377ba5d60c779da7a50b09409aeab6a738f",
-  "tempo-max+syntakt-sd-cp-bits-swarm": "fb8a7e55da1bebc6242ffb58e608d054843884b06cd02e5cd17dad5cc19dc799",
-  "tempo-max+syntakt-sd-toy-bits-swarm": "bde3c44abdc90215cc2e72922788e9ea8dead76e89f534248d9486138f483ba2",
-  "tempo-max+syntakt-cp-toy-bits-swarm": "be7e4e2eb9b4cf1f1cd0847dc84b62e1def1dccff99fecaf387456b95a99e58c",
-  "tempo-max+syntakt-sd-cp-toy-bits-swarm": "d0792d89f42e2835b0806507578b13fee8dabe4bfc910b56986a07473f23527c",
-  "boot-anim+multiline-browser": "120860e74d59d207951128ed926d8e0196d9d16142c6a67b004d64510bed339e",
-  "boot-anim+level-pan-values": "6057f46871d42e413b678f1b2ad7a548788bb682e471b427132022b783d53e95",
-  "boot-anim+trigless-dim": "12f4bd1f0c6156ca2338cdf5aff0ad79067f4132bf088197f3e4178f82316b1a",
-  "boot-anim+midi-both": "650073f8e79489f7e66f3672770be7a291a641ec87fdfde2c7b5498f397f6068",
-  "boot-anim+midi-live-both": "45f1a95306f023b018bcc4a0a0d5605676bfbfc9d20cccfaf19579273756a039",
-  "boot-anim+macro": "e34324c664aeaea7779f2ce4068bf6ffa29d6702e816ca7243ee5bbeb303e911",
-  "boot-anim+acid": "a88594758d368c028b7551e8a83033f684b8c489c3b7771d2be0062d0cfb544b",
-  "boot-anim+wavetable": "24301920958cf11cc96977e8b19a892a492aa035f757a44092d9070479dd648f",
-  "boot-anim+chord-keys": "79a5170bee00365835c015bf821eaf24f78f9be0f2aca7d689289b3fe4935381",
-  "boot-anim+track-filter": "cd9a1a76374d0385f107b3c72f1f7f777212ffb4a76b54f8ef08cba279f22a36",
-  "boot-anim+lfo-plus": "aca0272eacc296becbf3b592cda1fde8f2c6423a284ecd4999994bad973ed889",
-  "boot-anim+syntakt-sd": "04ad309c9a86f88712a5f4f272fdce1d5400387f0e94d97923b1be512cd58cca",
-  "boot-anim+syntakt-cp": "f89ffbf03bc5ad76c7cc372175303eb51f59b2203c595676ba35852c5da823ee",
-  "boot-anim+syntakt-toy": "d1dda5d6844482a6ebd15deedc85a62f87b2ad5350077a6f05f4083a1fa45824",
-  "boot-anim+syntakt-bits": "868d435054fc477cfbdd20b04322c32767d21a8f88bd779ae8343b1e3bb74bd8",
-  "boot-anim+syntakt-swarm": "fa0935c0e39575f7bdde2d762b334db04d0d6114defde11a7feeb0c72ac54033",
-  "boot-anim+syntakt-sd-cp": "2d7c768caa2bafc2080f28b29c956f98b41845417c2a57d220f9bb78dd52ce4f",
-  "boot-anim+syntakt-sd-toy": "4bb8451fe31d14e06ac7f33ec801e1ffb7ef573f71d65b334e2998762fcdcb6f",
-  "boot-anim+syntakt-sd-bits": "aa7030de240e415653b5d0e9bc0079eb310a02ce4bd5a289f1735e770b9e1f5a",
-  "boot-anim+syntakt-sd-swarm": "65a307d4d63ccf5cc8608bde17ed8b5a9c48e1170edf647df43e9be23d418933",
-  "boot-anim+syntakt-cp-toy": "2ed732c69b5bedf5197b10870714fce529f823c4498199363416a31d7e1c785c",
-  "boot-anim+syntakt-cp-bits": "8821060a3b07291b8614bcac58d8bebcffbaba22371b624046490c63a01e7cd6",
-  "boot-anim+syntakt-cp-swarm": "003e42bd852a50cd435c975dfb58d346e7f2fac546709e18a38cb86c66cd2443",
-  "boot-anim+syntakt-toy-bits": "9d2717c7b3078a7ffdedc78f9184c1557c0cd38f1ebf6a3df31ba788413dbcf2",
-  "boot-anim+syntakt-toy-swarm": "a5c9206f0777e7dfa5d5e5e4019b38e429129ef3e8e8154f9f654c3c2caf256c",
-  "boot-anim+syntakt-bits-swarm": "149bae638b86d4a9306598b8077322a1e46e2a3fd9d56147d68aa5c013dd09db",
-  "boot-anim+syntakt-sd-cp-toy": "01cfe2ccf04976f97e5088308cf919bbe97a447eca82fd42e8301a0f60e582d1",
-  "boot-anim+syntakt-sd-cp-bits": "a435713b3813ee81b6fd9c261b72cccb75c2737a204881812cf6c37a3d6572a0",
-  "boot-anim+syntakt-sd-cp-swarm": "83f9c47872c3e7a0a409b6bdda8cf0a21ecc2eae4cfe227c5153126fc860c1aa",
-  "boot-anim+syntakt-sd-toy-bits": "3c5395fca9914fe8cbe137296f066ba640c32858739386eecda24862275edac2",
-  "boot-anim+syntakt-sd-toy-swarm": "8d620f7dd17898fc539df0b80fcfaa4d1effb804e5355c98a1334071ffca9fc5",
-  "boot-anim+syntakt-sd-bits-swarm": "95fa9b93de955d0fd722f9e8efd238a00004a0fbef341d380ba436400b7cb3d6",
-  "boot-anim+syntakt-cp-toy-bits": "8af4e7bcaf01120431ec46a46a4760bf47a93dec719e448a857c24b8b7e009b6",
-  "boot-anim+syntakt-cp-toy-swarm": "18d6e5150a6a1ecee274ead09f8f6361011c41c1c90b338ef9a710c74208f6db",
-  "boot-anim+syntakt-cp-bits-swarm": "a65558b0dd3372b0db734435acfa530c7c8868a0a139eb410393e459ccf9df9c",
-  "boot-anim+syntakt-toy-bits-swarm": "1e52934d7eb2112a39b2e664ea0841e68efe88d628910aff4dcc54d9e338b85d",
-  "boot-anim+syntakt-sd-cp-toy-bits": "950973b27c23edd4c31778cfcaeee0437d7030bd92112ff8a73b4e18ccd32ea2",
-  "boot-anim+syntakt-sd-cp-toy-swarm": "a52498f53f83138b657a5b26feb3d515da204a1c0b9b4130a30224dfa93b98c6",
-  "boot-anim+syntakt-sd-cp-bits-swarm": "c81abc8afabf39e21f37c429e67d54123f369d21c2586cb28294d45992fdfaa3",
-  "boot-anim+syntakt-sd-toy-bits-swarm": "d2828ae4902b33de42a684a42eb33a713f333d68aa99708fe85b9895444efc7a",
-  "boot-anim+syntakt-cp-toy-bits-swarm": "57efcc755eaebc3c5c337071cba2b30320e76ad5ffe8e242b567ce6947b583b7",
-  "boot-anim+syntakt-sd-cp-toy-bits-swarm": "05579c9f185ce0f7705ac70a0831c64b773521256414b077dd8d15b2003d7a8f",
-  "multiline-browser+level-pan-values": "0e411637189e234f95ebdc784e2f053f5773e288e6fd0df3fc4efd4d045a7e89",
-  "multiline-browser+trigless-dim": "7e9465da3bab107e9852fbd2fd66c66fa440b6f5478d3553f002a01ce090160c",
-  "multiline-browser+midi-both": "fa7fba091de71ac5a775c3eb4c0bcb4b24c138936d05f06e9e3a6061732ef70a",
-  "multiline-browser+midi-live-both": "284bc1a2bbb906797a2468302d9e605cf359b5b69f16ac2a352c4f205acacdf1",
-  "multiline-browser+macro": "5e4440e087aa5cb52d1310cf274c8a9ca1befe06908b1ba61d83bd324dd7abb8",
-  "multiline-browser+acid": "679d247c8370d3096a05896060f01a2498f05db7af365c3db87defe5317cd34b",
-  "multiline-browser+wavetable": "9f077fb5ea822d817b22294e4ee1d080b76d81692a9c0ac356ac69dd79db5e20",
-  "multiline-browser+chord-keys": "0f8fa5ceea9cba3f0f076749edb8e81743151cc6a4e31862d7efdf6bfa66ce7f",
-  "multiline-browser+track-filter": "1d1686c6f8fb31979922e06672891580ead0060b01bbd6555a11899fe1b29e63",
-  "multiline-browser+lfo-plus": "4dae353c5de0947a705d5f0f0ac83595a690442056aa315eb40e847c655e184d",
-  "multiline-browser+syntakt-sd": "9f763f090194171bd0e0be8d164bf6ae46a65a927b9c4ff86c03568d1f6a95a3",
-  "multiline-browser+syntakt-cp": "a437bbca19dc7ee5d105e5e6d13ec3dca3450b7cb88ffc33929179980780874d",
-  "multiline-browser+syntakt-toy": "553d32818b6a077f08751b0bbd010e84da7629d5196f1c927776658f3a9f8203",
-  "multiline-browser+syntakt-bits": "1eeb0064318b0bf65ee2d68909eb7f98d65e324ba94bfc9d7ee8739a096a7140",
-  "multiline-browser+syntakt-swarm": "2d4050339a84c5542489d90cb4d4d1cd98f73b259f2bd44f2399e4cad39ea8a0",
-  "multiline-browser+syntakt-sd-cp": "a366d68219184ddb34b999d31ecd160a2657bec124e5b52544d14bc1b2840887",
-  "multiline-browser+syntakt-sd-toy": "612002d28b1e3a9a455295b9908047c9f0bfd6287efb997668f39e701754945b",
-  "multiline-browser+syntakt-sd-bits": "375c52b56b28380d06131826288dcb0e49bbe377b0306b48cae434e560666eff",
-  "multiline-browser+syntakt-sd-swarm": "023e56c84822c3d31f68bef29fc682754d8c91933f3a530afafe7f0d8002fdc9",
-  "multiline-browser+syntakt-cp-toy": "e46e5513e5826fdec0ccf7de7ee0c5eaaa66cdcfe65c66be2f6be9b59cfa2542",
-  "multiline-browser+syntakt-cp-bits": "b876f6e8d9cf5af80fd302c1de774b2ef147674ff19d4fbf49a373d7c4b60ac1",
-  "multiline-browser+syntakt-cp-swarm": "f1a16d9809c5b11e2bf089b7e87637eff83f69d2f5a12da9770ddee9ff56ca65",
-  "multiline-browser+syntakt-toy-bits": "69cdfc46effe34d34be0d487da5ba69fc9052f6642ebd160284364e5770e606d",
-  "multiline-browser+syntakt-toy-swarm": "42749b9cdcc7383ad70bbf2c7183fdce2e2cd2374574d10d7e289930b0db6f82",
-  "multiline-browser+syntakt-bits-swarm": "4f7590bc22b1ced4dec5dcdac4675e11e923825e25cf56556448f7d7e4681f5b",
-  "multiline-browser+syntakt-sd-cp-toy": "061632f181be2d3bc1efeb7136ad413f80dedddcbe286b3b4f90d3d17ce1901e",
-  "multiline-browser+syntakt-sd-cp-bits": "cecf865c2bac11058f0112a7759fa309a66c7ccd8abb93cfb3c5af059acbf2a6",
-  "multiline-browser+syntakt-sd-cp-swarm": "f6291ffc64184f01f8322951c3040577315f8a7ae754e31efc3019dd90246c13",
-  "multiline-browser+syntakt-sd-toy-bits": "c0a459f6b8bc5c0760a42f7d5f9bb14ce329f2d75beea3c8e83c6468edb8d5ba",
-  "multiline-browser+syntakt-sd-toy-swarm": "0679205ec5b909ef767a227999a474ab94b2dcdd49a5127567286738b1a0e9f9",
-  "multiline-browser+syntakt-sd-bits-swarm": "16e3e172efea7d1fe88d4ed502d0980364e2c1311da817ff0770b426442d69df",
-  "multiline-browser+syntakt-cp-toy-bits": "8176606d2c2d11eed1bc1c96a414846ee255b822cf2134458c27bbd7993e062d",
-  "multiline-browser+syntakt-cp-toy-swarm": "5b8c74e5c663997e28cba3df19b275795cb17aefb23ac4ce898adf4b7d5e5008",
-  "multiline-browser+syntakt-cp-bits-swarm": "c4fc647e46acd2cd7e1f5cfd4c351e56e13d0af95b886b98d4681a33759792c4",
-  "multiline-browser+syntakt-toy-bits-swarm": "0c34deb3b4b7807546d6b1859cd48be7d6835a847b87d523440eff8a7ca7fd34",
-  "multiline-browser+syntakt-sd-cp-toy-bits": "d4310183de98c513c801dd762d8fab4625c7357416ab2912aab3b31e249e5dcc",
-  "multiline-browser+syntakt-sd-cp-toy-swarm": "226b04bba4c688e706eecee97051a825e9e0b961479b2009d728b3b357463961",
-  "multiline-browser+syntakt-sd-cp-bits-swarm": "ca12e2b7973ba1e6e09d5ab2a2580de195fc02139a544af4fd56732625b88e13",
-  "multiline-browser+syntakt-sd-toy-bits-swarm": "b39d5edc86cb532f6ab15817e5c352f471fd0a952d5c25eb513743cc23ec2113",
-  "multiline-browser+syntakt-cp-toy-bits-swarm": "9c9c5d06f7419a0ec93aa61f1a96e8bea9d18f028e952743475df940d9585090",
-  "multiline-browser+syntakt-sd-cp-toy-bits-swarm": "849308fbbcd25cafc7dcb3f44d2b1adf4ba4491e4ff72e03a433c1b510452f5d",
-  "level-pan-values+trigless-dim": "c4a547df87f681e27e5f7d0b04d9e08d601017577f810e2dced51eb4a68797e6",
-  "level-pan-values+midi-both": "9174ba0191b59ec22abb652158332da20571e02797a6a3cb128df6193a2a18db",
-  "level-pan-values+midi-live-both": "4cda22bc231353a3dfada94fbb1a8cdd9c594836180fa948a4747683d3252d79",
-  "level-pan-values+macro": "faca04de56021ba0f2918e0e168a594104a545a756a7d58829efd23e7df2d511",
-  "level-pan-values+acid": "2b9edd88bd6c697e340deae0a7c6a1139354af6cffefa52e33e6b33f6cc36a17",
-  "level-pan-values+wavetable": "b811b085fa918af7c03b59bf3a72c55ab9f70c7c9994c597cb85623bada7eb5b",
-  "level-pan-values+chord-keys": "a09b64fc2b82471286c89c4d1d5019885110b7ac6efa539ee9daf893ffa22e53",
-  "level-pan-values+track-filter": "10af2885a7706cd3c52796598192cf06ca8ce25cdcf3381eb2617c207b699bc8",
-  "level-pan-values+lfo-plus": "95e26e80af45c0efa7b467d2cd033a57c6bdb9a54adaf399a9993aaf35259bb4",
-  "level-pan-values+syntakt-sd": "62fb94de84c9b8dae82c029cb218432cc9cb62390dcc05086acfa0fe7203a681",
-  "level-pan-values+syntakt-cp": "545ffda1e7b936fe3ead82a58bd408685eda4a4e3e1a947c4dccfb9313017212",
-  "level-pan-values+syntakt-toy": "02d63c8a1d6dd6dff55e1eba4671edd6158c56179d2b5a2f9da6c2e868e8c910",
-  "level-pan-values+syntakt-bits": "89cdbc7a7bd466a2a82e3a88eb73a95796d2d6820abbcf8d6a9569d3c5eb5221",
-  "level-pan-values+syntakt-swarm": "93733487ecd329a7a2edd58a1d91e252391b2b69f533286d93e136801cb5adbc",
-  "level-pan-values+syntakt-sd-cp": "b7a1b37d48065cf351ae4bdaec960d21a55fbaca25b71dabfecd9396365eafc3",
-  "level-pan-values+syntakt-sd-toy": "3fbf762487d6a4665fedcaeaaf8412e6807d17f374a29d56f11a31a3935bc035",
-  "level-pan-values+syntakt-sd-bits": "f9d6f93d3608676517665811f8e082853eb3eef47054e49b2b754974ad4c8cba",
-  "level-pan-values+syntakt-sd-swarm": "0cc26255813af7bd01509a1d6ce90224f548e7a4813267f333b554e7493c4347",
-  "level-pan-values+syntakt-cp-toy": "b5ce1b0a80562e3cbcb7501aeaa817f4cad86100b2a15656a3f075df2f47b5aa",
-  "level-pan-values+syntakt-cp-bits": "d18450affcf33266a3c7e3b2eff57fafc1956d9e3127c01b8d47175f419e4235",
-  "level-pan-values+syntakt-cp-swarm": "fa69ba84acdcd2eeae20af4cbfac59a6817080fed9a5089d121b293800d84422",
-  "level-pan-values+syntakt-toy-bits": "29a873c21c1f70fff25531ac952d243b27b1a51a4442822bc457f91c69cebe62",
-  "level-pan-values+syntakt-toy-swarm": "a21915cc17244d20221bf04a60895fd38c897cb5f6844c161d1bedcb462f4283",
-  "level-pan-values+syntakt-bits-swarm": "b8fe2a7a9a366ab9932dbda1317a7b591c78ab5e508484778ef4a4e74fcf8baf",
-  "level-pan-values+syntakt-sd-cp-toy": "2a7ac1ac5c5bc8fd033d2a365d02bedd7667fb1e1b3b05dee463e2ffec38eba6",
-  "level-pan-values+syntakt-sd-cp-bits": "52eee87411067b75d695afe4b256d3c4b4e6543055e7f46ad87e05d0dce76b21",
-  "level-pan-values+syntakt-sd-cp-swarm": "1d5bd9574d957aadc7fcafc2d1f64a74df2788fa214dad1dac9d2c8fe3ec80ab",
-  "level-pan-values+syntakt-sd-toy-bits": "6597c0bc5c729972caf8e776dadd5abc2562d5e59fad28f80b6af8b073dacb49",
-  "level-pan-values+syntakt-sd-toy-swarm": "f24b901e37daba62b65da6c2a8d48b039e5b050ae9d3311b8ef3d237b699696b",
-  "level-pan-values+syntakt-sd-bits-swarm": "243ae6b4139ce7a8bb31079ea3e52961fdb027bf574d3fa9038dfca29d437e5e",
-  "level-pan-values+syntakt-cp-toy-bits": "85a07ce258dbaa94e16c5a48a57cf418c23a8ed33fbebf2f96e21313d271f679",
-  "level-pan-values+syntakt-cp-toy-swarm": "a226ce446a92c5fb9ebb20cb7385b81fb77ade06ffcb683f84b652c7e1784d76",
-  "level-pan-values+syntakt-cp-bits-swarm": "c8e43913903312552cba235691a187ef45845e9c5010d094f50dcdbec128627d",
-  "level-pan-values+syntakt-toy-bits-swarm": "bf442d54d3151528e72fb9a8c1a3e4a28446c96da05ab0127217894bfc9ea981",
-  "level-pan-values+syntakt-sd-cp-toy-bits": "635a5722f768c24c4890fdf47df5437d63823eb32e5c83b9af949f117beab45d",
-  "level-pan-values+syntakt-sd-cp-toy-swarm": "b06fe705fe36cfeb26eee9381c5716f800ebb402a686250699267eb35475ac03",
-  "level-pan-values+syntakt-sd-cp-bits-swarm": "71d3a1ecc1af54231be8d040449325201f9e10795567d44f819c893e57682e19",
-  "level-pan-values+syntakt-sd-toy-bits-swarm": "cd0b055935a7fc21d7a7f384e02968f7c8409bbc3e298f37eb2b9ece316b45ac",
-  "level-pan-values+syntakt-cp-toy-bits-swarm": "d88cbc467e5ae451907a7352a16a4bfa532a3e7637b0137e666ccd6f839d4ca0",
-  "level-pan-values+syntakt-sd-cp-toy-bits-swarm": "1eb3742a78102b34da052b9b02651821ab04d9f675a1b4ab4c5a7da76dba07df",
-  "trigless-dim+midi-both": "69f12f13d94fda3fff0d30b4e055525cb99d9b15163484df4faf023393644f56",
-  "trigless-dim+midi-live-both": "3b45e1448c42a0d5d1014ffed790909f45d84934f7f16c4869a987df6edd1966",
-  "trigless-dim+macro": "c82c395c04cb03ba5b106bb040528af54dca9d4e8d2a0248f9031d175ae5613d",
-  "trigless-dim+acid": "549c211ab461e6d518f64b253a01c46dd340a1c6ab515b429eb8322cb9f9685c",
-  "trigless-dim+wavetable": "379cf03dcb240a1288121f3293ed1bd04cf4513cca1721510858d088e08b4369",
-  "trigless-dim+chord-keys": "a56a6b6539a4547029ec19b1e0f9802c41f795a3aa497d40a91ce0cfa14e9be2",
-  "trigless-dim+track-filter": "c4de0f801509f17a5b3ee798e986b9b54109c8c58e33cfc0342385fa2323348f",
-  "trigless-dim+lfo-plus": "3f10b7c0ef34546e90bc1a8c9f42bbab4e3371c04b4edbfec3117a03226e7c3d",
-  "trigless-dim+syntakt-sd": "94048dbdf9bc773fc7313a2eab3785955d544b48ad92a2e5dc6c21d1f2b6113a",
-  "trigless-dim+syntakt-cp": "d902c7115ed72729e7b95efcc4b15c46ee543da98c450c681afc85820ff35fab",
-  "trigless-dim+syntakt-toy": "998958b5f307231e4653dd63040d2a614af22ef64f58a481d6b2122a796d619d",
-  "trigless-dim+syntakt-bits": "032165eb6225ad5754fa22952cfe5c3fd3759a66d921f0e710c6b36cdeb4b92c",
-  "trigless-dim+syntakt-swarm": "954f2a6b951c8ab735895415b655cb0b51c5e0303d58c46cf89558a9b386927c",
-  "trigless-dim+syntakt-sd-cp": "c49d642cb002e9f911032cc09cb70802487c7fcb4f9df7b6accbe393d623614c",
-  "trigless-dim+syntakt-sd-toy": "a763bd46a2118f4a255bd66737bc952721efec372d4377ec6673396bda01f9d1",
-  "trigless-dim+syntakt-sd-bits": "f3d30edffbbcf4870b4e48fae4b18e42a305c4a5c26f52b29db07d342d59df30",
-  "trigless-dim+syntakt-sd-swarm": "30ac7840205de75c9676903da17df91316cfa40b1bc74c38bd4c2f42309a260d",
-  "trigless-dim+syntakt-cp-toy": "bb6b6ea869c841a94ea48950b46f019665a1899e092b71da665859602d36d852",
-  "trigless-dim+syntakt-cp-bits": "2b0cb174964a1a05accc592da427e667327bd1b04fb6afa7bf03ea2823e5118f",
-  "trigless-dim+syntakt-cp-swarm": "9ec8443a4c264249a28a06954c59fbd7204cc4f6d05073911048bb7379e7250b",
-  "trigless-dim+syntakt-toy-bits": "9daad7f51ccafe54b05d05e6091b467b4042211ce4946410aec7ac7730d38fa8",
-  "trigless-dim+syntakt-toy-swarm": "a76190f297d3da75c3f7bb3785eff2e95cd0ae7d10e4cfdb322e2cab069efa7b",
-  "trigless-dim+syntakt-bits-swarm": "4fe2e2be40c705ef9b4a8089fee8c65d2a0c946bc699055ad796ca5d19deff5d",
-  "trigless-dim+syntakt-sd-cp-toy": "c4c8a59cd8763382b4829a765fe94238d0e73769bd03844b67ccdd5fcbe654d2",
-  "trigless-dim+syntakt-sd-cp-bits": "d5eab193f526a9b34a6919feb283c23f59b7f960934ae360ca4ed6651f11e071",
-  "trigless-dim+syntakt-sd-cp-swarm": "09a857fa0aae125cb8ecb2ffad0e8d33b7ce14d5fb7463092d780ff82e3cf337",
-  "trigless-dim+syntakt-sd-toy-bits": "12a4525b3619b8432bd8f75ed6e47a04be3cb27529772b9027b6c72cb1aa3fb2",
-  "trigless-dim+syntakt-sd-toy-swarm": "d3883a79918392eae03f63d2dce20c4ad1922717c6b35a8905fe464812f84e43",
-  "trigless-dim+syntakt-sd-bits-swarm": "e8ca079cced5d792ac1d76c2b4239a49391e4eff2f7944815449f6e1310d11ce",
-  "trigless-dim+syntakt-cp-toy-bits": "7e8891fc9557a96c4e2415a63715797d62140ee0c67350645fd338efd7605059",
-  "trigless-dim+syntakt-cp-toy-swarm": "37f9b232d5fdc606d47bb31dda0c0beaf2e18f7d3b629b1a0c9004854079fc59",
-  "trigless-dim+syntakt-cp-bits-swarm": "104cefe3e1ab8f0ab4fde3cc02a3e9baf756025167f52f083ade44114d041d9d",
-  "trigless-dim+syntakt-toy-bits-swarm": "9bd97b0ef0c743cbf596997adc9d3898c4f3bb729e3cb2c0be407f0fb8c27008",
-  "trigless-dim+syntakt-sd-cp-toy-bits": "5dc940bdc75695cad24bc2d76f038db703c8eaf6405695274a1f68fae550974d",
-  "trigless-dim+syntakt-sd-cp-toy-swarm": "2eb7bf087d06325970e75dfa88154774c4d7d4bd3886a7d9675a80334fcf4167",
-  "trigless-dim+syntakt-sd-cp-bits-swarm": "698834862beb06014e26c44cf32037d43fa2537328898bd3c5fb510976b38efd",
-  "trigless-dim+syntakt-sd-toy-bits-swarm": "e75742666d4949651019425f959255a72bb31dde36c300024d154a13588eb861",
-  "trigless-dim+syntakt-cp-toy-bits-swarm": "beabcf402f28fcf94c0c6af970f2876121415187c0169bc9e0bbd49b4a0de594",
-  "trigless-dim+syntakt-sd-cp-toy-bits-swarm": "bba08bebf0f1cd5532a91d5bb439ab17022657c9e0b2f18fc96b93675a12e977",
-  "midi-both+macro": "f660bca8bb83fad8c9123dba444126c3d5c86da8377d3121238b76ec652cfce7",
-  "midi-both+acid": "9a73b32f1d6211305b8312e5cf5034f011b2c50b10439bc1030be11b7ae8e6e6",
-  "midi-both+wavetable": "1a6a50ca674c79723b052f478e389a674f4e75cae0cdd299a028fb7d8d1d8228",
-  "midi-both+chord-keys": "43318adf4c52098501f0099f8b4c6afce74b5d996f0c154030aeeb1e95aa2fc8",
-  "midi-both+track-filter": "ed058941c02bf2b15c735b41de4a3076fef106d8ff80801c7eb80ce9b9bb9868",
-  "midi-both+lfo-plus": "2217cf6482ed28d94c01b7b8d9df36fbab588060fef3c97bb0182fa912674bd9",
-  "midi-both+syntakt-sd": "b1e311e88ffc644a12f8e98973d369afa444aabb62c276c6e1233e60da216292",
-  "midi-both+syntakt-cp": "90fbda089fa5f2a85825a00fb7723911c95f31c74ce2e3d878581d2e78ccbbf6",
-  "midi-both+syntakt-toy": "0e869f19dab1a178271755c7c037fc7a83afda5401644b5764512d07a2effe81",
-  "midi-both+syntakt-bits": "557ae06d4af638da1211cb0f99bfd977f5dfd5f551f4da8f29b4c66dce1fa777",
-  "midi-both+syntakt-swarm": "26fa03e5b2776c126d650bbbf7e53379dc0b5cec30b631b7540d81be0940627c",
-  "midi-both+syntakt-sd-cp": "99e9c857fa907e4329402dfdab2404fcf4c59767f159d04e4c9ef4b520ebcb18",
-  "midi-both+syntakt-sd-toy": "ac7f6ac61e621c95fe082b4f4322df22163abc6f939de0d1fb1f8e271ca853bd",
-  "midi-both+syntakt-sd-bits": "8f7c1000bacfb35b50513980a7e54401dbae1b78e003a772e1edd8ed7fbcb2bb",
-  "midi-both+syntakt-sd-swarm": "d27a41c82cc5f0ad6b5c9d502f19646413a46f48943fd70c2ce70dba873632ef",
-  "midi-both+syntakt-cp-toy": "c6779e00fa5bc532f5e65bae97f0a40bc45d415127558c1bb3e71241b4de3f96",
-  "midi-both+syntakt-cp-bits": "6f8cb60e4d650b054c1184cd20911028eebdf914088aad5c033174c6727fd76d",
-  "midi-both+syntakt-cp-swarm": "e30903168150909faaee21b9051fc6e29be8115fc720fa0ee84dd5ca74823d53",
-  "midi-both+syntakt-toy-bits": "918a3d3fe79d175350d43cce9d14e21b5b201a7cd34cd4e1fe4c96e219811190",
-  "midi-both+syntakt-toy-swarm": "91a09cf3fb9cd617983b808bd9d1ba1b09dbae0a26a9ff32533bab1f30ba4eba",
-  "midi-both+syntakt-bits-swarm": "f850ae8feaaf63a81811f47e287772e10c56d18eb677c17b83aa0c1cea105205",
-  "midi-both+syntakt-sd-cp-toy": "c66c8490a060ae3a83e0da4fda0d9a6cdb306acd6b2c93ae7f1f09be724968be",
-  "midi-both+syntakt-sd-cp-bits": "049d8f392a3f58f0c168cae4461f67f4e641089fbed547e711a569f8b64444eb",
-  "midi-both+syntakt-sd-cp-swarm": "c9335ebecb65469e2fd1268863c957f3c6e0040cfecc268e94e7780686a9633b",
-  "midi-both+syntakt-sd-toy-bits": "a5df099015c91184fa5c942f7e95751cd9a9b0d2b0909483d74b26074ecd6804",
-  "midi-both+syntakt-sd-toy-swarm": "0ae83c1df00bca51bb421a3e8909e76659d83a987251236ca39453f2fa22b75b",
-  "midi-both+syntakt-sd-bits-swarm": "c88e3ca87baef38619bcec673404286f77f7e03e96594f26c69a42aab5ecef38",
-  "midi-both+syntakt-cp-toy-bits": "ed30aa159d2a27d81578159e81202e13fb635f126b3b3648339d5ce2d3c78776",
-  "midi-both+syntakt-cp-toy-swarm": "573c88d4dca7837d108bbafffc6da38782fc2d6c319e3d4c2dff45be000549b5",
-  "midi-both+syntakt-cp-bits-swarm": "44d628229f746dd85fba479561b4859ba1483660a4a255320e728b2f8e2b377a",
-  "midi-both+syntakt-toy-bits-swarm": "eeb09c30903e967931cb75002674ccb3a1ac152d583f1915cfa78d753021bae8",
-  "midi-both+syntakt-sd-cp-toy-bits": "2f2608f11748ff22d65f70a1343eb399b2b2e2f61f524f40046b643b2e1cbcd2",
-  "midi-both+syntakt-sd-cp-toy-swarm": "3ea305deb691d19d15e6453938726f637b044d365c3d7685425e05f52941e207",
-  "midi-both+syntakt-sd-cp-bits-swarm": "18e6bb7b08ac087caedac556557ed8243cbce7c33f9eeccce611c84202959e46",
-  "midi-both+syntakt-sd-toy-bits-swarm": "4b969250a10d5e42c8bd3dae259238928146bae1901a626a68840dd063a6da9e",
-  "midi-both+syntakt-cp-toy-bits-swarm": "9a13c9bd5218db2a3a504cba5764f4367f06336fb3eeb43470f1d4f516e3d940",
-  "midi-both+syntakt-sd-cp-toy-bits-swarm": "2bd8b8ef426c67cd7b1e2823a46e93cc880148dc00e20624ab475a0faa2bf9f8",
-  "midi-live-both+macro": "59c8dc28fcadc3dabefef73a5e436857edf8c1b780efbf211c6a86a6e451fb28",
-  "midi-live-both+acid": "ceb50e3f4b5841f16103a99393b3c971ce2bede8e9e73dd695cc897c6b870a6c",
-  "midi-live-both+wavetable": "05989f5c597b7d5f51ad72f6a830b49be535d2192951b0247b1b27b1aa30763d",
-  "midi-live-both+chord-keys": "55b949e67f4da751e16e1268bec3ee36de0e19e32f9961ddab6ccca8097609c3",
-  "midi-live-both+track-filter": "c4fbf53dde7e7e7cba9b4f784b9d015592557cc50a7deb7dfdddfa6cecb77ea0",
-  "midi-live-both+lfo-plus": "e316282af08e2be1cf3d7ae352435fb7959573091a8f657c35311ba8cff3ffa6",
-  "midi-live-both+syntakt-sd": "86d175bbf31cfb1cc323049315bba1fba0d62398cf965ae0f32c1d9353e4f22b",
-  "midi-live-both+syntakt-cp": "61d83d02a586fe3173cf1bdbe2926100e8b4f24c06b3c5b05b9172885f8e20c0",
-  "midi-live-both+syntakt-toy": "94a3e585cf31b8b13a2e2fd2ce33fbaa33371aa2ef1d31f34dec0b01c6c2fed3",
-  "midi-live-both+syntakt-bits": "5ee6669b5bce6458f4bebf0682913050494b692802e50c233c5904e8d3d62513",
-  "midi-live-both+syntakt-swarm": "55d3186b037bc087588e98d54473ad7f3b874d9d2200fd20bb8e40000c8251e4",
-  "midi-live-both+syntakt-sd-cp": "593b1b9d059d70bc5907b8a8a3850dfc3fdec6e22856c33f02fdf9f2a55966be",
-  "midi-live-both+syntakt-sd-toy": "4559c3fceabb01cbfbd29f7eb0a6eb1a1b3d9676fd4dd9e9892f5cf9fd316aa8",
-  "midi-live-both+syntakt-sd-bits": "0886d933d0f30469ed535ea5ecddbceaf478c534100242c2b44b58fb0b72f8b7",
-  "midi-live-both+syntakt-sd-swarm": "e39ca03d80457111ff3e03265d55f5c54f9eb722e6eb09b999ab3e87c5494343",
-  "midi-live-both+syntakt-cp-toy": "2d52ad0c0bae7ffbcd82884c09ebb7fe9dc5c7712a4a99360f96f43470dd441c",
-  "midi-live-both+syntakt-cp-bits": "cb32171af467d82b88c312df0260b5dfd59350148f671e362d1e93f1fc20ebf2",
-  "midi-live-both+syntakt-cp-swarm": "285e5ddd9c50859ee393c42ff0d7d45b4aff9cf3208331c8af266ea187e77336",
-  "midi-live-both+syntakt-toy-bits": "a53d49ed1a360bc6c49a15bc660a6b8c9d6171e940d6e4ee518c8009f998c53c",
-  "midi-live-both+syntakt-toy-swarm": "ca6dc6017fdff7c999b667b44bcc397e54c322f182b0018b97c0a2159c0d4bb4",
-  "midi-live-both+syntakt-bits-swarm": "5117a29dd7e73c1d325fa2f3e4e3d5bbff104f2e3198842579300be72bc61948",
-  "midi-live-both+syntakt-sd-cp-toy": "17b6c7670c017050de85e30871effe50817d26e5d7c56ef4212cadb2ee4b666e",
-  "midi-live-both+syntakt-sd-cp-bits": "2111015840c13a8532e219afb77f3c8aac8aede75bda64969169aae6bff5ec64",
-  "midi-live-both+syntakt-sd-cp-swarm": "5137fb0e1aec418b69fa18882be385ca29d909a71830b9406f0aec77cde24bd5",
-  "midi-live-both+syntakt-sd-toy-bits": "73e7d7f70f4554695797869e39ff8857442662b2c3e830329d0a935aa9a12e42",
-  "midi-live-both+syntakt-sd-toy-swarm": "4d68d71127d6798c2380c5201c1be92126c14fd087d6ca1c9ab90e87f4a38bcc",
-  "midi-live-both+syntakt-sd-bits-swarm": "5dad10790cb112f6e95dad456f5b13b8209fba4540f729a37eabc3ec494eddd7",
-  "midi-live-both+syntakt-cp-toy-bits": "0abc08b91a47643fca28b55d0e5f69deddb55c06f983b97920a7161fcbd988e2",
-  "midi-live-both+syntakt-cp-toy-swarm": "18ea016ef24a2a09e273e6c0a05111f1c0f4ec49a517e2eafb713e17495a6ac8",
-  "midi-live-both+syntakt-cp-bits-swarm": "90ee03a9aef89498b253088d457870628ff964773f315a3d62bdc7d48f21b53b",
-  "midi-live-both+syntakt-toy-bits-swarm": "7addab62b4a38fcc8c7c18863693130625762c7730f48b08cc94cf41e9d6caa5",
-  "midi-live-both+syntakt-sd-cp-toy-bits": "a3862ccc65b75e25e2edbec24b5909f2ced91b31fcd3efe55337addc9fa57ba8",
-  "midi-live-both+syntakt-sd-cp-toy-swarm": "80cb95b71333625db4bcec55bf59c77d93511e0d2b2b2a0eaed2d4c70b58e3b4",
-  "midi-live-both+syntakt-sd-cp-bits-swarm": "0c2824f1f0e85af25656e6bd44d8a1e522c156c59ebf4595d774c07312586987",
-  "midi-live-both+syntakt-sd-toy-bits-swarm": "7678b4108fe13f04c8cc9ec25d1d1cc5c25e3055295ead0d3fedb5985104381a",
-  "midi-live-both+syntakt-cp-toy-bits-swarm": "f4daa8988bf8c2c54130846dc7d345326ce6db46695f47d604643c1cac6d35fc",
-  "midi-live-both+syntakt-sd-cp-toy-bits-swarm": "cad38f5fced057e2bf3083f1e7dd4cd36cac5bf8ec31291e9587ae5f4f710cef",
-  "macro-acid": "bf24f6c0461ce168daf94b3caf6041996d579b0da328338197d38fd1ac63425b",
-  "macro-wave": "35dac89d3691088efb1a27b1d9ecc66ce7c164c163dcf32731f32c52058ebc66",
-  "macro+chord-keys": "8731007b4b8c223c14530aa88b1ac73837d4146dcb54678ec2f8054b12056abe",
-  "macro+track-filter": "ec73769aa6f665bd4696bbc9e20de9de393aa21f9298d8f0f25ebee2a9713814",
-  "macro+lfo-plus": "3400211f0037631364435452b5491898d60b5f4473c215cfb7578d889c1e438a",
-  "syntakt-sd-macro": "85d615ecf3710e9f39f61f1e29ea1727902adae34027ee6611a7005995c8eca2",
-  "syntakt-cp-macro": "d21cf34af573d89b6565abc85feb53ba304aca942e48fdff9afb8f62610c67b1",
-  "syntakt-toy-macro": "f3b525109fbd90f2cc87a98a3d8cbec3fecd05ead878f1907b26d88961329475",
-  "syntakt-bits-macro": "bc74a899275d920eee7b21481566b923afc24b909f218929ac82c4dbf0426855",
-  "syntakt-swarm-macro": "747aa1b5f570c6259ca0aaff9e154e631661f3b5f1e6abb1782d259993c2b61a",
-  "syntakt-sd-cp-macro": "caac2ef16c6d052f93625655481bf54c861f24fcc41451c73cf69b3dd5258b2d",
-  "syntakt-sd-toy-macro": "c31ee58eba4438d525b7a3bb88babe44604a08f87ce7cb5a72726f07520213a7",
-  "syntakt-sd-bits-macro": "38afa39e5cdb2f796b9ddf9325e9d77d47d919769c1b3e6a440caa0cfa697fb3",
-  "syntakt-sd-swarm-macro": "c675d246614cb70fa8561ae837f41da8a9fdc994c34bb451c8566f426c35c5a8",
-  "syntakt-cp-toy-macro": "3c430a59e023b21e1d389a54b1db735bd5b0feea7350e0f3d434d4c6458d1015",
-  "syntakt-cp-bits-macro": "c97b3fbfb7e8009a1916fc4adacd2cfcd1e1d8780f0dc65b2366aa9b4bfb51c1",
-  "syntakt-cp-swarm-macro": "a628f398ca4b9e5495971fcf39bcef2f2a231e029cc486eed526eced1c15f5dc",
-  "syntakt-toy-bits-macro": "f249c060d6a1371e9edf596e0aae19ecc69b1e50122b9820fe2b7be7aaa9c9e1",
-  "syntakt-toy-swarm-macro": "fef5c83311cddc123533ea6e42f64c7414000a48d2c1dca1b376efa3f820984e",
-  "syntakt-bits-swarm-macro": "ab552e6dd15aed1909962301abcd3cc68c2beeb1b1cde7dfb365a4b141d25c48",
-  "syntakt-sd-cp-toy-macro": "143c1d04dd3caf67e12f4131b3c041309b20cecb4fd60f896c34990eedd36c6f",
-  "syntakt-sd-cp-bits-macro": "9f9ba82a22a7bd49c41c93996c4a01dcfc5ddd3b3bd4021ed737c6f57c15b644",
-  "syntakt-sd-cp-swarm-macro": "672b350a4ba7e57121a8b2a067e43cb3ba1e3dc9b2e7bb586317caa0453c00f7",
-  "syntakt-sd-toy-bits-macro": "f37f77eedbf492f7795a6b8fb523aa1a4b82742f912aed2f772942b6d814f25d",
-  "syntakt-sd-toy-swarm-macro": "089a99a92318ddb398609cdb4b058e28a2f7dc486b1d60b028d09607d3074f75",
-  "syntakt-sd-bits-swarm-macro": "ab8a95b089dec60668945dde0e8c0ef4120a63c5f0b48b9bd46eb733d2e7a1d2",
-  "syntakt-cp-toy-bits-macro": "02ce0cce0cdd1cfad5279477d39661a14522fdcf3b9d1df00ea64f31e16a6b61",
-  "syntakt-cp-toy-swarm-macro": "4ae614dc1b4f816cf2388e01a1361b7c2fed6e240b901fec94523a70dbeb7c03",
-  "syntakt-cp-bits-swarm-macro": "05651f90b8012b6a31905c382704d223da06d97e4af5a2734fd45223acf83aec",
-  "syntakt-toy-bits-swarm-macro": "03ace88e3145ba7b69d03e6446a1cc395f615ebe11600827fcb39c8191c21d52",
-  "syntakt-sd-cp-toy-bits-macro": "696d7ac909be65f830355995346a8f6975aec1eec7062d26e982e4fb6286593b",
-  "syntakt-sd-cp-toy-swarm-macro": "d3a427ff925b55c2f569c03688396d877a25889c12bc13f999260b8887ea6157",
-  "syntakt-sd-cp-bits-swarm-macro": "c9e3176a355bce11b565db06613c3efefccb9546942e4a0649c6b449e6c43138",
-  "syntakt-sd-toy-bits-swarm-macro": "dadcad430c555d093f0a743e5f16d1a610f3c73bcdef0796563701e8f280fe8a",
-  "syntakt-cp-toy-bits-swarm-macro": "2973f9d11af8e4557957e2e0a2aa686118b1b1c11cfd3d7cc817b2819e06935e",
-  "syntakt-sd-cp-toy-bits-swarm-macro": "fe83cc278357b13eb340801b80d9c5d8c4da36a537d6edd17649a7c406b70184",
-  "acid-wave": "2f93a9792af8b98cd0751312d82c360a7400bc9e073ab71c9c635f22f7167756",
-  "acid+chord-keys": "7f7585fc195ba4889d35512dfd913b1120cfd4458effd5c09864f3fd1ad77053",
-  "acid+track-filter": "f6bcba32375fd8d24bbb4a74633496408036d28ba5432ad3e7cde4424b56bcb2",
-  "acid+lfo-plus": "592e5054411fdff9b786017a6ac8a8e9b6a9086d1d0bb5396af55fd28cb4bd8e",
-  "syntakt-sd-acid": "cbd0dc0b07ce7931e83838cb4f17467e8745d893234e96cfb1abd128b71ae62f",
-  "syntakt-cp-acid": "5ee2bc89861e86add4d737d01837f110119d4a6d2c8fa8c3a52ed2a67e2a8677",
-  "syntakt-toy-acid": "3a1156e664922ae255f9182d583d54e58fb5c11149b3f7ddf2e953fed09a8c8e",
-  "syntakt-bits-acid": "fa303efde47f64595b1a17e32808daeabf237f3b7bf3d40c3abaa078654b1323",
-  "syntakt-swarm-acid": "1b7cbea15090ae64858e1758757272709f72d0612a4d5368522dbfbc7daee1d3",
-  "syntakt-sd-cp-acid": "6a7b8829a548b03de6becbffc2aae6975c4219df4c3dfe6facffdd835d474221",
-  "syntakt-sd-toy-acid": "4296a72123a008d4a90a713e846cbee8fcf05d6d07375c93daaede5593cecf69",
-  "syntakt-sd-bits-acid": "ed3e3b5d8f061684d737eb3d059af74c80d416c6aaff529b95af9812254fb638",
-  "syntakt-sd-swarm-acid": "e31f196a864df6a100c4dff7ea04ded6f7bd7e48d021eb7a282071c405270e5d",
-  "syntakt-cp-toy-acid": "8e7bbcf0cc27b6f70f659c39de1a108f68f55ee3b7a77ebdacecba0cb3d77df4",
-  "syntakt-cp-bits-acid": "2c40a05334b53c6af39b36adf41c1333ba91749df827ffb1b0332f79d46e493a",
-  "syntakt-cp-swarm-acid": "b30ea4137af2b92494439e2464e77d105608865881110dbc37053841ac04061d",
-  "syntakt-toy-bits-acid": "0f8be5b6c5b6df01a84851962bf7c887b66ef62afcd40449a5a784f370b76bde",
-  "syntakt-toy-swarm-acid": "f52a30772928910c0e63a4a194de74ce958faeba07a34e4666f4bdcaa7336b81",
-  "syntakt-bits-swarm-acid": "c7ca07bb632ed1b5f57cda31fe433631df75f17ddd1138455b8c90145b91ebf6",
-  "syntakt-sd-cp-toy-acid": "b38a3306fe6d67177959b65620b60e77485cc7451bee7e6b34cd3266b1ba3f20",
-  "syntakt-sd-cp-bits-acid": "b44e03b3d341c2efd2034a7e496bc3f585ab70dc49b4b6620d08d9e6f66c1ec5",
-  "syntakt-sd-cp-swarm-acid": "7a8fa35c3d8ab632ec97e37fdd90abe0463506e54f9bb699667e800f74e896cd",
-  "syntakt-sd-toy-bits-acid": "1b72c87f3767cb925fc825397767dad155ab6575d1f13d68fdb233ff1cc33ce1",
-  "syntakt-sd-toy-swarm-acid": "3e0fe63f72b77d1cf816588a8229d3b261d9ae0c7b1810047bb10b6b90ecf657",
-  "syntakt-sd-bits-swarm-acid": "c3a0ae31922392715724f1a89fd75e9fc1d0a7f65f6ed111774218af87699184",
-  "syntakt-cp-toy-bits-acid": "5dde9a4fea2bd8ca7482ba100d9b1fecaf6aa7fd37553a1e4999747815089b9a",
-  "syntakt-cp-toy-swarm-acid": "c1763f9e47d0c553055176eff504c5802b85d1f6599af6414415745d9bb7a2b6",
-  "syntakt-cp-bits-swarm-acid": "8e79ee7405805fd570e1cb2e51416b89c04927020eb7907d1cedd589a390a3ff",
-  "syntakt-toy-bits-swarm-acid": "afa2c4b505ab4f5cd301b9b6dc981b10f3373a6976bee08ee145036ebf26ec3d",
-  "syntakt-sd-cp-toy-bits-acid": "732d763f540ad7d841a7cd9e42788e5d9d7af46402053daa81db25d623bba717",
-  "syntakt-sd-cp-toy-swarm-acid": "64a856a708b75e4b90aad6a2d82cd5d36b354579412ed8f9659610a79f8cc614",
-  "syntakt-sd-cp-bits-swarm-acid": "c77247058bee1666b8212fdcb7176c157857fe952b80d1516ab9c8ec8db51c04",
-  "syntakt-sd-toy-bits-swarm-acid": "9f5dd63e6892ffb294217e5f47415291f02c1993175543069a9f965b3722685b",
-  "syntakt-cp-toy-bits-swarm-acid": "cf7a31a2f20b8fbf279a65117f492639d7bdc24db0fcb306796e0be3d6ec4814",
-  "syntakt-sd-cp-toy-bits-swarm-acid": "d81c1012571ae95f0a542a6a6c3f7d5b686b74872c4a41bbd66d2d2a786a749c",
-  "wavetable+chord-keys": "3b0886fa10572f038f02b2b80d0f084ed961cf74ae92ca424fffe71b6f252b78",
-  "wavetable+track-filter": "348190a6a1ee3c23c3c1f18d38535fb58deeddcdc72566715e21d8b0c06116c4",
-  "wavetable+lfo-plus": "016b18ec8b4b550fdbf4fa1a679b2cf6609e5418bb24fccd57ccc28353a6a94f",
-  "syntakt-sd-wave": "d3b767f3875c6743790c287af006f23d65463fcdc902a2587baf189c8f3bd30d",
-  "syntakt-cp-wave": "f661147ea7921e46a7b4b7341a31a3a19f79fec553d0c3ee786af2842b6a0765",
-  "syntakt-toy-wave": "808fe270706880028e927e8103ed779cc885d1be1713d0c6a6b58afdc3c18dd3",
-  "syntakt-bits-wave": "f1f9dbadd18915286d633946f318bdab48c04f34f8308662b2dfc6e309190357",
-  "syntakt-swarm-wave": "62b0f52450d3e3443f66a0a461e99c252752f9379fc2078148ff5bf2d40e5eb9",
-  "syntakt-sd-cp-wave": "c990c1a0e7d7481fe2f421059e54c78018396a86569448ff3cfa6263ad449202",
-  "syntakt-sd-toy-wave": "9cae5c9b50ad66a33d514fae69562afd3b32a589c4e9ffe65336e6f2ccedaee3",
-  "syntakt-sd-bits-wave": "e42fb59e8d561942c48157a20b36816c4d4dcb5050a56819c7af084f15a02614",
-  "syntakt-sd-swarm-wave": "b27ff3e8975143b0e8c9fda9b415deb92bf1fe3e5baa6f233a2ee9933753b6ae",
-  "syntakt-cp-toy-wave": "a5afbc354be6cb72185ce50713874a5a87291c21642a4d8efe6dfa04aeaa28c3",
-  "syntakt-cp-bits-wave": "d663fb5dd015389c6307e5f910bb9ee3bbcaa908ede008c8dd774ca472361769",
-  "syntakt-cp-swarm-wave": "e800fc7bc064d32bd689af9581e689f5bbeb837d7e6562a380f8be3f298069b0",
-  "syntakt-toy-bits-wave": "d320c5baba66ea36609359c83a4be90ebdbf6cd7ea10fe090d241038b19b16b0",
-  "syntakt-toy-swarm-wave": "c4fffac2a7bc9bfc91a63786ba318fb2bf9b3ca4db2bc01e8cd9541c7571d3b5",
-  "syntakt-bits-swarm-wave": "b45af46f1f5578a526ce55f881ee2883b1c605b1e5a513bcb5958d7a3959b6c7",
-  "syntakt-sd-cp-toy-wave": "6380c4d6587471117eefedea3f737e2a4060318ec86d46c63abe6ee11df30e65",
-  "syntakt-sd-cp-bits-wave": "b08d1a2f41c0e0be3286042571a87e3e45d58f59a84baaf4895948ea69714ae1",
-  "syntakt-sd-cp-swarm-wave": "b6d6e35e453fa2e1b234ad51642baf89a90a56105124ce1102c3f24af34ff591",
-  "syntakt-sd-toy-bits-wave": "329fa426ac9fa1c602f5235d026eb991abcd4ae01f66fc4c1186458ca32501cb",
-  "syntakt-sd-toy-swarm-wave": "936dcf07c80835a3cba6503682df90f651c9d4613b96ccd926351e9edfbb408f",
-  "syntakt-sd-bits-swarm-wave": "8b0152bf97512b66d7ff6854107fc8d2832a78600e8f162325e69687bf504425",
-  "syntakt-cp-toy-bits-wave": "53e8f1195d28aec990947bccd14ef3369f3dea3c793371e17980cd9b2ca2c575",
-  "syntakt-cp-toy-swarm-wave": "a0c1ca7e15674a58f01df73e532169e1a44201f852228658df9416a932ceefa3",
-  "syntakt-cp-bits-swarm-wave": "2d1a733ae02baf12f26c1f1b0de58a2f6aed5addf6f5d01ecfa3080683f0e4f3",
-  "syntakt-toy-bits-swarm-wave": "33a73e9c5172b311a755496a81e85b923b9589ce382c57e720b417e60685c2ca",
-  "syntakt-sd-cp-toy-bits-wave": "0f060bd0c1c60dc8fa29451d2ce273970d6ec2bae32c7cf0f77cd18550425d73",
-  "syntakt-sd-cp-toy-swarm-wave": "20d095556e92d7051d3719c2ddfdcd7166d3fe161b60f73cf6133b9ec48d9522",
-  "syntakt-sd-cp-bits-swarm-wave": "aefa9bc8cb7aef0835e4108d50af19782c7841eb0422deb793b4ed707c608eff",
-  "syntakt-sd-toy-bits-swarm-wave": "a36ea2d90edd118e3d64684abe6ac12a5648f13ba238ff56976830d24a64f536",
-  "syntakt-cp-toy-bits-swarm-wave": "a5fc75e8f2fe6c69c8f9db046766e89380d350f44e4a3913e34502e95d0c4a69",
-  "syntakt-sd-cp-toy-bits-swarm-wave": "a224a3a13b15d65acae4949dc821c89d4cf6b633f8c42d6202655341b53d82a1",
-  "chord-keys+track-filter": "2ec2f34f971521cc09d98afe9144d7a06df2cb0956d8fe1b9d1d37c8fa709931",
-  "chord-keys+lfo-plus": "7d0384fabb6f12d3dc697b6f78a82e16ccfc095e70f0948e29b9b88539668368",
-  "chord-keys+syntakt-sd": "d05c5d74de8863d406b40650fc6d8b0e32cf54d530e4d282229d3389ddc3d8c9",
-  "chord-keys+syntakt-cp": "6037ce86b7291de777a7d0db0e75abba38cad4f537991fd5d9557d727ecbbbbe",
-  "chord-keys+syntakt-toy": "1159af73fa575193688c7f1c00d30c38e776cd519561eb6f721b8bde5f46b167",
-  "chord-keys+syntakt-bits": "ef8f6a089a458a9bc87862c663b7a53dc51b929922414c38a45066e1174f403f",
-  "chord-keys+syntakt-swarm": "6ed88fbcdb107a4785b79321161e97382a500317952cc5c363779591ba297003",
-  "chord-keys+syntakt-sd-cp": "a2921beb9090a92e0b642aa3c1ded2686e5e05c3ceb7bc76536c229ac370fda8",
-  "chord-keys+syntakt-sd-toy": "12356f68ca886509794540c176d677b4483b747572007fce82d82c11605ce247",
-  "chord-keys+syntakt-sd-bits": "9de86366f6bad3fea62a392259c6494628f83ae7a52c6305b7d13a119712cb5f",
-  "chord-keys+syntakt-sd-swarm": "908918bdb664ddd87d5d36ba7af6aba282623729aed07ddfc38c803d89219aad",
-  "chord-keys+syntakt-cp-toy": "197edfb4e8e154bcde0af16be0ea5ae82c1197b3610b20308943bac7fcd9723f",
-  "chord-keys+syntakt-cp-bits": "5b403dcf08f4ba996b99cdc8acf0ecb76512d6c9cb52610b9ca3c6a457dc6761",
-  "chord-keys+syntakt-cp-swarm": "58a7f84163ff5e7f46b96fa14c2df13fdc2262af6970c5bd5b3788497f5e0017",
-  "chord-keys+syntakt-toy-bits": "3522d756bc595f874f0842c35e8acd6c969f3cd21fd570779c643f9796b9a4b2",
-  "chord-keys+syntakt-toy-swarm": "3fdc8da9910de70c4157751fbaf1531368d7cfb0d1bee7196761dbdda5467eef",
-  "chord-keys+syntakt-bits-swarm": "b4ee5e5ad3eb07c5a7c1848c7f2819ca3978a0344dfc15f9d08d16c5d02b2807",
-  "chord-keys+syntakt-sd-cp-toy": "7fda2b3ca982b540b797dd1a2b619b127e46e792607fea25454ebe70d1cce049",
-  "chord-keys+syntakt-sd-cp-bits": "7ab24e011222d38b3e340e695f52e60bb2f1e5ecac2c03d3e3d451f921e4abb3",
-  "chord-keys+syntakt-sd-cp-swarm": "223090e6cbce2c88f2ed11a6173ce5d09e195f9259ca87798dd9af9b8b4658f4",
-  "chord-keys+syntakt-sd-toy-bits": "8399744aa22c6e72d8602ab417f5219baf634e717331c6e0153660e0250df27d",
-  "chord-keys+syntakt-sd-toy-swarm": "65cf938357b5f1d077b6ebe1b955e2e7dbd24a4211ff19c681e2ab136b1a5917",
-  "chord-keys+syntakt-sd-bits-swarm": "45ba759e488038345c364b24fdb151cd4b3d869e038eefdade714b1d42039f24",
-  "chord-keys+syntakt-cp-toy-bits": "e23a648dde6e36b237bda3d56a1a3889d46ad837ad910d02ae6a5ede0301f26b",
-  "chord-keys+syntakt-cp-toy-swarm": "270863848c2f501e11604fb4743bb035a6727818ca4479d9e55e7e07ea533ef6",
-  "chord-keys+syntakt-cp-bits-swarm": "1d3ebaeebe34d245e32a74d29a90dfaa34a6e1d9de8728c044004c6744637f28",
-  "chord-keys+syntakt-toy-bits-swarm": "476f2e2c9cbf7f3d26a151370ebee5a1497faf095b8a3b36c5dcc4e22a9d5093",
-  "chord-keys+syntakt-sd-cp-toy-bits": "a1ad68f9f00ba01e8fe68a02d9df0b2509bf8aa99114ed045ae20505d2a2da6a",
-  "chord-keys+syntakt-sd-cp-toy-swarm": "b59616562717fe05e7ddb4defb0d09fd29b355750c3205015cd95386523dd6ec",
-  "chord-keys+syntakt-sd-cp-bits-swarm": "2b43331fef223eb0a1144ecaac6629b30ca0c366c1d6b5a41038bc9f8eec8787",
-  "chord-keys+syntakt-sd-toy-bits-swarm": "93812cfbea4511402419e8f6093504c7f6f240cbb4cde3f133bd0bcf8fdf1895",
-  "chord-keys+syntakt-cp-toy-bits-swarm": "daffb874baa3e235488fc890f68b708a23a44cec3e3e74d887372f6be5e3170a",
-  "chord-keys+syntakt-sd-cp-toy-bits-swarm": "9de19468408550f2d333ee23c90fca77cee9b9d3d54b0de23ba82079bf0e2a47",
-  "track-filter+syntakt-sd": "05921847bbca4ccf0661444f5fc9edce80626b59490133741dd54bf5aa219c27",
-  "track-filter+syntakt-cp": "20e90aa1f2a45bd3b45faffdf0dfdb550bf3b0dbb1689bed01a85e79254b197f",
-  "track-filter+syntakt-toy": "77787ca5fbca774c4f5218028905142a37aaac134d4f5ae24f2fbf12f163e85e",
-  "track-filter+syntakt-bits": "4058276c16b830800604d3beb92e9d53135bf031cf9ca26e0ab8f6a0dc1865d9",
-  "track-filter+syntakt-swarm": "22913811dd89d64ea138b1e598d0626705892f3d2cc5a460bbbbdb103e635769",
-  "track-filter+syntakt-sd-cp": "10bc8a08bc134f0f817b141e09c51ba0b866e18c1e58cc840a3399f4c09a757e",
-  "track-filter+syntakt-sd-toy": "aaac236ce864cabb6fae332a9c7dcf88c7730412c85f3067760b647422bfd3ed",
-  "track-filter+syntakt-sd-bits": "8c9a44a03b05cd7061566ae21097d2e6dcf8fed14d5a3acdce2388ad9623fed5",
-  "track-filter+syntakt-sd-swarm": "e52b667ed9efab492c3b3a519e626e7cedcdd9e6ced439293893e4cf5d495d3a",
-  "track-filter+syntakt-cp-toy": "44887e2668eef2cecc072d07b15a2352a79df5ef25e9ddbd6043aa3c3525b8f9",
-  "track-filter+syntakt-cp-bits": "da49c998a0d04d07695d8e23561c58ae3811699be236cc0c87c8fc02bacfb464",
-  "track-filter+syntakt-cp-swarm": "7129a416a9593567436f804f468f53a479d3370989f050817f02dcd48c1a58ed",
-  "track-filter+syntakt-toy-bits": "5efb839c649d4d16c81c89305ed8fe7e32e83ae7e7980762912ed4d9b4fab958",
-  "track-filter+syntakt-toy-swarm": "4219b9c6b77b2b0fcfd2fbd5f90c3ae093372719b31049d336425f2d8d43df45",
-  "track-filter+syntakt-bits-swarm": "75316c178ca10c7de498be3335f7889a96cb3eca75dfb3770867c560127ce8ad",
-  "track-filter+syntakt-sd-cp-toy": "816e81b37f079ac88a6da8632d5e31a86c13cc0495ab1e499d0e02ac2fd071e9",
-  "track-filter+syntakt-sd-cp-bits": "a09d62f890fd2992be164944e2e14da5e4a38b715afb384ac314fdc31dbf18db",
-  "track-filter+syntakt-sd-cp-swarm": "bce2e2fbde48d4f3a04e7217938234566d2c5f494e838ea973b310d03a612472",
-  "track-filter+syntakt-sd-toy-bits": "745da662ad983834b8e75255acc5cf948ec18181fe070638201bd79c5192d659",
-  "track-filter+syntakt-sd-toy-swarm": "c1f17fd3c87ecb5f1683bf7e0df68e493758d2bf0d2a6327677752929112299f",
-  "track-filter+syntakt-sd-bits-swarm": "3baf286db773be468681402ad2b6c3ac7a68f08faad1c6a0d10602eaf9f1e1ab",
-  "track-filter+syntakt-cp-toy-bits": "8bcf99df248d64e94fc63e0974b39e6eaddcfcc00ffc987527139e391005a0e1",
-  "track-filter+syntakt-cp-toy-swarm": "f13f661b2826379a0986165aa51a8c17dc26662f9e9eb71d3ccd5f344d58d530",
-  "track-filter+syntakt-cp-bits-swarm": "ee718b9602bb2185088e32b32c3c0545f92a7b1a8680c66e54632631efe92666",
-  "track-filter+syntakt-toy-bits-swarm": "7a29fa3837e9485a676810ebbcfaaf52778042f46eb5c06e9d95254cbf403f1c",
-  "track-filter+syntakt-sd-cp-toy-bits": "16eaddd2e036ecaa03883d2fe7d84e41403d97fba7e58d6ba73cfbfc3b15cb79",
-  "track-filter+syntakt-sd-cp-toy-swarm": "10e288f09e7934d9eb96fbe670b02bc81f1828b0569e51f1224cf0a9d3ab8e25",
-  "track-filter+syntakt-sd-cp-bits-swarm": "62791430c25c548607abb8b6a2d05d45ac7c0d233d687c64c625c7c42010ff36",
-  "track-filter+syntakt-sd-toy-bits-swarm": "0b0fd7e2a52f6862d75b3c213166f55e5de9d7311b8a81ee6d4a3a26df10c7d6",
-  "track-filter+syntakt-cp-toy-bits-swarm": "796ef817b774d4f32831c5509c0cc7cc945af9aed27637e856c888464adf719a",
-  "track-filter+syntakt-sd-cp-toy-bits-swarm": "a280f7ca1763fc3aa12aea1aba0a7bff7a99cd663f6ac23f2f5a6b08548cb5ac",
-  "lfo-plus+syntakt-sd": "4596982fadc4dd7dcacf4330d282aac97a788e40fbf924169b32c21072ecd042",
-  "lfo-plus+syntakt-cp": "c533389a9f1ee4a025c86480c4c8515ef19d3df02e5c455db634a5c227429b56",
-  "lfo-plus+syntakt-toy": "b336557d52cf0889cc2c60bccc8aed5f93434438c297ffcb4fcf1cfc03d41744",
-  "lfo-plus+syntakt-bits": "b6f8009480395ab886a8ed9f3e518d09cba26ff0ebb1ef762d4cf08fd4348336",
-  "lfo-plus+syntakt-swarm": "f29aefc96c2f98c6908188103853ef76c7a01cb7bfcb2db47c26ef60f46e1a16",
-  "lfo-plus+syntakt-sd-cp": "3c60182bd071a3c4e21df5d15bc895b1e2a08e03b5e2d6b9a8c0a655670aad02",
-  "lfo-plus+syntakt-sd-toy": "f08406e25d050bca05bc2ef495573d3aa423b1c5a8d8f546d89368c940202ab6",
-  "lfo-plus+syntakt-sd-bits": "bc31e80ed78cacf3a8fcc6339716fddf0c05340d4bbadcc8cfb68d7f4809d451",
-  "lfo-plus+syntakt-sd-swarm": "46e65608fe819f1917b3c62cced3c200175338d852fac3253c28206005287de1",
-  "lfo-plus+syntakt-cp-toy": "8fac4f5e6da86eb8d0f2fe4c23e7c4e821b5d47bb9497433a0ce4ba14864e768",
-  "lfo-plus+syntakt-cp-bits": "75bd26e17872f65991f9b485ac4318ff8632993f57a0adc1520ca375e9e13968",
-  "lfo-plus+syntakt-cp-swarm": "e702b025f01f8150383d4fac14e1e78e4e26c202dacd9706875f415a26e48c23",
-  "lfo-plus+syntakt-toy-bits": "4f170456c84dceb13e0172af080f656ffe9e556e71cf9663b99e4e764491da08",
-  "lfo-plus+syntakt-toy-swarm": "3cfbefd8d19afe8723bc686a0fe70552e6bfdaf40bad53aee5d5aa8f1326a3cc",
-  "lfo-plus+syntakt-bits-swarm": "90834849953219ee7b8f7a0635b6c071bd6e94cbf5ba8cdf4185e1034fe2f067",
-  "lfo-plus+syntakt-sd-cp-toy": "649b268238336845f2ba069151bb1ffcac119feca4c4d99e020afc0771206fae",
-  "lfo-plus+syntakt-sd-cp-bits": "e0c9de128073da681dbea9f066580143404059c0cd97ccea688b2420ea0a0985",
-  "lfo-plus+syntakt-sd-cp-swarm": "74bd6b31bd0b43a504debf18269b2fb5afcfc038edc5a0c702501af27189cfcc",
-  "lfo-plus+syntakt-sd-toy-bits": "79d7f83b93685919005ca41ec4dc214dc9aa3942193c139a35064fbfe743f1ad",
-  "lfo-plus+syntakt-sd-toy-swarm": "a0cc9cefc4096e627d03f83e888ecb06e96f1a5add8160bb7b99f45e254305fb",
-  "lfo-plus+syntakt-sd-bits-swarm": "173af4f68cf62c68a11b6796446221821f488bb51f82c7bfb3d924b25a24c86d",
-  "lfo-plus+syntakt-cp-toy-bits": "23f03164cee5c07f1d508c53333927ea0c9a1548c5c2b1e0e146025a9689eee5",
-  "lfo-plus+syntakt-cp-toy-swarm": "515decc12a0c1965f8a41f412aa84ed57eda9a44ba1ab86b5f474c5c87d45057",
-  "lfo-plus+syntakt-cp-bits-swarm": "93f6f9063bad1a020b8fbc3d947e98aa933daacfeef321bf4f3cf1ebd82ba8b6",
-  "lfo-plus+syntakt-toy-bits-swarm": "a929fd725c047f742da91471bbe07561b7715adcb84d226d360ae42711eadce1",
-  "lfo-plus+syntakt-sd-cp-toy-bits": "9f1194d630c9823ab3a313272d7fb15e1192799cb7cdfd0f4104b66cbda6f37e",
-  "lfo-plus+syntakt-sd-cp-toy-swarm": "52bcd17e5d4d8832b882bae86456ed5b93514184e2379d1d6a050e4cf1768e0e",
-  "lfo-plus+syntakt-sd-cp-bits-swarm": "fa661c7ee72c006ab7420d4f4e94efa665e523bc492c75c32ad3cc08214966e3",
-  "lfo-plus+syntakt-sd-toy-bits-swarm": "54a46d73943330730e948812a1d58d27fa631a3aec719d75f030bdb24560eb79",
-  "lfo-plus+syntakt-cp-toy-bits-swarm": "eead27de64a58783417a9c1adc5deb06a8b0054adbd476e725a42f464a72a31d",
-  "lfo-plus+syntakt-sd-cp-toy-bits-swarm": "f90b165931880817bef1a9711ec283027a2efa39589996bf3dd6bb7e2e22a1a0",
-  // the largest combinations: every compatible card ticked, from each card, both ways, with and without the Syntakt engines, with and without each of the machines that join them
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm-macro-acid": "51588598b54d79660a0da802e09a7fc2b9f597a14506aad56a63c35bd9340e60",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-macro-acid-wave": "e1d0e752b1e0cfb177cc84693631eb1ebb3dc36a8507feef395e747c73999823",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro-acid-tg+lfo-plus": "0511b7619db274dea06e99947ef4687a30823f36a5635555ea653e2f174d7d90",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro-acid-wave+chord-keys+lfo-plus": "dc2ce8fe5e4fbc6c664eb96054eb7c7621564a1b7d47f1e2756f6eefe8aa2d16",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm-acid": "3d4a4050a067bfdcca19d984e0b5ca9c6e0fef873b5aca7011535d641bc98c09",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-acid-wave": "10a9e89c42735764ac5ea296913d071cb4cfe09934da1ed34d5543242246c2b1",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+acid-tg+lfo-plus": "140e34f643a63457ed1625caeee0055f418c077d5c6abb85a7fc884946ff8c3f",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+acid-wave+chord-keys+lfo-plus": "0ee38acc3b28b69d9af3fd43981ef14b8cee9647167ae370c1a55383813404ca",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm-macro": "8336af1dcd219a7069d7d393ea6ded4be5a54876e358072071090e143b2b9cff",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-macro-wave": "297be85ba0dfa6fb3c442bbfd340d9432a2774396dafbb2b94cc84ca499bd6ed",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro-tg+lfo-plus": "c93f1f8c7161904401f53911b4bc27830a7660b696e8b2b0c7bd97943f43e5ba",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro-wave+chord-keys+lfo-plus": "5187920f0871b64b4a7c138161c78ab14da704c44e28076e981010d4d1a8ce3c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-macro-acid": "f9e699a05e049e37411ab18c4f66528c63cfbba4a7bba6e9e2b93b264c084495",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro-acid+chord-keys+lfo-plus": "49bbbe93383606a5c0476643e1f65ca1761c4034ce5ab3176108318718b1f5ff",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm": "24fe564025a982621821b37e4e2fe7b5c0fa7cc6d65209a1f1f5d5d256462870",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-wave": "813674477d6c11d12c2cb4b32a284d51eacf82ba8dd7049092c53c70bb652c78",
-  "6ch-usbup+model-tg+sample-preview+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus": "6bf58eb2d0ecb34c7c3f1af7ab7f7deeb564e0c09e5bde644316dda665364498",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+wavetable+chord-keys+lfo-plus": "4cbb1410d7729331f5adfce3a645a7b6352f90c6d9d7ad4de40533b8623a0a30",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-acid": "ccc2369e344eda89e36e4a68392b1b404827025e1a3b1f2e0d0ccdec429c4de1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+acid+chord-keys+lfo-plus": "846271ced129d92ab0b1fcf115f8e356fb7d3faf834635f8463c7929476ce2da",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-macro": "e908c6ec5c09dacc9b81dff71db208e79ab068ed841ab9350614424fc2855710",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro+chord-keys+lfo-plus": "07aa33e8f666728e566f6d3e241af9397e1ba764f16119d21f11e2419379c5b4",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm": "c65e2131059d8fb2962d92ab08c47dd2f1d4935bc3a104bfa361da853c6c36de",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus": "b680c052ad37083225a1878a1bea8f62e3a6826518c536111d43de651fe39e6e",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm-macro-acid": "dab870039e2888c02d0dd00b8689452188c86d61e92394820e058a452002bf4c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro-acid-tg+lfo-plus": "f16f36017f882195a6d3a0ab6a6253fd98fa83e2240496d7467787878adeb563",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm-acid": "44f1e44afe22e93309d65a8d52733c385e7ebda0d6748c39a149f31554fa6784",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+acid-tg+lfo-plus": "9c9084b0ebe1b2997c8851380f5a6b6dca5bf5a2d725f2f3958c0cfa8d86af4a",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm-macro": "cf07b299f69589194c1b8cd19c6612a99a9b79f38f9f4d10e6bee0eda8532dc1",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro-tg+lfo-plus": "f827ce8902a44bf884545e7fe41e32eb5fd00de24605ac060dd0bcefcd59cf02",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm": "bc27ecfa76fb91d56a020c0b98cf6fd34bc65dc9570570c5650e37c11f2561d3",
-  "6ch-usbup+model-tg+sample-preview+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+lfo-plus": "2e9ce17612896148a7abafdd030982da036a314b09ccbfdafe7142734d1ed2ac",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-macro-acid-wave": "55589e6769f850ec722de272e83abd3a2a99a26f0836911f917d2bd47d7f8f0a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro-acid-wave+chord-keys+track-filter": "bfc85aa63afa5bce7eaf16c59950508b916b12023714bfe7734f532baf40af49",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-acid-wave": "e8f5ed6c82300c7ff9b975577ad0c89e9fe340883428c207848e4e76fd1509d6",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+acid-wave+chord-keys+track-filter": "a9cd938157ab29f393091e203235d994351ca6f3117851c606e25e87f3c18e38",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-macro-wave": "f84e09fa34b848336d6d88f6377dcf0c5899f24f3172592adccc71cf670ec514",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro-wave+chord-keys+track-filter": "d504963b19f89ba27de86403afa2881e059ebfff86ff721664374b40b214ef4b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-macro-acid": "3ccbcae77ec2f40dcfb011ddda2f9db1ffceff1d169fa3fc8bf6bfdeba1ff990",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro-acid+chord-keys+track-filter": "69c6ac80b9f33da1362684c6cf719eb7df996d266f11fee25a55322ecc6b0a09",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-wave": "de0aadcb3fa9aed161281b531fa5bbf99b4b32b44388b7b13740b36bd5a3e35f",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+wavetable+chord-keys+track-filter": "1c3647e1b998f845204c37dd92eb383216f4aa16f209d51dc46f2824808d9de0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-acid": "2e5c7dfee11ef42ea0b707b3ece5c22d8afbd622397b326a80005db4404a590a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+acid+chord-keys+track-filter": "8e33cd6f5e6dedba99cece7f8325d7439d6d7473fb72c4cb55585a8484d9cfc6",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-macro": "b5d52549e67526b49aecf7e4b5e4f3032d9b9172d00eb2aba75b8065426baf8a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro+chord-keys+track-filter": "f3458b5695ddcf2867bd382bccf5efc35843d871f2de4200af43cff443e355e4",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm": "b2f33b43bf6a400a6ee3acd99a8a68a5d5aaac5b9ac4f5a9b3de01d68b5186f0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+track-filter": "009f1749f26b80ba0ea6718c6e449e8b26f1bdbb90ad3ccf7bb0e519ecb564a8",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-macro-acid-wave": "639289e831d54ded48e3eccc234dbd76100c4fcf44a877059e4d9b8cf68b3cfa",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro-acid-wave+chord-keys+lfo-plus": "fd35ce67fbc8ea830a950df25b3fd15ae3d7a05b0a12545974d7b4ac295364ac",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-acid-wave": "c962363371938aead8b171996ef178672a52a3a00472eede03fdca2de51237b6",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+acid-wave+chord-keys+lfo-plus": "40596f588aae5d0b05fed585f173ef18bc5119f8df29d0f29055a7d3411fc0c0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-macro-wave": "2eaf3f83cd5c69048e19cb64dc5ff3005e055ce7405155f7c8eedc5bc9430554",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro-wave+chord-keys+lfo-plus": "0139d07c0873a2d338ebf998f1924097e0ea791f191d384236443097f58f368a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-macro-acid": "3a59d364b77a94801826c66cee5663d505ab719c4e919dfe01dc91b411399093",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro-acid+chord-keys+lfo-plus": "44e3845a4761f2a8c4b44ad7c8e224c5e8deebd0e33b5c396f9cd2d0876382e9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-wave": "d89376727d2fc31365443deb88f92fcb9b44f17b26c6b2103149bf99708737a8",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+wavetable+chord-keys+lfo-plus": "f51f9537a1fdf1f818c152d076bb356b77ffe86c258201711b9c62b81cdd1451",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-acid": "ec450169cf695a959c3dfde432de604efe0a9255ebcabd6188c690977cc8cca0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+acid+chord-keys+lfo-plus": "a8af1651d4eb635b5ae3724fe359623423dbb693f4c2d0dd409c6d16529bf9cd",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm-macro": "9844480c9d6a350c6deee80383bc776288824f8b157cf95bc6e74bd94b8b855b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+macro+chord-keys+lfo-plus": "38ac8bdddcf58149a94a2bdd35b4a6ab4f7e772089965e00f77b8feec08be12f",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-swarm": "3c81732c692afcc66db36752dcb9cf6838f83a51185c53f7f7c67ea5665ee042",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+chord-keys+lfo-plus": "6810ab6cd2474f21d649485e9ce770ead5a2ba1aa3c13bd320d379b0ab008f05",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-macro-acid-wave": "90d0bfd4c9756c58e89a8f8282bba4c2e0416860c12347d9d58f7fe9feda0f69",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro-acid-wave+chord-keys+track-filter": "5f78ee55eed111d3cd09f24d4f710466d7b179939b25f33ce1978e6d51e4c232",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-acid-wave": "281de7d99bc981dec4db5f3e08f78304c68cbf3acbf0cc3f01d4a4bab48184cc",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+acid-wave+chord-keys+track-filter": "9feddbaf1c297d23ce3f49dc65f15500b846c4de3fbf4216fef507a7c8e94b0a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-macro-wave": "5f013e0a0599bfa1b5f854e33b4494fb47e86dd4f65e4074989af385778d2b96",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro-wave+chord-keys+track-filter": "284c643c976377c42bef765b997bf29fdfb880bf946e26cd4ba8fef8aebe7269",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-macro-acid": "1bbd05d87d6c8aae518e2b3d032569ca4822ef9f5a9a078af25e31ba06f46e5e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro-acid+chord-keys+track-filter": "e5f17b9721985ff3219c4f2e5fc12bec3e0759c66e01c055f17a53708799521d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-wave": "d7c9420f54815bc9fbc286001c292fff213cfe2a84df51d5c9a5b924b987ba21",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+wavetable+chord-keys+track-filter": "7c286e0aa90ca7a2ce11cccd3c5c8d43cd4cd5b49970bc75387929ca096b0ba9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-acid": "2a95c6ae7bea7a5a13c9a41b4f51769e9cd33c8119911c93f4c5fc4798c847ec",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+acid+chord-keys+track-filter": "181ef5d076d6174340a69af82495ddb87cdc309acc9c4ca432a6a00ba0dadbf9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm-macro": "de131e7d541fe422ec4b371732d6ad8ec0bd804796a4b683a4551917083744e9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+macro+chord-keys+track-filter": "377c74ca4f8b78d7394c514d332d65a7c9d98b2a4b1cad19194fcdd89d1d6393",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+track-filter+syntakt-sd-cp-toy-bits-swarm": "eee39a8ea7077a4e4adcab6a3ec7232cd3d786fb8987214a10794f409deb4994",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+track-filter": "ee5dbdc9145fff182e4f03d87699bbc68aeaca523039e995239e7816b80cf9fa",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-macro-acid": "db0fa292af4106bde05c0f0505806f4a18714cccec9a3b9a08ec0c373ec8b346",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-macro-acid-wave": "599aeeb74f3511128ee3e7d6cd04a88f660f89241e716f1707155dec6fc61051",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-acid": "1a52f4b2dd9da56b5abec4b8c8d4650bfa5d3a7cb2988c1f6a7005e772d0c3ac",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-acid-wave": "ae45e1fb97b35e62bda62b48873686634ea0ce32997307f02dc1b87918f9ce28",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-macro": "8a989bbc09977d9e153e365334b00cf165eb67bac7b56ae927d7ddfb60295f18",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-macro-wave": "fb7561b83e74be1d4ece06aee81c15a5b5ebcd9e88540f4da20fc5f4172ea226",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-macro-acid": "e711054e25de86be37b9d1062a5d817de8a0e15c3ac099f3bd98e70f6efd35b6",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd": "0dcdedc4f145c05df8801269ede490f3ae907b44191f88e3cd6476d631e8f3df",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-wave": "4e488d2e2b8ce6cd9713eae594d3de0e02374234aa6e85b291d6ec8dc7d85537",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-acid": "271352fcf010e7c895cd167230a03eaad9180eda7022f998ff62c05c406d7b75",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-macro": "66cbb85a609fd181a8e430ed777558afdd2d38c3f4edeeebf592f29de14568bc",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd": "72c369599135d5e9fc7b7cf08940064bffdb5092a09b7fa37a77af6634fce187",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-macro-acid": "f7743685d5ff549f65e4d9d503c93f67fab564b600e22a9620596709884483d3",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-macro-acid-wave": "23bec2faa52e43a86d98c8e87b8a681d19034791d531e86a00dfce0c16dd5f9f",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-acid": "1c10e7f527e39b00115c997db07c4134f2ca3ef3e7f882afac73df7280221b9a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-acid-wave": "9ec9a3d440ab082cc0dbdc0d026f645c10670939c35d5d3b687c2aa5cbe55849",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-macro": "67387a98408d5bafd118af62d0b71c3448b72e439ced3481c91d964a3bf8bb9b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-macro-wave": "e93dec4196e49481054d39bdbb528419a85b935ec1140dc11a33e66cad144a66",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-macro-acid": "2f3dd38692f99f6097aa975373409b3edfb6333724ef45936edaf734547db86a",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp": "ab249c735dc768cc0b4db13b903eee97e971fe2315e32dcbfc71c50eb3a8ff48",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-wave": "0319cd060b7ccd9d0e834bf016aaf7fc7cd49cada140471aeec4e56580ae9371",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-acid": "d0ab30915fed725266e65c51d0d8e02b08936087616514cfc7c0c7f2833e290c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-macro": "a7f129be8fc589fe6aa69557c3f2f0bf81247b1c0d967a2291a355aa79a0b051",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp": "b820ac1a44df695300ad5194a23efd532d0ec134f4e4ee331144c6c1160fdb17",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-macro-acid": "5349f3f22970728d15e7e5fabc763d7ba6719cf120796082040a109a8dbcf238",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-macro-acid-wave": "e3d051b3db1b9fc9a64cc3e2cb4c9cccc0584d499ab77c75463b4447d4465049",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-acid": "3a008cdf11797255444390a2dc9a06f5d1a7380222edb8fd753b7ad05da524a5",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-acid-wave": "d7368245a6d452894290d9cff79d1addbdefd958ad2e58b45d4219fc5ebd1952",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-macro": "981e61dbf0abe193510c65dc03fff3b52619fdc787970e68f7dcfb7c1859f2dc",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-macro-wave": "ed1024160f82552dcf04ae40b0caae02598b1e689f96d4df91f11241f27a4515",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-macro-acid": "e79020b8bfbb009c286707cd2aaeca277e89fb949118321db2a98b8a167cac62",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy": "4e34597fe9cded1d6ad0f37c408614f039f7536ab6303d7ff622785070297cf3",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-wave": "d1a75a072e64aceb3eb56a3be11c1939779f62e364704ef73473fbad6b35980b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-acid": "5bc6614bc0dbfdd4bab0e77f9084fde54a3878cf907b420727a52d731c6624ab",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-macro": "c40d1ac5cf57b4f40fc4ec94d3b776a066a0e596425b2bd90da112668515225a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy": "cb6fa23e385e2a2a2c7e67936fd3314da238f74c38e2c2df98d72213d603495c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-bits-macro-acid": "d61a798b7525267f2e59ab27572d938ca250cf3985f57e199fcb517c26562c2a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-macro-acid-wave": "91b14e8d3c5d475190da08b4a3ad78bddc4e3a988f4f0764bb1f81afd6cdd3a7",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-bits-acid": "232fcaca652ae26ebf6f5320b2cc178f459880a998b2442ad0d076fc1ac5ddfd",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-acid-wave": "93d6d22f2e0dfdc32f8ff1a6d7b8c6b895a1194282a6e18939464b36311936eb",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-bits-macro": "9b47ab45d7139e64d599fed020c19d84080ecaf6cd46493c0cacb749fda837a6",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-macro-wave": "96e35d142ef519cdae698b8766e5a7f18b312b9896e1fea5663d2121ad6c64cb",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-macro-acid": "7829704825ed615eda35cc50da8bbfbd8198b12b067a7fc7cbd559c2fd8c72ac",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-bits": "642c50cc867dceccd2cb2f980450f9f9f3ea0e6d7ff10f6d233cd803a559ae51",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-wave": "c2a8c3a43af11b09e70b6a6693d26677d42e4541a09eeb447153792cf8637fa7",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-acid": "6dd3dcc07f71bc18403dbdd80b3c56fc0ddd87bdccd9ed40132f05d1229efe05",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-macro": "7cef3410202be5deddced13fd8d494ab0217efbc919e7d5f5e35c5daa5911667",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits": "69bf68b61356c56bff96eeb4957927ae8ef03f75335f400cfb1f67acd3de6864",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-swarm-macro-acid": "5b2e187873a2da12918ef91671c9797c0d96e15ddd3336a7fcf72ccbf80e6761",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-swarm-macro-acid-wave": "1c8c2fbaca079026524b0ea246f57c7fe724abb72223179438596e822ce90b2a",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-swarm-acid": "cb9b8a501ace9e121a0f6cc1b6e55fc5a3de7d0c04dcabfab67b03096e400eda",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-swarm-acid-wave": "0afd01135727d9b49c259fda67958dc69ac090e55326f79fe8b55bd283eb2ec0",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-swarm-macro": "92f7fce798d1c109147520b0865d109c49b35be285a2a661c84c8a769c5e17d9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-swarm-macro-wave": "a1ad7725bbcabf289016be5d1e6477e727ad2bf3eb4fc7ec387371a138c30164",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-swarm-macro-acid": "b43755412dcd418dba3a65bcd9fb58b2f13cf0cf41fc27f9dd9894812f8f9fcd",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-swarm": "eb97682b644bc6159c50a01743ac8eabea2b96c4185df66a0c22fca6ce5dff1a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-swarm-wave": "6ee2c712457995fb019d7d0ff9ed8106feec126de0884a2a010355a64c553ca0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-swarm-acid": "c782328c93739b298ed9a53b0a035fdfa8e40a76220106f1312723915bcdcb16",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-swarm-macro": "16af10d29f398bc3e6b12196cc7c4a41d910c32868317463ab356511f48e57bb",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-swarm": "95f5563e3c1323012ba0c2b50025998f2772c65d9d84d9c48b6c8ab1ba340387",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-macro-acid": "a60495eb35f5eae9d78d836475407c68458ce176189e1586be301fbc1c0a0ff0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-macro-acid-wave": "c4e88b2bafbb11fbf605da1cd91ca18fcb9b690b68488bc329364d3207a5f344",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-acid": "fc5240ccbe6fdf7b01cb948c71ca5f20fee8d2f26ae86285fca7a78911b63ed4",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-acid-wave": "778ae5ab2dccac6f3201e6bd94b2f9f56d1f6d67770aaadb8714544d7f9dafb4",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-macro": "aa19355a87ce734a406cdd9e4012ea46680a29e60069fc116448773c59d8773e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-macro-wave": "a64abf9cb58b67b6b74f751103dc8b38ff1f3bb6243180cb2914ae4e4379e4cc",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-macro-acid": "00cd808167f5922e552994f4fcac9e18c20662933baabd1cff040919a8106f45",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp": "d45d1c35da3a473cdb79a053670dbb09f9f591b2c90c2579f1c9b4b9278b9bf0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-wave": "34411b6ce5b60a3492d11dfd385d54df18cb1c1dafb5c855b280c4174f56f2e6",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-acid": "cec98fc20ea2683ad51c19cec6676f5ae2f01dbf066e0bf0c3750591613583ad",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-macro": "5e769770b3cdce1fd9eed18e784857877a161b713a12383a2e10cc7ee0b08a0e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp": "7347701835b0f3f19fb0bb9d2b436b8935c196d8ef6bfdc65598ea5dc86e8280",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-macro-acid": "59b92091f687b165c4c5a9807ba43c18565c13b5d0f3008f57bc30fcc8d6ec1d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-macro-acid-wave": "d48e16212ccdbd6e169b4d3333b0a6266c39223a4b085c2c00ec3a64bb39cc76",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-acid": "297c4448522498b10c01643ade3539897a641dd46b34b8d2dd353d8afafa8a6f",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-acid-wave": "0dfb9868c1af76e371a1c77cdfdd95372e8f4b98cdfa9651fbe1471fbb01ae6f",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-macro": "8667a8d5148abdac7a7d01c0f295ef68790426298585bafaa9a34fddc6e4e850",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-macro-wave": "78b18ca724f5ce9bdf8398d0ce0466fa5bf873aed446244ce999be6d1b494f11",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-macro-acid": "da47499632289e0655aea4157392b0abecdea60e5615bf5e314768d9adee0394",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy": "8080f5b8a8d7a8485ffb2cf47e01aad014e2af9897c22d5a12aeb0b2fe3d0d46",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-wave": "b379d687671dc3d03419556ff802004d0b154bbf09fd9b61adbae2eded207a25",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-acid": "65d4b5c8e7f1f6bc8eadbf23328c9eca1c91ae72399a3b92a25647f608fd12a9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-macro": "157b6ad7e1a711a14a54b9e487a3c1cd133c2840574f9b3473b7ec777a0ab7dd",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy": "e4dc3f66b098a6497476f8e3dbd794b0df3e1d6e47025410bd5835c27969d90a",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-bits-macro-acid": "b1b4270dfc38212882aafed2d9631a33d961d8b445a792af30f8d4c735bbec41",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-macro-acid-wave": "b11ccb5d1bee1f7d4265f89672abcfaa9eaffd4d63fd2a4b2ead54796c54f60f",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-bits-acid": "c6a1ad5476ea5be596cd191c1ff6f0c9e11c58d60beb9e8362731f2c85d04f33",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-acid-wave": "f06a8007cb3e33ec7271f4a593940a507283452c4cb65c5f866ff50d24610e00",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-bits-macro": "7394591337ca412f7bbc0661ca86b203644d9571079c8ff73f2f1ac4b1e2dacf",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-macro-wave": "0206e18285fa7dfb77c121a9170dac66f0223b8a5fe7ef9e58f3a21e15f55bc0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-macro-acid": "77db1fa0eca29d615dcafd7c84576f305347cfc03fc286b6bf28c465ba98b2e2",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-bits": "eb0996dfaf3efe9d9c965d75acd49185dfdd36d55cff40f02cab91635e939800",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-wave": "869ea5f3831b075a4b11f18c25faaa340c7de530158d4e3c328e79d2cb7567f4",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-acid": "ea0be04cf6287bcc48b1e0a0babf8d82adf424e679ef4bf526c39f7b8102859e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-macro": "65ffa2ead8cd21f5c3e79320d35c9acf84b7294ea854cb06f6cb4e9f1a5866f3",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits": "0488bf86e41926bab22a055d44c4aeea686c790a83d7b29dcb558363f2a39cb1",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-swarm-macro-acid": "730ca965650288549294f77bd10fc10bc697be530c1a85d13753de3cd54c60ac",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-swarm-macro-acid-wave": "6f0ffc48eb27ed4573462b9e5fe4473c03e4a89534290697244eb8da7d794005",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-swarm-acid": "b409202f5bd405ca1b27122b367f6ce833f74c483fa09967de4c1697ebbdb224",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-swarm-acid-wave": "072764854a7f62e9e4e9bdca90bbb851b331e8c5b0ed7ec5ce2628270454847e",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-swarm-macro": "86a9fbbf0995dd5419f62ee45d9392e33535b96bd5d8dfaedd2d4498d725e316",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-swarm-macro-wave": "7ab66ea0b721b3bc33abe20e002d2ab38d5872acbd08dacd0f30e3e82a8a9aab",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-swarm-macro-acid": "66a4511e63ce0f18139cd2aeaa1816a3f71d3c704e3c14eb000b689364ea074c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-swarm": "8a71de62fd3ae6faabc8c01f7635452c32e415d67293e48f386fcc9fc73e7d33",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-swarm-wave": "c080eb100add0174a31e46e76826eb140f96ed14299d10d9d07ea785df8eeafb",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-swarm-acid": "3a9b2ad5b962ea0166092ae3f4f99eff93ef35baadc309501e14e6485fc8b8d7",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-swarm-macro": "b4a95b9c2a58905ecd906f7b6899c1e143d5e10d65f943f035bdfc340b796adb",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-swarm": "5ec22e5e6543e808ee07175b314d95548901131bc35afc5f20320afbe17374c9",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-macro-acid": "1789344b858467f74c73c57f0199427e33c7682947ebc1c370b8fe7f2eab7ed9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-macro-acid-wave": "dc5f289c7ceb588437fbf1c056f484cc1dcad71a48ceec81c6ed4d9ab9085d21",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-acid": "8cbfb542a134bb5c4a184684360115fa53d098e12102314d5cf20090a5687ee8",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-acid-wave": "ffe2bd70242a8d49e3bf0cacee75742001c588bb85870210c64f003e8f66b7d8",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-macro": "fb4f006ba1010176f66e154fea15a70008e5d7a4ffcc1ae1919bb0418904b324",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-macro-wave": "93e7045185869ba05cd8b0422ae2f0a9cd8f6ecd8808f0d2a218794b5f88f424",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-macro-acid": "deb1f69e5e57b1b6b1b6507063a76b1a69e110af4d4e3411042f8c50b0acd4a6",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy": "61c2647a77b86bcc6c02cde49b800992e16045ae1058e226ee1232b487463e6c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-wave": "f8b79e8c21b9fb6ca0d87893d247de951a980bbd18f7eac7e723969d15647a2e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-acid": "da61c1d0a775c0d8c43b220e77f50e4ae29b767bc8ddd760f7cfdc01f31b82a0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-macro": "21143acec8bb7326bdc011c098b22199d5904758ad21d12fc036027e23d22a2b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy": "d1ba7da71dc50b4735f70d29e0b2138a30e78544e739f30f8fc6e3a31ca48f65",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-bits-macro-acid": "6384250f194f3f3986840caa281eca1605d18d1ef10812b6bdb973f93498efaf",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-macro-acid-wave": "cf14b77cc432b87debe1dd688734832731c96ffa705ce9189abcdf916cb8d936",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-bits-acid": "24e413cd11765af9b9635360da1a636d4ea2bd286f252e0254e1e74360fcfd04",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-acid-wave": "73e50634ebae491c56f34487d8dd0df58ff9f6f3355ee87c15b599b891ac3d7a",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-bits-macro": "94b1271aa099e929527df5aeeaa99702329b78e82f11e53e98f67b2b26591d46",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-macro-wave": "8cd711bc1a0791567816c6d73e77841825a854b12be4c14380c4cce65f26b8a1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-macro-acid": "cae4bdb6a6d7168c10dd621f74d36cc0de7d96d72b9082ea7a0ade8a1fb2cc79",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-bits": "9ca06506e41964b49a72c6f9e2d6243ce94d53506c71a8ad711c0464d8ca9a94",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-wave": "0767c67af4c1d4648dd6ab0d4003bcc0d8a3403555ed01fb7f7fe7145dae74f1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-acid": "fc2d67abc20626eacdadf16b7bd3119c2a02efc95183f944584f86525bf46768",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-macro": "ad7bb893531978bb93d478924ff59e159414f9713f7ee31e6c5f1572ec9fed45",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits": "b98a378acd13a569b9239a7c6fae1a98ebac26a480d53bd05e22848cd4ee4fba",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-swarm-macro-acid": "5b14a8ed307d0366ad5cda7a588c05daae38b1e6c4c7e2977c813283b2768ef5",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-swarm-macro-acid-wave": "bcfb29d429f6447fe29d2a1b7c75e05d7b3e67a98a27b962f8f3c339e851520c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-swarm-acid": "f0d590b7481f65b5c660e4583d0cbc57c20b81873cad680288680d11ab6e59fe",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-swarm-acid-wave": "78d1512d38d27d8a60c66296722845c661bd6c9a9f64642ddaef7bb735672df8",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-swarm-macro": "e148a576a6ccceef69edd1862be36a3cff14edc904f1044b60e8eb5998963fef",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-swarm-macro-wave": "3c8af806cf19c28aefdffd1673b1b03fc8dee0b50b998ed3f84c89a9ee15f37c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-swarm-macro-acid": "a8197302e756206f019de7edb3010ba1cdb6cfaf7fa952d0981bfbf9afdd61c8",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-swarm": "5e36be71a9cd2ea7ffbfab8df2021f69716cca7ffef68ab97d92f98b64c53515",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-swarm-wave": "18f39af30970f4e2328d30ba89f194faa66c7f372af63b3b6a796c870a63896d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-swarm-acid": "b150794ee8f1121cde327a24ff2f604ea4341658863ecd91cc43b176f47d13c9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-swarm-macro": "1caecfbc4e610fe0346a948787bd73e83d7f52e76b2826ab003b10d0bba4c8bf",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-swarm": "12c2a661c4071af0a5b3ea4369535ea6983c8a65a45fbf100937fbe8d266f5b8",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-bits-macro-acid": "f723b473184160a25c0dff6c58e37b6dc66c9d34424e11fdc4bfdfa61c50b732",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-macro-acid-wave": "f2cb57353f1e036d35a5e18e5eaab10862909181e384b2faca26bb9b41144e53",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-bits-acid": "fcfb4b4a8befcc3253e39f53758d174de2b1d6ff2076f14719e8215a61009bb1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-acid-wave": "2ae5c46caa91a20ff367b2cce912b73cb9d6988971fb96b3b147409d3bdb91e5",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-bits-macro": "c043e55e146f3f6db9a26ed81c88e831e5d74138d1a453954d541f1e68a7f4d6",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-macro-wave": "7e07629e1a519636ca894ee0f1dcd10216aeb24814c512e111bbfdde970100cf",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-macro-acid": "f13a28e9d606d082f6c50503feeb5aa8293683f82093b6d337f2ed7e9370d792",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-bits": "70e2dc186029afb69dce0bbf79dc4896c83ee89b764ebc4c10bf4499dbaceecb",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-wave": "1973aae43eb7676039f8268fa79d52bbe20222808fcc00018d73b8c928d60ca9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-acid": "891eabb08b627b145e6add6fa2f89e9ca0bf54085653e380cda0d2d1b637c5d7",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-macro": "b534c79d09c010d7fa9480377a84bb840bd7fce5a39a34f495ad793126408fac",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits": "eca11779c5dd0de1ca021fbb950c559bbb4b880376643a91559c7f705c3b197c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-swarm-macro-acid": "66176af1ece68c056b7064e661e805237a4a8dbb07bf40b53c103accd2bfbb5d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-swarm-macro-acid-wave": "a51d7c35fa29c010a7db49ee8d3705bfac34e6da0ff63c98246e880f8f559504",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-swarm-acid": "f0e72842d628fa6a2afaf58ff55c58b4d56f7a612407f4375d9dc8886a6d0d48",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-swarm-acid-wave": "1e3ae35ab9456fa85e6a7e512ddda6ec47f2e3582fb28c7df5e2d39df0b93f35",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-swarm-macro": "dcca2fa31ba4c4f1a471a68aec4703a3c4fe75eb052f36df8300c0f841ea117c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-swarm-macro-wave": "de4d35f6440666305c4baf51ca53de5ae0673d81ad8ba939a559ff2519c96f18",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-swarm-macro-acid": "f59d10d099844fc445d011f6fec587769e1842d956d1515a278ccf1671378c34",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-swarm": "27adcf5b3aa891b23c479452a8905d1f3716661e5c860e479f06ea3cb95dd727",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-swarm-wave": "74bea78f6e7f353e9197e6534a3d32ba1ef6c5255c9b5bb20e8f7a6c6e4558a3",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-swarm-acid": "021be587e6f8c905218f602c8355f6368f9ee37e603b73fb63430ac960c33981",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-swarm-macro": "6d75a5ceaae400c4612d1c84b90de4cb51f211285d68a756811a7739d6caef2d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-swarm": "23cdce9e485bd602f24b5116601682bd0aac0bd02b2a5456db1ed7436af879fa",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-bits-swarm-macro-acid": "c26336e5844b9c33e1d03812cc95e220fcaec90110f4bbb7de1a110f4a8c7743",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-swarm-macro-acid-wave": "87f1490482984441b143ab7152752454744080af7e73d3fadd330642761ba73e",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-bits-swarm-acid": "0d2ddda433abe0c140940cd112a8d1d5cb0eebaba921621401ad06488007b299",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-swarm-acid-wave": "e3216e13c2c55138052231a5317fd1e33f2df25e57e324f05da8308625b62a52",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-bits-swarm-macro": "d140e865816a071f849f31262c0ca7b2439897d0852caba0f3529cde63feef5b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-swarm-macro-wave": "e522e34f599f196d0d05f15653e88c128d8505f71a1acf7607606afbfe565024",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-swarm-macro-acid": "42d3e7d82f81b0cf7f149a26cac7de86324f93a60875023c299e927a020064d7",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-bits-swarm": "745dda171ec2fdc802bfea0688d7bf23da7eeda009672d1c94c76dd312b6a683",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-swarm-wave": "b5de94d00b2f3fdc6d575e2d0768d9f3f8c4695c24495af8dcfe4329750e1cfd",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-swarm-acid": "4747104bad1d66ec1e1a780ed047bc05787daeda28975dddc7697970b9ed26fb",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-swarm-macro": "5ed67fb40e4bc59f91eb056bc15fa0ac9eae0ed41733a722e84a4bf9418c7f8d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-bits-swarm": "d2e4f62e635c921108a446d2ab7957c24d8da52a857dfb0a61b38a9370e1b125",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-macro-acid": "5da5ef7be8ffd64be18c25705a9b505d5cb966d2009abe4ccbd265399043ce09",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-macro-acid-wave": "c25e6a55e7001e9060b7f0719159cb616462036a48d3bb0eace52504939ac0fe",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-acid": "7c4996e2171a3c6863f55d3eb899cc0a6382c94d2f66cd6ecfa57364f0f7e492",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-acid-wave": "92653fc74972bfc8b837558edef53605d4295045c2ee956295f4e265f9fd5d64",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-macro": "272da2997d78039355058be9f28d34b6a1feb9f41b9396844eefe51a83147998",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-macro-wave": "8c2d8981799881302e67ea4e3e21e2f1a7c38d2fdb40134d84ae70f892b94ef1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-macro-acid": "77c299acf7819989f080cf9ff6323eaa13be0e1f61115ab599a854dec7ec3dc8",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy": "88562eee38caeb21b4ffea04ff46a543fc1ff45c013b70e6cec6f7f8f04e9ca5",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-wave": "f17959fd3bc0dfe620837b1af44b00d41799ad28976cc0174e0ee0d6058c40dc",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-acid": "4cf34ceafaf8a17c6c18540cbecc4e42c13b432cd658fb4161f23ab80b3dbe94",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-macro": "e59f24164e4a637162ca908efb9d88f322f0d6f7dc36fc6a77fbdc7d2e3b4ebf",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy": "3a5b973ec07b079fc347937d51c320977a4d9e8edf5023f04f9122fcede98c6e",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-bits-macro-acid": "2306ab47aa6b44f5bcaf9a9921d74b5b7ecc06906f7121e38539be9faa95e934",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-macro-acid-wave": "cc2a44fb4bf1916d4da621314c2c96729ffe1797310f2c1295a0b696c3914e92",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-bits-acid": "c0cfb54044ab68a5e33f823c72d11c3c277197f9366a51019ea015acc73dc62f",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-acid-wave": "40d2a5c33677cff060eb01ebf7b8acc164f80f8c9a134508a606f2bd9c962991",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-bits-macro": "4ab3d5a937c8079684f861728895bf245580a69090146e59af6ae454aebee78c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-macro-wave": "8767e94172b15a9d22a85e7a0e48579be130620f848417f48f3276fd8a1c7de7",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-macro-acid": "4381d8de1ead78f1c7a1aecd4d196d367e357823338288e012c6889f8b1759dd",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-bits": "0e14a4ee1ab7fcdd891daf29d346b824aa06c7252324944151e75083ee072dd1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-wave": "0afd824655b967a2efce6b99034a758862a3c71843bc1a006ae7715e41a0cd04",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-acid": "8ec7ead2d16379be382af1e4268fdd01dcf4135932130b046accf80687ee4405",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-macro": "b7b9375635c563b754de73b2208e54c02c40024374e1d6255d3b837c78c60283",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits": "8deb40d97f6cc0a2057f20e3f02471a141068a18ce5e4fd07b0862b8c881d40d",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-swarm-macro-acid": "35b0953cf6ef51d5f3942b221f6233799bd4308f4539b23e9c945c2335cb2261",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-swarm-macro-acid-wave": "196627ad550f3f6e4537f3532cbbb537aa364fe576f56e77f3b540da622dd521",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-swarm-acid": "3e301414707dc176595d161c37f4ea3033d5657243ce09067eb3c1b2f10e0519",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-swarm-acid-wave": "e113f6000239ff2d5b750b8d940a9a4054fc76ad23b97a86fabf8f5e0fab7643",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-swarm-macro": "ca565fab6d6c28f10b45e68b4751139866ef9f1cb0c7144a5e4582f75d1b3381",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-swarm-macro-wave": "d80328051c477dcd18ac7c56753df927694c1697494e5b82f0c911db3bb8407b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-swarm-macro-acid": "2caa993ffffab6f619271948c5e4af4c06551212076953a1df9546bbd15f4f51",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-swarm": "25892f000ab836652108f639994b09730240c520c5f6f63431e2c04b42465db5",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-swarm-wave": "1969b576e0b6d53f799e8d5010fb05bbb9c670ab77aa08fa8a5ae8f01b34e189",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-swarm-acid": "00c09642cf8d261e2bfb0b9888c44e9a52b935e3a41c241af2a00da5a5c50780",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-swarm-macro": "0abd4c76bc38ea1e3666cc83d18de38d0608e38af68d9b6c6867af615070afd8",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-swarm": "22b53819bd458ab69cb0d544591edd803646e333157f9d8745d17d300f61247c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-bits-macro-acid": "96870e8d4d6b1a3d9a55117682f9f8f496afad1c99a3854cd7efbd7fb4db4a2b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-macro-acid-wave": "045bd7ea3dc74e5d4c036f543f64311e8278c47797584f4d4d52ac95c55ccd07",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-bits-acid": "261b6ed281de52424ea05c193292e5684e634b926b0f4bef78643b012375714e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-acid-wave": "a8f2f0fcf88ba9fb40854eed636aa90de9abeaa1454f0856b9847006d4d195be",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-bits-macro": "d2f1747ac2415e3451de36200ddc199cb87da74ee755d468e4291275b52b7e40",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-macro-wave": "81e1239ab4fe9cbb1208076491ca2944ef41aa8941d96ffb45666a7c5ea00ddd",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-macro-acid": "c6146a1a47e7e736366ed55af0f10724488534462ccc8b5a3fc4a9657d591a7e",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-bits": "6bcab4b69c44c5f4ba5a48ca9b5ed6a53cd0e8bb66f5d1fbec13bf66028a8487",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-wave": "31f62cef2999dc0017ddf554625ccf473551728bbf8d1cd1d6a01ab1bc4e93b2",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-acid": "d14eff6cc99d0b6b7b1b34f3e9df24ea510a37f6afb3acc4094f5cf820cfa6f1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-macro": "e0cd168b9c805673e5986766ac67510b98923cf41659316b248f9e4b70568c2c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits": "0d997df8d3947ffbed2c522bb975842f84011a43c49ab0469fd956a130e932b9",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-swarm-macro-acid": "dd27671cf1a8f06fff02ff2cb8b2309e9f3d1d8c3e5ce38693a4484d5e962ba1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-swarm-macro-acid-wave": "c3538d66e53c1fa4d8db0be11623e34d5434a8b05b894105123ddd104a80941c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-swarm-acid": "0677af8f681b2cac8fff2502fd4c4baeb7732b7ac85f8a37d60ae8add78f2d3d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-swarm-acid-wave": "4d553f12300eb8b86906ece43f61cc5f5ba7c20a7cc8da066b97c6c3e4676911",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-swarm-macro": "d77f257d33f79e8ce3b0e89969f17fc989e4f47415c3d0df1736985501f11722",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-swarm-macro-wave": "36919009fc94b0f0a3bb757ab30126bc969cdccc9146003b5dbf562d45e9b428",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-swarm-macro-acid": "82de5da34b1d680d09c456a66d8441337470da05407a6e2009c8e5c4f79c6a53",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-swarm": "21846e7690768099897d5711920a7925cba31a59e9eaf3d29198c9a38caa9f23",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-swarm-wave": "c6eb6a96a5ea9ceb40eb082a5d846ee666250c327d399f9f3ca4fcf96cd59b42",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-swarm-acid": "a54efcb156c69c4e12f7059016807439999608d171e5a759f540b0aeb71b3be4",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-swarm-macro": "50e36e8a71742041b8283da59bf9a538947aa4eee4081de527b7e915521fbb25",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-swarm": "de15c3bf55065d561458c1668edc9218630bfea93477386a423b229807d74d6f",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-bits-swarm-macro-acid": "02cf14560a2f9c890d06243304676e605a163e82fec9b8cc1542a1bee3b648c1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-swarm-macro-acid-wave": "4346b91e726d6dc8f06a85d4fc6fa2df26125766565e6c20590895614a1f8507",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-bits-swarm-acid": "5dc61af2bb3301ab6257640c6dbef712ba459e3cac79a48b30eb5c5dc1f6e3c3",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-swarm-acid-wave": "27d0e67318d60bffb9120d3d11019f357b1521453927f018356d072c4c83c442",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-bits-swarm-macro": "478380aa09f4bfdd63eec208a85b701b4bd837ce5946d10518f33013c2735550",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-swarm-macro-wave": "ad9397a41aaa5e5154971615a358526ec663f6fc7619329a68a02e178ed82e3a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-swarm-macro-acid": "e9591d282730b6d74d2569ab3fd7cc2c22abaeb42e324f2522016658b69eeae0",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-bits-swarm": "18da01397f2b07c9d680f7106732622794ea4851f39e5fb8fbdde1c4cdb4ce96",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-swarm-wave": "269af580ab76cdf51d99563f8af1bc7e193a67b0f6973c2916940d57540d9c2c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-swarm-acid": "813f77912eaaad4206857e10f862d290a6a3a49c03b4b37c339eb718b096101e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-swarm-macro": "ec62005660caf2f7ce73ed018adec593e9c9e66aaa598ec14b21ff6aef20f6aa",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-bits-swarm": "cc1ef9b69669edd02e1c8b43ca0da9bbacef20d7dc9ae13a6c70446c2dbfa1b1",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-bits-macro-acid": "9578e2975ee6cfb376c942b6ba570405cde5aab1c815709aa21bcac3806ad1d4",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-macro-acid-wave": "53373dcfd880620797ccba60963b9bcadc16d626532e709afd9961131b56db9c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-bits-acid": "ea2ccb841e74c747ab95fdc752f156bd3f852c7af5eb20354aa575939158426f",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-acid-wave": "09181d0967745c510cb725d11479a6578ae412cae3e24b483ee29736d800726f",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-bits-macro": "5e423ce5a37d4549787472a52f9b1184da14aca31e4bb0e653a9e9d1fc0a8bb9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-macro-wave": "4c9fd4c2aa6d99046f2bdf7bd727380c2cd111b4721dd742992d90a83776765a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-macro-acid": "1d394714f2e48799284a300e9eddee616ba76b32abefc2894689c50885168506",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-bits": "9eb6d7d7e1b6ed6f72004805e687bbaeb5844efdcc25dcd00c104dd88a68de6d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-wave": "b94941515aa5551c71fa50e920cf6f52e4fd96c136565c226db13d0dc86d6796",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-acid": "126523385a5d89756637eb192ccd5d2d033b6ea61c433428d9227195bdc83c75",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-macro": "8e27ec2d6205634a7e23abd7a0987926f8e711718401685f6fd44ee0da8048d7",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits": "82fa76f8c998b393fb685b5fc033a7d58e5599f915a92d3840e17aefd35cdfe3",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-swarm-macro-acid": "c00b1cc202c0c31951de34d3491cf534938cae8f6eb1ff16881b60dcebc1d535",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-swarm-macro-acid-wave": "dc640b48ea70c2cceca2212125ab9b10f19e936399ef1897698c6facd421903b",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-swarm-acid": "60a6b787afd51e2581c1fde335a2773cc0202a3f84bfd3d6e61dc249a2ffc112",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-swarm-acid-wave": "d2d6732a9950336981a4ba18413978b895c8f3e848e248577585ebd8d60f7914",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-swarm-macro": "3816285ff58b4604a7094f900f58ea4f161faab978c759e10bcc21704fe0ef36",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-swarm-macro-wave": "de374ef6c955a50302a33dc69c82758bf05a6e4c6d770d210e61fc2d415e909b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-swarm-macro-acid": "99945410d41f0465fc0ccc6b84b50d47da0a304a0a75d503ced7e1c862e41d7c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-swarm": "8e472ecd05b15232e27f7af250505a3d99b9bdc451c286e70e429decb1322424",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-swarm-wave": "2cc63ce2fd3d9f6293a8372a61ddeada255792be458598ed1259b32184330d46",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-swarm-acid": "c143bc9bc21607e724144ef312ef6af37e4ff31c119a4febddaf74c4fb029824",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-swarm-macro": "91836041d099adc21265bd435f218adf2ddd9a13b4778a221240e68f40d84ec2",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-swarm": "6965a8a909ba24449df6b51bd85d72a0962f8984304a5cace11a060279f93ff0",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-bits-swarm-macro-acid": "978f5a76cc3eeff021a9020331395a67d248dd42b1d11606d78c69692ad9d30e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-swarm-macro-acid-wave": "6da51580308f3f98b1edcc5c643e7efc911ea07a49658e267f4f7dd433caa73f",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-bits-swarm-acid": "054eb22bad19322f5481e33e8b3c7086c9051e71fb951981d0aabac57806c9ca",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-swarm-acid-wave": "627b7ffa91a29e50a0e16512af52f1ed1e6490ec653fb70fdc110ebe7596fd02",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-bits-swarm-macro": "8fcdd1076febdda9c0c5460400c1c975f4c7624d57ffc9bd8e94caee64812bc0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-swarm-macro-wave": "46646077753b7c7cf856ecc93a45ab830d68e57ddb7b7deff5c738d5ef353b89",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-swarm-macro-acid": "cb9148b359218bcf9ea23bfa6dc8af9dd4a8b51f8e138677951f76d4582627bd",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-bits-swarm": "4971d214ce91c3ce39f2e2ac01b8d3db66bcff01d743a3127c387f744757b691",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-swarm-wave": "c48388c3181a3ab4b472b4782a18631965e93e874dddec674fed25c5eb24f4f3",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-swarm-acid": "230aa0f8461e74c07d9b25423b80bcd8badb4ade5da3a61029878fc9c8f8a65a",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-swarm-macro": "ad42735bd5aee8f709de869a797bdaf20409d68b5964a8efd010c90932213b54",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-bits-swarm": "955d2b56015cad7ba5885e3d1d6534a019571b82beb952d54e5e93c74107d91c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-bits-swarm-macro-acid": "f61a9be78c9bcc7ace45a9c87aa64d4bd89ac8f368a31d7be03a35a3696047c9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-swarm-macro-acid-wave": "54e8a3efdaaf98ed39b980f5eebc82b0c3d89151c88eeb95756066236f0d5eb8",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-bits-swarm-acid": "260c53e5a7769771c080250f627a308c01558e3670cadb6967733858da76a6cf",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-swarm-acid-wave": "eb719466fb5cfcee3b4f8be19e5caf4218d6193e41dc7cde6c151080e5d0b60f",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-bits-swarm-macro": "b05f5dcdaf04b63771f5bd3fde784fd0a2ab8732e43d1b77b36a5999b2c53616",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-swarm-macro-wave": "3a2d1563c28c130af2cd0ed9d00fb639a85f6952f53fd4ad2ef2220dae7219b1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-swarm-macro-acid": "6cf9ea37c4f31f9d1c94d213ecace4a05a74a7fa98c835de4b3bf110908cd871",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-toy-bits-swarm": "412c2d23626a67b7e7003db4667fcc3581f7acce13a13b0ca0659d3c5bf0a50e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-swarm-wave": "cab922c8cbdba33f9527e508bd28057c3d78b19c9fb91e6dd48a915b3791664e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-swarm-acid": "3d85419b5543ce4c96f9c98b4a6b4e60960f1ffe4b5afcd9ab98b09b11e366fc",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-swarm-macro": "bc51476bffd062adc7fd829362f4a5e0cc55b46ced1f78d3dc1695064540033d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-toy-bits-swarm": "d0bb3a57d617b89094b9c5f922916c228bf65b18d7bd54bdc1b6f722770d94d6",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-macro-acid": "8fefccee1d0ea9af22088180dec181ff6fe730dd9c49641eea0382978d221fdc",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-macro-acid-wave": "cba869a296390352ae5c58567fc248da07ff86f9624fed03e34db65b65c768c0",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-acid": "1634a3cd9af446636e1f8cc43f102e57cb537a5aae1c957140abfeb8db402157",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-acid-wave": "b5827adda2385ccb5ff2b56bcf3407db85a3ddb24d0508dd54101cc575e10937",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-macro": "1002fbe71f691bb8879cb58c4f9dfa954973b0b6d4a70ac0661b6e7ee22bac85",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-macro-wave": "66ee06d93b1cd9eed36134fbd9f08422c4c62953f7932b0d163f1c59602aa0fd",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-macro-acid": "300f3afd43f003fd56b860d17559400c3dc90523a918691dbb1d3ed446d39a25",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-bits": "3313487c66b3b0362698ddd68e2676881dd0ab1f861f2383b8ecbd9774481765",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-wave": "671e8450dfbc929b3e87838fd4e0105ae9634677541b33c0148851b6fde84e5f",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-acid": "40786ace56f104525aef34f324d694c490b51629369067a3902ee34efdc8f8ef",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits-macro": "3135cfa07d6e931653971cd5a225065cace1456eb4bc08df62238d80f989d535",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-bits": "f0553253be1885b8fcb8f6fd90c3bde8659576bbabe6d7534858d747046c5fbb",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-swarm-macro-acid": "849d162269608d2ee4ae7d66115d7bc224e3cf8689d91d3ce756a1da02a55f11",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-swarm-macro-acid-wave": "a7d820e58e1ef12b13bf73d2e28032e4e2e3bf7ef12b1fde74ab11fe1c7c4992",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-swarm-acid": "acc770059cc337662d9245066c2f690df242aee88f09bfec55a073608b3d2699",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-swarm-acid-wave": "3ab6666bce326908875f8235c3653189555318d90dd99d5fc66d7b6bb042a1f6",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-swarm-macro": "945258c0a12d9e09a2eee9a29406448cc236184081bf749069e3d2b07bfbded2",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-swarm-macro-wave": "71e510325b0976aedaf6a56213cb50d8a0af7e1118f5bf99861156288b97c665",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-swarm-macro-acid": "56c2a088101bda2a85985f6553a75552d50109fff49e035f6cbb2ccc44e78346",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-toy-swarm": "bd46e46fb789156f34063762852f95eb15974baecc5ab28e6699abda7283f018",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-swarm-wave": "0a6131a320df5f3651e1639006efd44da68cd47600b5e8d5087f8c920a2e4288",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-swarm-acid": "728a3cda7da7dcfed95073a7d1a2e404ac124c23b005d5aabba87578cd763718",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-swarm-macro": "1c94ad0e555571fdab950fe0fef29676df05cda341d01e1213ee00ac33c15496",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-toy-swarm": "2333260b0a7151ed61c4746a48afee156bcebaa8a0248294b3ef05804d33f3f9",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-bits-swarm-macro-acid": "36ab2576850a41de287807813277f51eb158010ea22fe09a5d9b7c7ad5b67f4c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-swarm-macro-acid-wave": "8d094a4bb0908c4d9643fd9c2d8ea3ce01975897a214dd10f9c08b5f17e5e22f",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-bits-swarm-acid": "c693b7d784358e5467a492b5a6646b1095cc50996bef550893e8d532618be249",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-swarm-acid-wave": "d1b7241768f5c3c8bbb1e76af979961a2f4d5add3c8b732595ce073add2e31e6",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-bits-swarm-macro": "978aa5328c746749a42be67fe9df5e6fc5e6c683154bacf7ead3c14054a4730b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-swarm-macro-wave": "a00492ce82b85c2afb9eb9f6e7143d09c6a514dd3950353ea2dc8d9aa3dffcbe",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-swarm-macro-acid": "9e5af4601fba673277416d120627a50396d23a7b3dbf06378dc811958f2893e3",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-cp-bits-swarm": "fc88888828255433c8b80f45182fc5deb0bb7d5ed775e34e045c3fb00e6f3434",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-swarm-wave": "8e875e5090c0d66e47ee0bc23b104eb831c9ddffe1cc37eb3be5ab5096e309a1",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-swarm-acid": "59e2c92807b6fd5afbf0d0052a92d359cc443d5cd0495e00771b67346e6c40d9",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-swarm-macro": "8b4483ecbdd044f65ed89e71fbf8c2cee740c98a4adf2dd85711fc9c890e588c",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-cp-bits-swarm": "e05948b5c252386284801717f9988d10d89c5bdaf58a19e01a29adb4bca115b1",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-bits-swarm-macro-acid": "1caf18c842bd055701372d5adf5b20409089fa2c8011a5db62b79712c5d347ed",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-swarm-macro-acid-wave": "0229b366c6120388f9ee95f7c4750e1503d7f569297627de7f5591b533741971",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-bits-swarm-acid": "f29dbe8993eeb3baecc9f85d8c822a07b7019f4bfe0fb58ce6b1472a6d23cf91",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-swarm-acid-wave": "cfb07ae9b822477e0e61c1767ca2e87a0209ae74abad8fc5fc6f18b4c111e3ab",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-bits-swarm-macro": "ea029323710e513750c9d97f9ee960f934452b5e1e2776ecfab867d4d88480db",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-swarm-macro-wave": "9ad5871e583b55329c6bc26f076e7509bf50b07bddbe0986c8b21303ea9b94fc",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-swarm-macro-acid": "6b678857f7b02b4d85d0d457003c37d8bdb7263eebfb0272017efc7645f2884c",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-sd-toy-bits-swarm": "04637ccbf43ab076f3f2acd939edce85dd2731140b9cc58591c5db7c0e3c4f71",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-swarm-wave": "91d10a63b71d2f40f03baf28e25a06034d101c23cb31e3a2abc6cfd6b639e50d",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-swarm-acid": "056f25dc0b8f181598f5ddd4948ea2f4c1f587b9d9b7bef639762e239434914b",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-swarm-macro": "e196d4e8fe5cea59b764135d1f60b32dc645a932113f20d44ad9b873d720a778",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-sd-toy-bits-swarm": "48c7bb100e48af64d37b88cf219c8fb998dd128e5a3f52b562dc57450232e916",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-bits-swarm-macro-acid": "738dd6ea23857e5b9b3e247a029863eea39b04dfd985eb2f78366eb500fc2c73",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-swarm-macro-acid-wave": "fc0d08a3ea81d2fd5b654e5422b9c087db4c1349f1eb769286b74117466e00c5",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-bits-swarm-acid": "11b85df889e2e1bcd8662116030e12e49634e74089cb5a05afba44a232e6d3f6",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-swarm-acid-wave": "eded511c31edaf68bff44741cfe40d2f80a9006b708f2bee24bfbbf6ce74e55f",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-bits-swarm-macro": "4011bca1bcfcd546317203d054ff340578a3157ad89c7246bd1855266b897874",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-swarm-macro-wave": "5123262572c07e00507f9d4d07a2260ad0614e1db14c501d3495c72423ccccb0",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-swarm-macro-acid": "85b4111a96b18a0036ee408899ab937c50194366d53c9823dee0d65cf42af1b6",
-  "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-both+lfo-plus+syntakt-tg-cp-toy-bits-swarm": "9df747f13ad0c5423095284d159ae0a044f78e6522afae0ba2e5fd2728e410b5",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-swarm-wave": "97d2aa72d7ad7cc4702559d5d0b2665dfc8f2ecac5791d03de379b2e9fd1391e",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-swarm-acid": "ab6afd98f888bb93237637f30763f3481aecc5a10306a71dd75c936e17c35426",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-swarm-macro": "1eb4f2a7b32ecda7eaa22f5dfe6766c509dd92991ea93070bda40f5dfc9dd6ed",
-  "6ch-usbup+latching-mute+trig-preview+browser-scroll+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+chord-keys+lfo-plus+syntakt-cp-toy-bits-swarm": "00881a7efbff337b1d5dd65ffabda1ecf794e7fc309f0c70bad54252ff61541d",
+  // Modded Cycles OS 2.0: the tweaks of os.json, built by tools/build.py --os
+  "model-tg-st+sample-preview-st+trig-hold+arp+step-rec+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+mod-settings+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm-macro-acid": "82a79f453151cbaceffdd047a646c96721f3ae3849a28f7821928bfbd4a1cca9",
 };
 const REF_MODS = {
-  "6ch-usbup": {"w": "9e4a546894a480c25a8bac2b283d4f6dd81d8b5c2b39f321256ae42016ad5009"},
-  "model-tg": {"w": "c4686bd09a145fd10a6424b7229e414a084fbbcc212b722e4ab7d3ecd7cb7931", "p": "d08e9e34d222aa92a2028712adfc65646ac1024acf6f88ebf51979d85bac7655"},
   "model-tg-st": {"w": "c4686bd09a145fd10a6424b7229e414a084fbbcc212b722e4ab7d3ecd7cb7931", "p": "e269630fe5251b58c2a5eb4298e3ab09b4e6fff9f38c254afecf121c8ad446c2"},
-  "sample-preview": {"w": "f9aaf10e71f3a06e22b608405eeca967c254a7400b4e8ba0557cddf7eb6166e3"},
   "sample-preview-st": {"w": "f9aaf10e71f3a06e22b608405eeca967c254a7400b4e8ba0557cddf7eb6166e3"},
-  "latching-mute": {"w": "588e9ff2b7fab80819e79faac560f524641c1cbf4d6327cc169ef0b2b0df76fe"},
-  "trig-preview": {"w": "c18ee2dbf1e52d1df85585389c881e8e5116a24665299c15ccf95d794529f2b0"},
-  "browser-scroll": {"w": "eecf48e9b8e3c9843e97b213efb18add01e0a56d47e87ccb0a78f5c643771f43"},
   "trig-hold": {"w": "c9a9aafba763ea25ac3c35e33c55f34a18c0eda94cc726fa344ce6bdd06271f8"},
   "arp": {"w": "5bf9b805de8757164548fd4d77a3c2e8419d914e8164ac363ab10c9fe105ca80"},
+  "step-rec": {"w": "204827a53af0ed0336cc5c430507386b94c5f449a108968fcd126a16d2617ff1"},
   "tempo-max": {"w": "12115f0b665c9423922febfaa7b63d8bf5529de525ba0a51c22450e005d22f64"},
   "boot-anim": {"w": "a3681504456299c2f8c316e09181765455fdc51a9276a6a43ff11d78e2ba5382"},
   "multiline-browser": {"w": "08156ec48e8232e3337de2bf9050f2e1c3459a243fd377d7a66054ed171e1298"},
   "level-pan-values": {"w": "50e0c4e6e5cb3c6de19296d2f65fec5074ea8e25322363d6bc1dad164cb131b9"},
   "trigless-dim": {"w": "4efc73f035aab33963e8ae8f3f6343925e2cd5149b4cad6780051d0c185e32e1"},
-  "midi-both": {"w": "260b8eeba4d71e5cefdd8ccd4fc94794b76902e7675b960d3867f35c5ed6ca6c"},
   "midi-live-both": {"w": "e7dfae924d6474abea22b375002ff58b1e3cde301aa9ca8a2ec980593316c942"},
-  "macro": {"w": "5d1257b771e954b3a68ef94702b388c01ad0932e81893c420272022b8d376e85", "p": "adb9289bab9e6bf95ce71a3cc6bc358e7df95b2a33c55d62744bd59c0c1c9c96"},
-  "macro-tg": {"w": "68e0410acbf4b2d4c66db76e10e4331a17f7dfecf3446daae811a12ee643b8f8", "p": "df513d8738aaf4b6318c185e2236797c53db454b93ca709ea79d83cc4cbd7db4"},
-  "macro-acid": {"w": "67d8ad50be39967ec20c35c7f27804ab9a25383cbe5ad9c6e0bd6fe3096b2ab2", "p": "8885bfba741f278fa6d80b0690ab6aba327b6d024905c75d284610af55a0719e"},
-  "macro-acid-tg": {"w": "41d8a26a0dd10740ef91b5fcbdaf0980aea5750b2585a291efdc3d7b853882e3", "p": "f8a90f4559252c3579ab9858307c026b3c34185692fc3e23c5141e7abcffdd82"},
-  "macro-wave": {"w": "1d336df58b7e74047674d8dcb53f8f8b2fed21145558be5f711698064d340306", "p": "b11ac3d8ea80458ff54de7defbecec7136d000b2cab24070eb9034e000c1003e"},
-  "macro-acid-wave": {"w": "ff612f1c3c93a06011fc5f9ef165cb1356b64e200f5cd8233bf4f9c9c68743ee", "p": "24624cd604a3ecd56e6d319120145546da56dfc407d0b6f35597a29a4c826ffb"},
-  "acid": {"w": "e3a2850c3b3d4fd3f208b936c48f651277e08951e919227ef346351ed9bb526e", "p": "d94a8acc9d4bfbfb832353e4e5c42f6cdb433f1da9911bba9d574dd59c5b1109"},
-  "acid-tg": {"w": "c25721cdb67393408cc17e9a762ddc4556c6f084dca019a5ae3eeb348ad4427d", "p": "e87813a75809942e88219a67d6eeb46fce01a485e0a2a186db7ed381c8f9c1ec"},
-  "acid-wave": {"w": "0799141b4bf8c4dd9ddb2930f85bc17f259eb6a2aa3eff73a2629c889f8ac34a", "p": "778088613f87174a37e140233a29e498b116b469bc73df4f624c218fcb94a1e4"},
-  "wavetable": {"w": "739f800f8a7efdcc75d09c38e78a0a2284299aff57caefb561ac92309dba852d", "p": "63cda4ec8a77688686c0b32394f59f39e5af22839f63296016d667d4dd298540"},
-  "chord-keys": {"w": "0fcfc8956479f7dedb0d151db495afed026a5fe422f873c00ae9b97fd935eca0"},
-  "track-filter": {"w": "6b02de9c4519883e33abb2ed2e956665a0db2fd7b2b86a502d9ac3e0b386fae2"},
+  "mod-settings": {"w": "c3c023276e80295a9338a80d22711469620d4b4315ae2b1e0a85c9a61e31e9bb"},
   "lfo-plus": {"w": "8443b08fdb4ce7cf1ba26821b27e7df3ab4ca5396e35e7e9a8e591fc430569b6"},
-  "syntakt-sd": {"w": "302e17ec196915060072e1dabab1ffddb4dd0dd9db8eeee75fbfcb8a4d479949", "p": "e4313c5df5b583392463ae00fba165b8fd892d819bac145d9e1b85a7fbeb572c"},
-  "syntakt-tg-sd": {"w": "9c2d77a0c27270c16cf111b7ee2f6d45b6d0724d21d1055cfc102236f773c920", "p": "e1569a046be718e9fa1dacf6cc904f30082f321783a2a615dbdbcf752321c200"},
-  "syntakt-sd-macro": {"w": "41e94d3c8da1439a46d512cadd9759a2ac7ae738d7680271f15651ef2bff3d23", "p": "c14186086d3f43cd6cfe78fcce99b2345dbbdb5b8461f6f5f1c583381e5fe562"},
-  "syntakt-tg-sd-macro": {"w": "be54fe90c9def7404abfcd7ef2e88a5143271d297b4257aca2d2ef372c5ecaa7", "p": "7202560581abe3876c6cfe9d8db655e13f28bc980bd37671b94ea19908fc02fb"},
-  "syntakt-sd-acid": {"w": "7373af7f30678b22f8a258da59bc9f4e1c86c669c5b2d5a5c507aa6b4cc1c196", "p": "5407322b93a6dbbf292948ea9cc28f678a9c99370c5db5844d8934dde21c88b1"},
-  "syntakt-tg-sd-acid": {"w": "16dcaaa464f0af3f82f3efed89790a993e059de9c3efde4c84f60db537095e3e", "p": "2035720347bad04d4cf7969a61bc603ee5dc40b7809486cb2d8b401a4d289581"},
-  "syntakt-sd-macro-acid": {"w": "f678abdc2069d593425a894c2dc33fb896071da14dbabd50362047d036625f0b", "p": "302e6370402ab896ecde8979f9caab4636e8672fe54066e9f921f940f974c92e"},
-  "syntakt-tg-sd-macro-acid": {"w": "e54737de764bb6a3a4150d3419ca558bf3eed51969db73301542877160de2552", "p": "c5d6eaddc5662247d981ca5f6e8ef6b1a20def0849e1119d87529f3173eb614a"},
-  "syntakt-sd-wave": {"w": "edac18d3fca3ab3cf8d502d1b4872890695888fd3076719d935e25c4b7f79974", "p": "7494ef331feeb527ffcc03b351a77ea699828594566d8199bbceaff867ecd65d"},
-  "syntakt-sd-macro-wave": {"w": "3efb0b08198de9b8a1c6119086294ba453395be05b293d9ce1b622f8bad99895", "p": "dab05dc2c17f97e80b6ad99d12827bdd9f81c26bf3dbb3f7cda0f732a90b525c"},
-  "syntakt-sd-acid-wave": {"w": "98a39804e1cc3466370473d91fb7f0bc5319186836dc39af76d15607cb607156", "p": "2aca8b1a29f964d2de5951e11a518265018d5323d3f9635cf958e30d49be77b2"},
-  "syntakt-sd-macro-acid-wave": {"w": "62b877ca692057502caf9cf9e8ee4ad7c1096137825471a03b80c9d79bc4ebfb", "p": "f2ac77c328658bd340ecfc9f8a29d279c96cc3130752e4fa59f2cfe749639ffe"},
-  "syntakt-cp": {"w": "302e17ec196915060072e1dabab1ffddb4dd0dd9db8eeee75fbfcb8a4d479949", "p": "49fe2722a5bdce42d5083d8ce42b4e24c02f399efca86333dcd41875f25b424a"},
-  "syntakt-tg-cp": {"w": "9c2d77a0c27270c16cf111b7ee2f6d45b6d0724d21d1055cfc102236f773c920", "p": "d1b45c64989e4baf39b2d622513b86872a8e07556cb7cc0649d03efb97a4fa81"},
-  "syntakt-cp-macro": {"w": "41e94d3c8da1439a46d512cadd9759a2ac7ae738d7680271f15651ef2bff3d23", "p": "5cf1bf68776266df148b945de9a92441b828daff4a624019911f5884079ba9a6"},
-  "syntakt-tg-cp-macro": {"w": "be54fe90c9def7404abfcd7ef2e88a5143271d297b4257aca2d2ef372c5ecaa7", "p": "44e15359bfe5ecab326980969727b72b8040f873d97756da8982ba76db21283f"},
-  "syntakt-cp-acid": {"w": "7373af7f30678b22f8a258da59bc9f4e1c86c669c5b2d5a5c507aa6b4cc1c196", "p": "341ed8a4713dd8a1d498a048a55ab5ba09351f5a68c12944d0cf505905ef3c94"},
-  "syntakt-tg-cp-acid": {"w": "16dcaaa464f0af3f82f3efed89790a993e059de9c3efde4c84f60db537095e3e", "p": "1008595533e7bf2f5bff6faf1565f364949f2e6b864837e83f155222480a7748"},
-  "syntakt-cp-macro-acid": {"w": "f678abdc2069d593425a894c2dc33fb896071da14dbabd50362047d036625f0b", "p": "b3bb413fc559f2fc152f0746ddc2b489ce66e86fb3e0fcddd024232cc36c09c0"},
-  "syntakt-tg-cp-macro-acid": {"w": "e54737de764bb6a3a4150d3419ca558bf3eed51969db73301542877160de2552", "p": "d25cbd468ca8346cd40daa3a63ab6f9e071424f0ba8f94674bac88e1aab1d95f"},
-  "syntakt-cp-wave": {"w": "edac18d3fca3ab3cf8d502d1b4872890695888fd3076719d935e25c4b7f79974", "p": "d07493516f96f5a0b8637ff2726c45ff89177bfb565e02771fe744216997f061"},
-  "syntakt-cp-macro-wave": {"w": "3efb0b08198de9b8a1c6119086294ba453395be05b293d9ce1b622f8bad99895", "p": "3aa30941fd9ad55c3d45bba81751ebac9bff273f5951df09655eccad7cc414e0"},
-  "syntakt-cp-acid-wave": {"w": "98a39804e1cc3466370473d91fb7f0bc5319186836dc39af76d15607cb607156", "p": "58ced526ecf6c8878a0c1f44aceadda55a295bfede43681cde794da88aea1854"},
-  "syntakt-cp-macro-acid-wave": {"w": "62b877ca692057502caf9cf9e8ee4ad7c1096137825471a03b80c9d79bc4ebfb", "p": "a8a20fe3bdbe723f814637d0d0742a6a786dfb49a1c7d8aba4679179ba8af6d0"},
-  "syntakt-toy": {"w": "302e17ec196915060072e1dabab1ffddb4dd0dd9db8eeee75fbfcb8a4d479949", "p": "13d331b6db41320ceedcc75894dbe1d74688096564b628def63c39b839821912"},
-  "syntakt-tg-toy": {"w": "3857c743d0b54c9816223c9d7c8e8748ab68cac799bba3948589229517091d29", "p": "ba150cecaea0661e8f5d96929c77c82902f20047e4441bcfb0d16a1a8be614f7"},
-  "syntakt-toy-macro": {"w": "41e94d3c8da1439a46d512cadd9759a2ac7ae738d7680271f15651ef2bff3d23", "p": "066aafd79d19934de4d44293d02dd9c8de6f7a74b72f27d61382eaa03c24f269"},
-  "syntakt-tg-toy-macro": {"w": "be54fe90c9def7404abfcd7ef2e88a5143271d297b4257aca2d2ef372c5ecaa7", "p": "a6774c3d99b6390cbec629fe5c61d98fd51706933d421a40d5d15bde7fd28735"},
-  "syntakt-toy-acid": {"w": "7373af7f30678b22f8a258da59bc9f4e1c86c669c5b2d5a5c507aa6b4cc1c196", "p": "dc6fd740489b5bc6880bf611b930b20c6b5b9a8b78821b975ca916bb814a8827"},
-  "syntakt-tg-toy-acid": {"w": "16dcaaa464f0af3f82f3efed89790a993e059de9c3efde4c84f60db537095e3e", "p": "ce7a957c15b37780aae2b851724c75a70d8ca2fc613cfd45a2d6d1e123d40bfc"},
-  "syntakt-toy-macro-acid": {"w": "f678abdc2069d593425a894c2dc33fb896071da14dbabd50362047d036625f0b", "p": "3c773842f682af101ca466d5aecd76c161756235191d148a3fed0f04879d8543"},
-  "syntakt-tg-toy-macro-acid": {"w": "e54737de764bb6a3a4150d3419ca558bf3eed51969db73301542877160de2552", "p": "63f005e0cd4168868aacb37475bc48f7314c9c6758fdc6135bc8e5410acbb2ab"},
-  "syntakt-toy-wave": {"w": "edac18d3fca3ab3cf8d502d1b4872890695888fd3076719d935e25c4b7f79974", "p": "74837da39b553c617ede2c66e4d5e1815a99ae8df56fbce95f6aed6654aa48d5"},
-  "syntakt-toy-macro-wave": {"w": "3efb0b08198de9b8a1c6119086294ba453395be05b293d9ce1b622f8bad99895", "p": "02452ba1aff1c2f74c5cce2a788ad14efd0b029e7f4b86dbdd9dc487725c7244"},
-  "syntakt-toy-acid-wave": {"w": "98a39804e1cc3466370473d91fb7f0bc5319186836dc39af76d15607cb607156", "p": "4c68ea0fd39c9314ab867b6bdfe8a6e09fcb89d0ae2b033139ce98d44e2a93a4"},
-  "syntakt-toy-macro-acid-wave": {"w": "62b877ca692057502caf9cf9e8ee4ad7c1096137825471a03b80c9d79bc4ebfb", "p": "a7e28bc8d822492e2e3c933a1db2ffa44c5f6a5ab1021d65dfa7ae261e3215f7"},
-  "syntakt-bits": {"w": "8ce1067da3d8ec2fdb852c23fe266b67f8a634b217072fd58dfff2d3191fdec9", "p": "12a8726a3a605b4dd7c8a3e96d86c147a2404d18aa881c140e6da49c9534fae5"},
-  "syntakt-tg-bits": {"w": "8acf0672c2759a6d7cfd26c77c80dcb54de6ba7c841c4427c24bd77360e61b47", "p": "3dc44b3d47932062654680e8a9998b6f9c918e6df8c042b0c94392cb9d310f10"},
-  "syntakt-bits-macro": {"w": "b7381901e4e0987e0d54c00b53aac9b11fc60e4c2ec9adcedda9b711bfa68d56", "p": "85dc69a67d2a946064cb74c1dbb1c5efb4ec4ac7fe0700b03911043ec55d9625"},
-  "syntakt-tg-bits-macro": {"w": "5ce766222dc57bdbd7ce649b006b935f15f48d7c03c235beaf9b0a4fad967fae", "p": "019484efad5641dbb406ba052b1e2b512ec535730de25387e0f134963b0f51a5"},
-  "syntakt-bits-acid": {"w": "e65bd91c46ae819b6def7dba337056dd4e9d74516a526d21aa449911286a06aa", "p": "a0c6590acd693af16e7fd4caa2f335f9a945f977da8e0eb19187f8b3ae96fe07"},
-  "syntakt-tg-bits-acid": {"w": "5cbabb801c2352b58727e71e2cead7a9f0548988f93149480fbb277cc4a6039c", "p": "b17e3ff228bdc5160363643c90fb3f0fde9f6a593fb43aae613d6ee8cf6fdfea"},
-  "syntakt-bits-macro-acid": {"w": "0460090d272cf53f38dfacaa9e95ab17ab181c44a02dc1c47fa6eb6db4c1f367", "p": "98d583e08d236ac0795844cfc601a187331d8c3dd737f001e976765da7f17a59"},
-  "syntakt-tg-bits-macro-acid": {"w": "cafcfc2040801eb97345c88ccb29a3f55a43ad05c4a6b527e82d5596c9325a90", "p": "2a545f128313abfa63284318093d8eb97e713ea05f15e73c8324736577067e88"},
-  "syntakt-bits-wave": {"w": "0711d2c872e9aaf5e827e54e57fca3a594dd1cf5b2070cf8a841172dbee12d73", "p": "14b8ac30345c29767ebb7e331f7663708f1094511feba95fbf572411c708ee54"},
-  "syntakt-bits-macro-wave": {"w": "c35a95082e705637c28f3bbbc6c000b101591b55a4e6f9ee620af4422d14ee5c", "p": "9fe44a8325250ca8887982b1627f3f3aab0ffd114200eebc693a5b00174f77d3"},
-  "syntakt-bits-acid-wave": {"w": "2cabdb5789b0b7d5861bba33510e23254c96a078c3b53d80050add3bf8cb7c6c", "p": "aa85d8f394a34d833f1f5ca3d43532e5cfa46c76b76f65483e356beacf5cf28e"},
-  "syntakt-bits-macro-acid-wave": {"w": "8e17ca087776cc001969c381333bccc96d584e1421259f0586214ea0e9a7e8f2", "p": "d7c4765aaead9d30655e92aaa927338aec079dadf45dea90f4dc13e1bf7a9e26"},
-  "syntakt-swarm": {"w": "360e6b8fd412574ecf5f39d489c3cef6dcfb9ac7102fae0bd785ce65af313293", "p": "3a6f2b7558952ae0ee98a24f94ced91e3549a171b8a0a9a49616fd2dee6eaf45"},
-  "syntakt-tg-swarm": {"w": "125d625f4990b2c042998c61d907bc2ba42efd5a6777e69e479ac571f434d8d3", "p": "764cfac20bf1a9b732ab52ffe136fccea4d4271a2423812afc69750488797dcc"},
-  "syntakt-swarm-macro": {"w": "7089e8e288f6f8826a6cb53f0b00ed40eaf8dadea134c3455761e9158bfbefc1", "p": "5bff4e89c999a780571a12b2a37a9f16133caa2ed0f9df93439fe38d5aade73c"},
-  "syntakt-tg-swarm-macro": {"w": "45d71fbb6053f347206399f43b3f25d68b4b2ae74473ada64bc2299c84bb6abb", "p": "d1491e909e0fbc4b334cfc39b5e7a4507051279bbd4675f4ec666ef94ed5842b"},
-  "syntakt-swarm-acid": {"w": "6dc7a7592ab6be86e63b45eead46c9a7cd7ea116d905b60afef77e908e82f429", "p": "682fdeae3ee32f0257692bf8f63d2339801aa106ea8224715f5c2c71ada84ce3"},
-  "syntakt-tg-swarm-acid": {"w": "82ac9849d89a557e652f1cfa4b06fce9d107535384b7436d3a02f707a22aba21", "p": "c378e16287cea4d63ce959e4e024711295250cffd6e396d4445eb13128c9da43"},
-  "syntakt-swarm-macro-acid": {"w": "fad9d1bf35efecb1954fb2003ccbf2cdee47938ecda8d6dad98d9e31dff28489", "p": "bccbc1fdbe4f88d5af384966be8b195fe4e835f827fc1a70238c55ccf5ce985c"},
-  "syntakt-tg-swarm-macro-acid": {"w": "c655cbdb3fe232e69df8b2a47865da55569f34901e6a980070b8233b2e7387c3", "p": "2a18fbff2bbb3ff86806d90f850084c83e56187214933451f9ddf6ae42df9c07"},
-  "syntakt-swarm-wave": {"w": "094cbfec2af79709f01d4a853991061d2a437b73ad7d2d70378fe46709487c57", "p": "136a0f7ec93b0b49013bed891bd1c794228cb7c3f755dadfa71b95ddbe266074"},
-  "syntakt-swarm-macro-wave": {"w": "762ee5ab671f6ff5c3cdd57ac3b3393507691a8c0a0e6815459da34cff8b871d", "p": "ac591905ce0f40dd027968def0c9b5d7e5afc84f233b5c39d3002219431780ee"},
-  "syntakt-swarm-acid-wave": {"w": "9f38df3f99cd921b87aa72afa6534971537b3c6f641c161d0bc2f6fb470a39ad", "p": "9756a8c8c255957ff2d11b1cd1b66d39f600c70b04dbd1f06d6cdc4a2a18f663"},
-  "syntakt-swarm-macro-acid-wave": {"w": "fae9e6124e19a85c81181baf0695c2622913cc0eb079418d3d0e4c2730b883fc", "p": "8669fd0d7af7915e66644a1fb702df26d517e8fd8d4bf08ccf948cc9e5466b8a"},
-  "syntakt-sd-cp": {"w": "b5cbdfffa4b4791ebb63f59298b8e47b443f8d293c99a3c26a283e99c5d4859e", "p": "14b6d040a0ee80677644b02925bb5398cf95d08fdf9529e458fdad256612677a"},
-  "syntakt-tg-sd-cp": {"w": "f4e2e9684553ee0921706e12a19ef12d47c7ec590d5322f71edddb1535fce900", "p": "ac06d46fb8d7c4c4294fb6f06bc7d0ee7037bb0e9774c7a39ac67a832843ec8b"},
-  "syntakt-sd-cp-macro": {"w": "f678abdc2069d593425a894c2dc33fb896071da14dbabd50362047d036625f0b", "p": "29d4adac054d4d6c81976461172648fc0c34df8f1e5bcdf0224f9e6083728359"},
-  "syntakt-tg-sd-cp-macro": {"w": "e54737de764bb6a3a4150d3419ca558bf3eed51969db73301542877160de2552", "p": "d35336acb7a685c001f3ce58ab58173d8b9b6f811c0ea6fbafc7818eafc2fb23"},
-  "syntakt-sd-cp-acid": {"w": "0cb9d714b14ae31a95398a58318778c9f9c8e03e03f4eb1b49225381f56af3f6", "p": "0187a7500ddf3610871fb390f3e096e0d4ed6d07ef78350663de166c928a6ce3"},
-  "syntakt-tg-sd-cp-acid": {"w": "aa699174d3acf85524e6781647397a75c908eeb0e087875c2f5285e9864809be", "p": "22eaeb13ffc2d5537991f6354c724eaf1c131343762131f08de1f2182a07c971"},
-  "syntakt-sd-cp-macro-acid": {"w": "c3b7d8a609e7c6d083b82fa04e75ccf716993ad432590cb9d720eb698d265d6e", "p": "140941593ea2bcbd485810eed478c297ba2627aa8ed27aae70384bb228516da5"},
-  "syntakt-tg-sd-cp-macro-acid": {"w": "19bf36844182bfdff9f0fc794c724665ce01605650ebc4647c86e959bf4b9d04", "p": "c92aa36a40c49c88b17c514b9633ff1d55e20bf367cd912e6ecf56d047302443"},
-  "syntakt-sd-cp-wave": {"w": "98a39804e1cc3466370473d91fb7f0bc5319186836dc39af76d15607cb607156", "p": "a8afbb6cb24726069b89df46c89eaea53470322e6e45b2d5cfe2e5369a0408f4"},
-  "syntakt-sd-cp-macro-wave": {"w": "62b877ca692057502caf9cf9e8ee4ad7c1096137825471a03b80c9d79bc4ebfb", "p": "835c4d23ffc5ce4eaccc3e12653dc78fe6d40db4631e11dd6f65e9a42b0e611e"},
-  "syntakt-sd-cp-acid-wave": {"w": "4161993ff4857508612cd1e9d8cc58e2bde942864d7dd0db54cd7c5cfb77dcfa", "p": "15e7d1b1de213bc7834162edb2812b729652e1fc0d83e0b2941f89fe5b564218"},
-  "syntakt-sd-cp-macro-acid-wave": {"w": "c6acde60431bc17751870c0dccaf6fdde962b1db6de246df2fffe57f43462169", "p": "c5216549ca960390b5a4b30d90ee6033545550090f730a91250865180f7ac1e1"},
-  "syntakt-sd-toy": {"w": "b5cbdfffa4b4791ebb63f59298b8e47b443f8d293c99a3c26a283e99c5d4859e", "p": "86009341c5627330f89f30de90cc9413148d9b7ba924b1c860d1c52db8b83a98"},
-  "syntakt-tg-sd-toy": {"w": "a6458464c61122abaeda53756934558a30007cfb184057ab64bf397958b1847b", "p": "84fb2c682e3f1fdded50d429085eed5abfd493fafda225e40a865cd41f03de9b"},
-  "syntakt-sd-toy-macro": {"w": "f678abdc2069d593425a894c2dc33fb896071da14dbabd50362047d036625f0b", "p": "f6a3b1f3e86a0602a308365705c9309450d38c132c0acb6a69276bfbe6e6bc31"},
-  "syntakt-tg-sd-toy-macro": {"w": "e54737de764bb6a3a4150d3419ca558bf3eed51969db73301542877160de2552", "p": "db8cf68c07a89324922d20616d38f34543a9eca68cd13da09d32563ac36359da"},
-  "syntakt-sd-toy-acid": {"w": "0cb9d714b14ae31a95398a58318778c9f9c8e03e03f4eb1b49225381f56af3f6", "p": "28328f72ac38055ef107ca17eecd97ffe69c9627c71ad64de724d3d69e878dd8"},
-  "syntakt-tg-sd-toy-acid": {"w": "aa699174d3acf85524e6781647397a75c908eeb0e087875c2f5285e9864809be", "p": "100226bd838609f5e4a9bee9b432259951ad98b1b0542c8cdbd30fcf74e76971"},
-  "syntakt-sd-toy-macro-acid": {"w": "c3b7d8a609e7c6d083b82fa04e75ccf716993ad432590cb9d720eb698d265d6e", "p": "45a496fe39c3f175e868509f73fcb4004987cde72aa8545a1e31be1916b6606c"},
-  "syntakt-tg-sd-toy-macro-acid": {"w": "19bf36844182bfdff9f0fc794c724665ce01605650ebc4647c86e959bf4b9d04", "p": "490bf496fe339df7cb5d97b64f67d2c3841b73c04e6b14e93695c0906d624f10"},
-  "syntakt-sd-toy-wave": {"w": "98a39804e1cc3466370473d91fb7f0bc5319186836dc39af76d15607cb607156", "p": "62a3dd4b63eaf251c0626da634340cd7ee73c3b9b38672ee5a6b98201981822d"},
-  "syntakt-sd-toy-macro-wave": {"w": "62b877ca692057502caf9cf9e8ee4ad7c1096137825471a03b80c9d79bc4ebfb", "p": "740d9318bfe23886e412b1401411fce01f3dd5a16a002a2fc741f701c25727c6"},
-  "syntakt-sd-toy-acid-wave": {"w": "4161993ff4857508612cd1e9d8cc58e2bde942864d7dd0db54cd7c5cfb77dcfa", "p": "5e147fffe44488a907585882285d909b4dcb4e23febf86905dfe2f7a2f91e77b"},
-  "syntakt-sd-toy-macro-acid-wave": {"w": "c6acde60431bc17751870c0dccaf6fdde962b1db6de246df2fffe57f43462169", "p": "54d6a6303ed3056f7533b5f7601fc265a091d8fecec412c8226fd685f49c4a71"},
-  "syntakt-sd-bits": {"w": "6ca68900965c6e43dacc1013ad72670f4458317bc6d284a8701df3ad36cafc01", "p": "26b78d37e9cee75611ed43a387a89e3eb5f6e8ca6a3a9fccaa58d13c1c60a28c"},
-  "syntakt-tg-sd-bits": {"w": "1772974bfe1ce3f16cd08bd6ee2f78d6efac6654e66e3a98b1b5e0087d794a39", "p": "7c7cef48a40350b6b4c6bb963a55a81ee43d8d0f71c60b805fcd506fa45c126f"},
-  "syntakt-sd-bits-macro": {"w": "0460090d272cf53f38dfacaa9e95ab17ab181c44a02dc1c47fa6eb6db4c1f367", "p": "c9bd92d3a9fc9f033ac3d08461be4fd7c07fd90376fc4c3dccaa5da1f43648f6"},
-  "syntakt-tg-sd-bits-macro": {"w": "cafcfc2040801eb97345c88ccb29a3f55a43ad05c4a6b527e82d5596c9325a90", "p": "cf4e7ecbd1b5ce79d3c1fa58d3a7845bbb943e58507298468cdefb30d77f5cd4"},
-  "syntakt-sd-bits-acid": {"w": "23ffbcb0f92d5d881f000f9437f79e5899017c323869edd7e330388606defd25", "p": "831ae284e0c07f652bdeffc30754dd22e4739498cb8af5b36d179ed49f344001"},
-  "syntakt-tg-sd-bits-acid": {"w": "268a2b4c0874e4b4c537997d0c332c19d67996045702cbf63f0bcd1badfe327c", "p": "9098bdef557522ba6e185eceed50cb7c9d2f8bc5125b944ad8c5448292e2fe99"},
-  "syntakt-sd-bits-macro-acid": {"w": "359a37cf81fda468d511a6b4302d27a3b8cdeaab6e9480ae0cd919cb09d2e8e4", "p": "4a13edc62cef8b8c9d7a42b65a423ed541def40c51209994eda11722d7f05115"},
-  "syntakt-tg-sd-bits-macro-acid": {"w": "156af3a119a4c437fc7edaca1d116b17c1353866cd43069d144e669513d4ec84", "p": "2770bdf95e6eaff6ed181b1c89212b6c7625e04805e37282bc97530a686d43f3"},
-  "syntakt-sd-bits-wave": {"w": "2cabdb5789b0b7d5861bba33510e23254c96a078c3b53d80050add3bf8cb7c6c", "p": "4756ab485e85ea30150a54230b7d99d4178dc3dfa3b0d8dc9073bad19f8ae3a3"},
-  "syntakt-sd-bits-macro-wave": {"w": "8e17ca087776cc001969c381333bccc96d584e1421259f0586214ea0e9a7e8f2", "p": "9e674215929a7569132386b7734caa6957743f6aa0a56958acfca96bc035766e"},
-  "syntakt-sd-bits-acid-wave": {"w": "1ce9d1c5db4e27e54a67a7d563903dcde8aebba6e9a2dcd71c2b7124d2107e48", "p": "dc53f1356cbd3157c1263373780f0b98355fff7bde8d2980587ebbca74d4de85"},
-  "syntakt-sd-bits-macro-acid-wave": {"w": "3adf0b4b8aeaa6fe36de49676b601afd4a257a8ee80604cec80a51f6f88f2440", "p": "15c644e63f8902727ee46e2d9e3bf2e90f38068716b0574f54285050e15afcb4"},
-  "syntakt-sd-swarm": {"w": "6beb6cf8bb467020dd627770cd50dcf633409fe9568fd430699296a8055255cd", "p": "5cf17594198adc179d5103d2b5464c1e3746e8c30bacd9c916f41595411436a6"},
-  "syntakt-tg-sd-swarm": {"w": "8b07e3ad361c7f91d4edb92180019e157f89c461c9510c09a5908d6b60d22ca5", "p": "81e3cfe33cd12da23a7a4e6b76c1685bf179d1e9a4f0c814f80af4fa0e4faaf6"},
-  "syntakt-sd-swarm-macro": {"w": "fad9d1bf35efecb1954fb2003ccbf2cdee47938ecda8d6dad98d9e31dff28489", "p": "fa93d27d290e0fe0b79bc59d757bae763af57e3cd32549e994081b49b3bd8418"},
-  "syntakt-tg-sd-swarm-macro": {"w": "c655cbdb3fe232e69df8b2a47865da55569f34901e6a980070b8233b2e7387c3", "p": "1a936bc929d13f44b3ef7803a046ad68b3883fe4ec3f87a9fda47f8ead3bac6e"},
-  "syntakt-sd-swarm-acid": {"w": "d8ee91282bd48dc62d8723ab9aaef492bcde3875163f0243f83cf689eeb3f0ca", "p": "f486a60fb0c4ce476f5c7fedfbcfbc25ff8062d4c2196717af5ae6b7374887dc"},
-  "syntakt-tg-sd-swarm-acid": {"w": "2a5e25a21187fe0b595014b35c3b8f8ff9790013334714539b1f6b6622921033", "p": "1d6c0b9b4a007998dbace8499bb4db720c48519cd589ce902787d8a91bdb0a87"},
-  "syntakt-sd-swarm-macro-acid": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "62c6279c6ea18151bafd6c4c19e1cd4bfeeab4867c28daeacd42abf48e9539c8"},
-  "syntakt-tg-sd-swarm-macro-acid": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "efbff66b493f7044d9ed3bd6422ce9592ade3e5aa1a35eed992be3f969322424"},
-  "syntakt-sd-swarm-wave": {"w": "9f38df3f99cd921b87aa72afa6534971537b3c6f641c161d0bc2f6fb470a39ad", "p": "ae9ec39a4c66ee6f115c54ff572eadc4ca5d13a1c15787fc29e293ee14fbc77f"},
-  "syntakt-sd-swarm-macro-wave": {"w": "fae9e6124e19a85c81181baf0695c2622913cc0eb079418d3d0e4c2730b883fc", "p": "0d9179462ec0163c02687fd1e7bdeaaa75383dbabbca05a59be6e798be10f5b7"},
-  "syntakt-sd-swarm-acid-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "b1dccc85efb22a1806538821a0a6863362a9b038b4277e79d152aeb0cb1dfa74"},
-  "syntakt-sd-swarm-macro-acid-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "19ce721b4bff28bea55c9cd73cbf6fff51bb87af65ce7f91be14839f1861d3fd"},
-  "syntakt-cp-toy": {"w": "b5cbdfffa4b4791ebb63f59298b8e47b443f8d293c99a3c26a283e99c5d4859e", "p": "7fa55e16f170350042166a4fce1893e57006c05a2dd970d6be956378d4fc64d9"},
-  "syntakt-tg-cp-toy": {"w": "a6458464c61122abaeda53756934558a30007cfb184057ab64bf397958b1847b", "p": "506ba8619ce6b945f91250a13b412acbc7ce0efb8878799b146d65bd0fc9fbef"},
-  "syntakt-cp-toy-macro": {"w": "f678abdc2069d593425a894c2dc33fb896071da14dbabd50362047d036625f0b", "p": "2740915eaa63ad8e7df3986b4f65387cdf21680711eceea2c1501e9e70829404"},
-  "syntakt-tg-cp-toy-macro": {"w": "e54737de764bb6a3a4150d3419ca558bf3eed51969db73301542877160de2552", "p": "85cc6795bf190cd7ed1e21ea72e2043de56ee67c895d5e4a39b3721ad15e18cc"},
-  "syntakt-cp-toy-acid": {"w": "0cb9d714b14ae31a95398a58318778c9f9c8e03e03f4eb1b49225381f56af3f6", "p": "0005ec163870361aaf815473eb01bde8eb49740b74d58b9eeca1cb1b428dd314"},
-  "syntakt-tg-cp-toy-acid": {"w": "aa699174d3acf85524e6781647397a75c908eeb0e087875c2f5285e9864809be", "p": "1aa406322637658a2240b9c52b42d8850071c12c822c68dcfdb57841b5835e40"},
-  "syntakt-cp-toy-macro-acid": {"w": "c3b7d8a609e7c6d083b82fa04e75ccf716993ad432590cb9d720eb698d265d6e", "p": "9dbd0b47193ccee8ad80fc289d46acd6a3bac4c3f1bfacf8b4d59f002a83169c"},
-  "syntakt-tg-cp-toy-macro-acid": {"w": "19bf36844182bfdff9f0fc794c724665ce01605650ebc4647c86e959bf4b9d04", "p": "a4a85cdee25f7d6aaa39abe003d52a38ca0acdb7da8e54814566e91feeb11c1c"},
-  "syntakt-cp-toy-wave": {"w": "98a39804e1cc3466370473d91fb7f0bc5319186836dc39af76d15607cb607156", "p": "d6b2f33b5c83aba4cad8518ee3b852a3c09449708a31ee067c5f2728167c901d"},
-  "syntakt-cp-toy-macro-wave": {"w": "62b877ca692057502caf9cf9e8ee4ad7c1096137825471a03b80c9d79bc4ebfb", "p": "5546edfb13e8886af474117efd8503f836fa71b7356829ea85cb1373a14cfb64"},
-  "syntakt-cp-toy-acid-wave": {"w": "4161993ff4857508612cd1e9d8cc58e2bde942864d7dd0db54cd7c5cfb77dcfa", "p": "e0692e57a9ea41dc5ac8517a6569c7cafe4c5f47346b96f549579b1d43fe893d"},
-  "syntakt-cp-toy-macro-acid-wave": {"w": "c6acde60431bc17751870c0dccaf6fdde962b1db6de246df2fffe57f43462169", "p": "57e7e90978964324ee4a45f81beaf75007e9c2239ca59bc66c4ac2e7c4cfd568"},
-  "syntakt-cp-bits": {"w": "6ca68900965c6e43dacc1013ad72670f4458317bc6d284a8701df3ad36cafc01", "p": "31fb2a740e4374e9d6cdc6a1ee76fbf7f7273dc45390d87abeed22fd5dcebb9c"},
-  "syntakt-tg-cp-bits": {"w": "4b54fb41056617d96971ebb91ca328a6f76ff8de82a6797c05c4f6d312dad0cb", "p": "873a44e1d263cf678a85a013b9bc4872dd5bb07c3d6f1491478873079e2fd903"},
-  "syntakt-cp-bits-macro": {"w": "0460090d272cf53f38dfacaa9e95ab17ab181c44a02dc1c47fa6eb6db4c1f367", "p": "264932a07c47a21c966b5a51221439c16a2f97f6e72c962fc9617a20859068af"},
-  "syntakt-tg-cp-bits-macro": {"w": "cafcfc2040801eb97345c88ccb29a3f55a43ad05c4a6b527e82d5596c9325a90", "p": "b80fed7118f237c0b745d8606cf8aefb1f9e788029422ea8f824cd99221d31d9"},
-  "syntakt-cp-bits-acid": {"w": "23ffbcb0f92d5d881f000f9437f79e5899017c323869edd7e330388606defd25", "p": "8d0badb2b8d7a13da764f92d105471a3edfe772cddb8dec6175e727dc07f1f24"},
-  "syntakt-tg-cp-bits-acid": {"w": "268a2b4c0874e4b4c537997d0c332c19d67996045702cbf63f0bcd1badfe327c", "p": "933e1148117e01c1105c95502a17a76a71bc1f9cad97f0dc4b21331c73a5d39e"},
-  "syntakt-cp-bits-macro-acid": {"w": "359a37cf81fda468d511a6b4302d27a3b8cdeaab6e9480ae0cd919cb09d2e8e4", "p": "710a2877f5b5ec9488b496798bfbf63bdd22b13f79328454bf491e6b510881ef"},
-  "syntakt-tg-cp-bits-macro-acid": {"w": "156af3a119a4c437fc7edaca1d116b17c1353866cd43069d144e669513d4ec84", "p": "e361f2ed10ac3a509684cc5c07132a545570128bc9a3356e441a491dcef28cc0"},
-  "syntakt-cp-bits-wave": {"w": "2cabdb5789b0b7d5861bba33510e23254c96a078c3b53d80050add3bf8cb7c6c", "p": "4ee6c281a75c2b642f9fd3878e50f6f82e8c476dcc9cdf56ac6f2c4bcc56410a"},
-  "syntakt-cp-bits-macro-wave": {"w": "8e17ca087776cc001969c381333bccc96d584e1421259f0586214ea0e9a7e8f2", "p": "b997a3fa2156a7b8670cccaac3b785f22b3e8222734f4b39d1fd511abec310eb"},
-  "syntakt-cp-bits-acid-wave": {"w": "1ce9d1c5db4e27e54a67a7d563903dcde8aebba6e9a2dcd71c2b7124d2107e48", "p": "014612b25d6f157fa4f0edf050d662f1e200973d9fb91bd49d08ea4b96f5e16c"},
-  "syntakt-cp-bits-macro-acid-wave": {"w": "3adf0b4b8aeaa6fe36de49676b601afd4a257a8ee80604cec80a51f6f88f2440", "p": "49dbd8f13bed6587624e1287b62df18119f4fe805887eac949908b8d5ac104d2"},
-  "syntakt-cp-swarm": {"w": "6beb6cf8bb467020dd627770cd50dcf633409fe9568fd430699296a8055255cd", "p": "385abff60fd340bddd0e887fcf00fe692ee6d13a6caf8c249ffb979fde5ea13d"},
-  "syntakt-tg-cp-swarm": {"w": "fa6f2a6e21192b7047f0f7c0e88f422e9757585093edaa727db73a4841acb81e", "p": "a81cff848118ff1d8ce29325e3757007d7d09e0a922613880fe6e436fd3f1c92"},
-  "syntakt-cp-swarm-macro": {"w": "fad9d1bf35efecb1954fb2003ccbf2cdee47938ecda8d6dad98d9e31dff28489", "p": "da66b22d9007a7351f45fa663b69d0fcdea2f950590246af064929cd0050ed56"},
-  "syntakt-tg-cp-swarm-macro": {"w": "c655cbdb3fe232e69df8b2a47865da55569f34901e6a980070b8233b2e7387c3", "p": "6de7dc384090f5b4604be7380fdcee5f67ae295be3b83971cd2dc743bd426979"},
-  "syntakt-cp-swarm-acid": {"w": "d8ee91282bd48dc62d8723ab9aaef492bcde3875163f0243f83cf689eeb3f0ca", "p": "edba34c63948b64ce154a66e256292aa846d7e112c2d56262e143f7ea7d6637c"},
-  "syntakt-tg-cp-swarm-acid": {"w": "2a5e25a21187fe0b595014b35c3b8f8ff9790013334714539b1f6b6622921033", "p": "f5279904e5fc9514fef09891d7ce4a208c2541f15dd06975e5fbb8a0c604e4ab"},
-  "syntakt-cp-swarm-macro-acid": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "54bf1937e8eb31a2f139f4174cfb84a0a5185df7ff3c87b20f9b4dec0180e1de"},
-  "syntakt-tg-cp-swarm-macro-acid": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "5f5258d366eef7c5ea41cc4cb322e53ad30ef745602033932b60c42144344b6c"},
-  "syntakt-cp-swarm-wave": {"w": "9f38df3f99cd921b87aa72afa6534971537b3c6f641c161d0bc2f6fb470a39ad", "p": "586858bec4ad95a64c1500bf820afe9b502e5d27dfbd3c0bddacf3f264b33a28"},
-  "syntakt-cp-swarm-macro-wave": {"w": "fae9e6124e19a85c81181baf0695c2622913cc0eb079418d3d0e4c2730b883fc", "p": "514ce41d1b7abd63557fb2da8b2ee0015fc203cec614796fb23592d2c38eec02"},
-  "syntakt-cp-swarm-acid-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "5cf1dca52124c0aac957ff554d3303c773db6f76355279f4f6376bb5ef366d59"},
-  "syntakt-cp-swarm-macro-acid-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "031b1f606c520648247730be5753d7c10b69986ace70ff891834d8a3df69aafb"},
-  "syntakt-toy-bits": {"w": "6ca68900965c6e43dacc1013ad72670f4458317bc6d284a8701df3ad36cafc01", "p": "422b80b4928879125760ba09bafe46f35e161d240385019d4d745d028ae394b9"},
-  "syntakt-tg-toy-bits": {"w": "165cb44ca7ad0ade1ff3c21b5c9f979b100437e9d5f0969c88f7cc0be8f1ec8e", "p": "0fba45ee4f603c0ab22452f8928e078fc63ec54199f951a24fb96c79de1ba663"},
-  "syntakt-toy-bits-macro": {"w": "0460090d272cf53f38dfacaa9e95ab17ab181c44a02dc1c47fa6eb6db4c1f367", "p": "3419ac17c3492ae8206fcfc406b7a92e6c16630f75b56ecc19e36618e3a87eea"},
-  "syntakt-tg-toy-bits-macro": {"w": "cafcfc2040801eb97345c88ccb29a3f55a43ad05c4a6b527e82d5596c9325a90", "p": "d56b57776a46d481787d907720a1a96b9f7e81bf0aa4c13264008c887307e255"},
-  "syntakt-toy-bits-acid": {"w": "23ffbcb0f92d5d881f000f9437f79e5899017c323869edd7e330388606defd25", "p": "e23abee138a10cba56a0730aa5ed45c819bf5fd53ceeab1146af933d6db7ac7f"},
-  "syntakt-tg-toy-bits-acid": {"w": "268a2b4c0874e4b4c537997d0c332c19d67996045702cbf63f0bcd1badfe327c", "p": "d80a7f2b6b4932d4a9e7b79dca32dc059497229b6051354912af54d36bffb991"},
-  "syntakt-toy-bits-macro-acid": {"w": "359a37cf81fda468d511a6b4302d27a3b8cdeaab6e9480ae0cd919cb09d2e8e4", "p": "d8127bd85e0b3ab65cf0f252e9b8fbd4067fd33d25ba952ad29845b4ff9e8bcd"},
-  "syntakt-tg-toy-bits-macro-acid": {"w": "156af3a119a4c437fc7edaca1d116b17c1353866cd43069d144e669513d4ec84", "p": "ccfc18eec41b1c4b10f1cd7bb1b29ddfd8df97d9c80271b33926fa70c430953a"},
-  "syntakt-toy-bits-wave": {"w": "2cabdb5789b0b7d5861bba33510e23254c96a078c3b53d80050add3bf8cb7c6c", "p": "5d7ae2520ce1bb70f11472d9628ed12fc6de60abb0e16d56d5a72436c17e8804"},
-  "syntakt-toy-bits-macro-wave": {"w": "8e17ca087776cc001969c381333bccc96d584e1421259f0586214ea0e9a7e8f2", "p": "c4c16ff60dd575a0471dbafb6adcedcd37b3b6d628609e1c2c0182e54e1966e2"},
-  "syntakt-toy-bits-acid-wave": {"w": "1ce9d1c5db4e27e54a67a7d563903dcde8aebba6e9a2dcd71c2b7124d2107e48", "p": "1d155dc4f9e59a3844f1fe7c2d5a367c213845100799049fa6180b7dc9dfb927"},
-  "syntakt-toy-bits-macro-acid-wave": {"w": "3adf0b4b8aeaa6fe36de49676b601afd4a257a8ee80604cec80a51f6f88f2440", "p": "2b9c61a66f0905f689d4339a09648fb23f3b8974d62bf71ed23951a73c5c274f"},
-  "syntakt-toy-swarm": {"w": "6beb6cf8bb467020dd627770cd50dcf633409fe9568fd430699296a8055255cd", "p": "429b88bc92012100012550e82cc636d5541869a0ac5edb608766a56c2e1539a1"},
-  "syntakt-tg-toy-swarm": {"w": "87047b1196d71e970e2cfb05e1189efca46e7a4d021ae940a8ccb95c4b9844b4", "p": "d36280aea4a5a245a3fd4182ddd1fa7c82a5f853fc1a0269abfe9493a7f3dc62"},
-  "syntakt-toy-swarm-macro": {"w": "fad9d1bf35efecb1954fb2003ccbf2cdee47938ecda8d6dad98d9e31dff28489", "p": "6bfba2803a0a999ccdfbab25ca05579cd0cde176ad4864d65100ae1d9d21bbef"},
-  "syntakt-tg-toy-swarm-macro": {"w": "c655cbdb3fe232e69df8b2a47865da55569f34901e6a980070b8233b2e7387c3", "p": "021e5352972e4f079fef53f68a2f998fb2aca3135528048c3360bd5a0e4def1a"},
-  "syntakt-toy-swarm-acid": {"w": "d8ee91282bd48dc62d8723ab9aaef492bcde3875163f0243f83cf689eeb3f0ca", "p": "4618aa41ae52442933555c37fc8001d0afe0a28fe5158bc16fb30a59f1e189ad"},
-  "syntakt-tg-toy-swarm-acid": {"w": "2a5e25a21187fe0b595014b35c3b8f8ff9790013334714539b1f6b6622921033", "p": "f23551163b752503297844c8deaa2a1dea61f5da079c2354617e61ebc7e6b8ec"},
-  "syntakt-toy-swarm-macro-acid": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "b44b7208c1cf24cd875ed8a098758cfadb34ba60323e8db22cb114c911f4f11a"},
-  "syntakt-tg-toy-swarm-macro-acid": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "a4dba9ea178ec75c80468fc42d92b8f9ba2fb8df0f1eb40cd12cac679ff1e543"},
-  "syntakt-toy-swarm-wave": {"w": "9f38df3f99cd921b87aa72afa6534971537b3c6f641c161d0bc2f6fb470a39ad", "p": "1c87cb797c9898a450d1b2c28044a767eee90d9784d6e0705f1aefaac239d56c"},
-  "syntakt-toy-swarm-macro-wave": {"w": "fae9e6124e19a85c81181baf0695c2622913cc0eb079418d3d0e4c2730b883fc", "p": "f9b42303ba4f92e57da287b4b9a05f2bccdfad71da846493f6c2a9aa535c1289"},
-  "syntakt-toy-swarm-acid-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "5fc6cd5dadd650834aaf79561c0bf8b5f9025b0e9159444bab700edf4bc48f18"},
-  "syntakt-toy-swarm-macro-acid-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "4babef5aa51e0ddb6075cccb0670fa212a20896ab01b2a7ca138fdc6f70a63b0"},
-  "syntakt-bits-swarm": {"w": "6beb6cf8bb467020dd627770cd50dcf633409fe9568fd430699296a8055255cd", "p": "f51be8e0b00a437eb1686e02dcafa9523f70d97978fe4ab70fe9fd3ec8bdfd6b"},
-  "syntakt-tg-bits-swarm": {"w": "377d41640022a315491001d4402af4e5ae5b649cc8cb31f277305f63e04dc8c5", "p": "834b1f55c38b2cb66dddc83d0fea43db2e2b1597eff60d546424669e71b40c71"},
-  "syntakt-bits-swarm-macro": {"w": "fad9d1bf35efecb1954fb2003ccbf2cdee47938ecda8d6dad98d9e31dff28489", "p": "502cb2c909dd572d9e4c2ae93457a3f0c934b7779064473c347c06817331ae66"},
-  "syntakt-tg-bits-swarm-macro": {"w": "c655cbdb3fe232e69df8b2a47865da55569f34901e6a980070b8233b2e7387c3", "p": "4f46d845388152b228c2bec7ae9ac60c99025571a57954b6f609294741df4c41"},
-  "syntakt-bits-swarm-acid": {"w": "d8ee91282bd48dc62d8723ab9aaef492bcde3875163f0243f83cf689eeb3f0ca", "p": "5ebce9e69675c342fee51939cb8218fd3f0303257d69006f782f6c369da8c9b5"},
-  "syntakt-tg-bits-swarm-acid": {"w": "2a5e25a21187fe0b595014b35c3b8f8ff9790013334714539b1f6b6622921033", "p": "70bed7cb988253a3132125744dd00459ebe259875d68977ba95ca4af03ad9551"},
-  "syntakt-bits-swarm-macro-acid": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "6deffa07fac6dde05b3549754556e49d938439a2a637af9ae447d34219f5f89e"},
-  "syntakt-tg-bits-swarm-macro-acid": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "e6d5e2b948a345a1168681dfc665a2a8c15ea3d434044231e1ddeff9c7a245ec"},
-  "syntakt-bits-swarm-wave": {"w": "9f38df3f99cd921b87aa72afa6534971537b3c6f641c161d0bc2f6fb470a39ad", "p": "e89dc7dea6d95cc9195f77b9dd6a89f9424e67de8780550ed16a4647426d0383"},
-  "syntakt-bits-swarm-macro-wave": {"w": "fae9e6124e19a85c81181baf0695c2622913cc0eb079418d3d0e4c2730b883fc", "p": "b4095d2304a84c85723f76273728061d56991d9f67b870d7faf4f15c09eb21c9"},
-  "syntakt-bits-swarm-acid-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "86cc11b38d8057fd354d8bc317ab4bf767217d4f73666809037eb99263a761f8"},
-  "syntakt-bits-swarm-macro-acid-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "b3f0948dc8d996956733971e12d22d82ed10e53563619e0344b1c224d03f3473"},
-  "syntakt-sd-cp-toy": {"w": "0dedfe732b6a22e819791dc679833fe83b8a1bba15ae69243aaa59d7a16ed8ee", "p": "634921523c879ca433c96fa3da0492b6734be63359cb3081cbbda54dfe8b24dd"},
-  "syntakt-tg-sd-cp-toy": {"w": "ebe10368cfece778a23e1d46e82a13376b95cb422f8ca62232b0c69a4e808a66", "p": "da840e5ccac0dcc27b74b42a5a052d31bffa860729bc0bc7ae8d435462ace096"},
-  "syntakt-sd-cp-toy-macro": {"w": "c3b7d8a609e7c6d083b82fa04e75ccf716993ad432590cb9d720eb698d265d6e", "p": "483288fc73f5ad7fe8b047d2f318882294ee32d11bdb0db46e7cbc358259831b"},
-  "syntakt-tg-sd-cp-toy-macro": {"w": "19bf36844182bfdff9f0fc794c724665ce01605650ebc4647c86e959bf4b9d04", "p": "157e34f6ffd3d3c0de6a63c803ff4e707a18720c5122d7a6920f7b09d84c4348"},
-  "syntakt-sd-cp-toy-acid": {"w": "81b8cdb925af4e71e7818ca62fe904901bf6456b03b9e4ba46516791cfe59890", "p": "4a6960eb4d94d228568b65f048765a6b726c481050785727d8c8280bdaacf150"},
-  "syntakt-tg-sd-cp-toy-acid": {"w": "f15e003a8dcd0fe557c65a0737b30c647fd0b5918756f9e5b2885ac88c63c3af", "p": "83aabfb0881d0a8b3cc5fe277734c61468165393323a2f847cb69893865e2948"},
-  "syntakt-sd-cp-toy-macro-acid": {"w": "ab0fd77821b90daf566ae92c082cea93f85428a228252a95f635532370d4fa4b", "p": "305f8c0183f8b1286eb6be7d4229d37e16228384e5707f511dcb8656b57b912a"},
-  "syntakt-tg-sd-cp-toy-macro-acid": {"w": "59ca1e5f15b21a40bb783dbc62cbf6a91b55c0282ba56902912850154e5482e5", "p": "59a78af57f4bd55fbde713bf70bbc0c835fad4ad7efdd7d07037915c8a3fb283"},
-  "syntakt-sd-cp-toy-wave": {"w": "4161993ff4857508612cd1e9d8cc58e2bde942864d7dd0db54cd7c5cfb77dcfa", "p": "7c342fcb0037dd0334ce483423ae8e06962579d46ad6f465b2a4edce7b825715"},
-  "syntakt-sd-cp-toy-macro-wave": {"w": "c6acde60431bc17751870c0dccaf6fdde962b1db6de246df2fffe57f43462169", "p": "fe3dab1561c25512fe7fd2c38e854eee7dabe0cbb4ab1d40520de34b8080edeb"},
-  "syntakt-sd-cp-toy-acid-wave": {"w": "82391c5022c77abfa5e55941d7587ae3f789af34db646b6e4c428c2d40d32107", "p": "4acc7d6d96177bcefe2603db545543dddc3f9f7fde9dc20e1f08c9493a573cd1"},
-  "syntakt-sd-cp-toy-macro-acid-wave": {"w": "59a99c65234a28c910e103340bbd281c8c87b2dc62e872fc9970bb26e17932ad", "p": "9263977a58ad67c01763fb8e588860cc4849ac050805a05b4c59f74cad55805d"},
-  "syntakt-sd-cp-bits": {"w": "4c592622fd417a96b01fcc884ca1c5634b43c19cd27ad4fc8515dc285aa2e156", "p": "3de431dd6b560c5ac407e35c5089621d8c083f05dbb7e7a44cec194f2e8c32da"},
-  "syntakt-tg-sd-cp-bits": {"w": "2b03cc4ed4c529011d62a96d65cbf0025cd1d93019f671b796a6bc53627cff1a", "p": "e6a72e8ece7406e44ef3767c4f8b91aca6058eb5c0b50550a65be676d2063278"},
-  "syntakt-sd-cp-bits-macro": {"w": "359a37cf81fda468d511a6b4302d27a3b8cdeaab6e9480ae0cd919cb09d2e8e4", "p": "3f5e4558d6b51a226a91c2e0fedd7dd85df6f544cc551b7d3e09a0a9978046d6"},
-  "syntakt-tg-sd-cp-bits-macro": {"w": "156af3a119a4c437fc7edaca1d116b17c1353866cd43069d144e669513d4ec84", "p": "2102370b7097772e38c41989fa793ecff1277b9732084419878a5f1700820786"},
-  "syntakt-sd-cp-bits-acid": {"w": "17a14832ecf8d9a1fec7fd1c393cd8e33b88915426c1b46116aaa4077cc5bae4", "p": "2568bd688b8245e1977de3e167a4da184e45e38c51c7fb194fd3a4261829c163"},
-  "syntakt-tg-sd-cp-bits-acid": {"w": "086f7858eabcec874f89eb617afa5e920b214543a0a720574cf0df1aff8f2daf", "p": "6ac360a4d6200105629d1c3a355e6e2fb53d3f05bb5634b8c100b0dca02bb6a1"},
-  "syntakt-sd-cp-bits-macro-acid": {"w": "de31eab6ac4b41df17bec877335e5d3ebee93bbd62116fca63bd382798841440", "p": "2ef2c08b525b6ccde6bbb9b7c1609a43989031eb121a0c5493d350ffc785a95e"},
-  "syntakt-tg-sd-cp-bits-macro-acid": {"w": "9ae034f392ace1d914bf2b87e2767f1da2949ec5e2359366e69af9680e845eb0", "p": "fe45630a2efc2cdd6549fc7a10c7a21f4ac644426f09c1355059e4bac9694f98"},
-  "syntakt-sd-cp-bits-wave": {"w": "1ce9d1c5db4e27e54a67a7d563903dcde8aebba6e9a2dcd71c2b7124d2107e48", "p": "1eb9bfdb080f3a19a981d2a554fe5a603dd5a197490b2e4a5d21b2b6a357a13f"},
-  "syntakt-sd-cp-bits-macro-wave": {"w": "3adf0b4b8aeaa6fe36de49676b601afd4a257a8ee80604cec80a51f6f88f2440", "p": "c757552e9fdb702595b01b741b10613a3b29752e75a4d1f428e1caf670446e8c"},
-  "syntakt-sd-cp-bits-acid-wave": {"w": "346e572ccd080dbab095e9fc9cb853fc4106a33f87f92e6f8d66202deaad4bcc", "p": "1e629140416aa11e936125c7623d325e8bc2d3d2cb0bf08427dcfa2e25b9c781"},
-  "syntakt-sd-cp-bits-macro-acid-wave": {"w": "2360ecf3712b97057bb32e915de019d842a230a079601db6bb09f31b4e41615e", "p": "07665e883b01cdd03ad9ab70b8dbdb57c9cdc588468a3d2cd79bffeb48445000"},
-  "syntakt-sd-cp-swarm": {"w": "e2e264e5f6c6641db39131d2304b2f4e5b954eb51038c0815c6062b238d9e410", "p": "6c3dd4546d7df4852ed465553a80c622da892cb32429cde10f34ad383600ea98"},
-  "syntakt-tg-sd-cp-swarm": {"w": "f9d64c29e840410ac6c947e181a45069153cb4e108bcdfaf42b497f45d5b3cca", "p": "ada5d11b51da0d3e90ac47dc55ab4d7827e5604bec07252f852a6e099e8c7632"},
-  "syntakt-sd-cp-swarm-macro": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "843acdd2e87bae0a0401872ac900f6179030f229e9978f137fb9f26562d700d9"},
-  "syntakt-tg-sd-cp-swarm-macro": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "7d2a652812df5c3535e81abce22bc651c3b8fe2198820bc5ded7b0ff1ee344f2"},
-  "syntakt-sd-cp-swarm-acid": {"w": "57b7edc76f2c984676ad75fea46e2a23517365a028e4233f6527dcb61a96c210", "p": "4075a7dcbe6819d8d88b16f5c767a8843aeade58a23f5ed6cab494c6ceb8442e"},
-  "syntakt-tg-sd-cp-swarm-acid": {"w": "f5aad1c8dfa532977b69ba18fdf02af25dd3d3280f9a81a89be3e6a4667928ba", "p": "35d60c12e160f6ab180f6deed53bcf9e7b0dfa315cbba9bfd8cfa12b3ed53de7"},
-  "syntakt-sd-cp-swarm-macro-acid": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "94226e9a8fb167326566b2a07074cec56593f5f77072d23151ff3446a5788a17"},
-  "syntakt-tg-sd-cp-swarm-macro-acid": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "4a9e342116f069ac0e8808cc80230ac1b5f0f373327d1e3bf8e34c053cc95df9"},
-  "syntakt-sd-cp-swarm-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "ca1be0687771ab0b4856e0329fa98f4b2582699f7e40f57452765774f907453e"},
-  "syntakt-sd-cp-swarm-macro-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "602473e66869085ef8d6fa4b6fe14959f3ba5a0e4dfd1be75e2b1fd335568d8c"},
-  "syntakt-sd-cp-swarm-acid-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "54933abf329a8a7e26d163e99a9fdee7c2406823098c1f929ec1fbe1c86d0c75"},
-  "syntakt-sd-cp-swarm-macro-acid-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "c79800e8741eba632eba03356c6cb103a55d6420058f3f27b58be6d35fae9750"},
-  "syntakt-sd-toy-bits": {"w": "4c592622fd417a96b01fcc884ca1c5634b43c19cd27ad4fc8515dc285aa2e156", "p": "412b3f3b03c7c171d397238a006707373afcd8ea3a932e6949a28a5c8bc079e7"},
-  "syntakt-tg-sd-toy-bits": {"w": "59f8db5a7fbc68bf25e00f2b9fe169717f50b1c3d9d2193bc91a11be4e922a81", "p": "8e89be4f0a8fcddc10b61b4ed584224bb1511ab2a4c16e526e60fc12c0ce20b2"},
-  "syntakt-sd-toy-bits-macro": {"w": "359a37cf81fda468d511a6b4302d27a3b8cdeaab6e9480ae0cd919cb09d2e8e4", "p": "cc33a2bb1cebcb8bcb49b08b6bab4c5e48d07612c7bf3d4b27a61e3ddd045507"},
-  "syntakt-tg-sd-toy-bits-macro": {"w": "156af3a119a4c437fc7edaca1d116b17c1353866cd43069d144e669513d4ec84", "p": "ad6066bea5313bba43906bed0f0ab9e34229298a80b5d0e638b0973a3e690c62"},
-  "syntakt-sd-toy-bits-acid": {"w": "17a14832ecf8d9a1fec7fd1c393cd8e33b88915426c1b46116aaa4077cc5bae4", "p": "2feb686323a4fe0e44e190ea2e5391370a20f6f5fe040ebc4b8fde98b653d830"},
-  "syntakt-tg-sd-toy-bits-acid": {"w": "086f7858eabcec874f89eb617afa5e920b214543a0a720574cf0df1aff8f2daf", "p": "a71876e3471484a4fed33e0847691721c4263f8e33a526f80d2e0e2ca61e4bc8"},
-  "syntakt-sd-toy-bits-macro-acid": {"w": "de31eab6ac4b41df17bec877335e5d3ebee93bbd62116fca63bd382798841440", "p": "771887348b6f871f86ae0898a4c667534059d768a5097218a56784a34bb65255"},
-  "syntakt-tg-sd-toy-bits-macro-acid": {"w": "9ae034f392ace1d914bf2b87e2767f1da2949ec5e2359366e69af9680e845eb0", "p": "472819009c9de06e621bb5a06a6b60e35d15cb1121db478f24d01f0a2fc408c8"},
-  "syntakt-sd-toy-bits-wave": {"w": "1ce9d1c5db4e27e54a67a7d563903dcde8aebba6e9a2dcd71c2b7124d2107e48", "p": "29c0f6f855b863e0cef27d1327b7cc05afbd1de87e8c2c4932aeac2101c3ffbd"},
-  "syntakt-sd-toy-bits-macro-wave": {"w": "3adf0b4b8aeaa6fe36de49676b601afd4a257a8ee80604cec80a51f6f88f2440", "p": "32264f7a4a2030734cda69087153b1a2c17eb2470858e8d46a2f86d439e96489"},
-  "syntakt-sd-toy-bits-acid-wave": {"w": "346e572ccd080dbab095e9fc9cb853fc4106a33f87f92e6f8d66202deaad4bcc", "p": "95ec12e0c1c45c3ae760cd154142a2351641c5b525e786c5c5df56978766112a"},
-  "syntakt-sd-toy-bits-macro-acid-wave": {"w": "2360ecf3712b97057bb32e915de019d842a230a079601db6bb09f31b4e41615e", "p": "f0abcc3c1594f07276efee154059553c343b4569a65c0cd6762a23bda8a64d0e"},
-  "syntakt-sd-toy-swarm": {"w": "e2e264e5f6c6641db39131d2304b2f4e5b954eb51038c0815c6062b238d9e410", "p": "eedf7fd8d2f3ab9dbbb2012b27178b48ca7777338e3bfa3056e24c9d22efcffb"},
-  "syntakt-tg-sd-toy-swarm": {"w": "6d01b0b6928568adeab0b21fd6a4867490d316bc37f6adc12abf29550c96bd1d", "p": "02234466f9dccae446425c696c7084df3e8d1e03b3751ebc714aa392dd563024"},
-  "syntakt-sd-toy-swarm-macro": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "296c4f4772056db0dc53b479ac2efccb5163ef78cf24ec301e9dd05183ba1946"},
-  "syntakt-tg-sd-toy-swarm-macro": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "2953f13f62fb5c383c60eeaa885822d1af2b0576419c948950667abd48947761"},
-  "syntakt-sd-toy-swarm-acid": {"w": "57b7edc76f2c984676ad75fea46e2a23517365a028e4233f6527dcb61a96c210", "p": "de4b61be8a05bafc1e4b20b50f9ebffae182d4c675ccbc06ae232581e2fa673f"},
-  "syntakt-tg-sd-toy-swarm-acid": {"w": "f5aad1c8dfa532977b69ba18fdf02af25dd3d3280f9a81a89be3e6a4667928ba", "p": "642cfa0c359128a57a16165489bf650b556bfafee99b65d80add6e7335bfdf5a"},
-  "syntakt-sd-toy-swarm-macro-acid": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "520487187e9ad1fd3328c178104e12b3cc71dc344364d7257f0594711d26f599"},
-  "syntakt-tg-sd-toy-swarm-macro-acid": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "f39be49e23cd41e105b7fb35e32415d8a9f47eb26d4ce61ed456ed15c2bdbedd"},
-  "syntakt-sd-toy-swarm-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "605f663bbf962cf8cda8fa41f9df4ff05f41170b5b0cca32cbfde8fc39ff5c16"},
-  "syntakt-sd-toy-swarm-macro-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "1550f63b1cb14cc367a8e28f63d305dfaebc46d97c441521b20f56993e8afb3b"},
-  "syntakt-sd-toy-swarm-acid-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "0b3cc05278e5a807beb13ef1859b81189c4c74afe1a59f36ec2fc93c7e7ec1e2"},
-  "syntakt-sd-toy-swarm-macro-acid-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "0cee1b9720f5f93424eeb40e8c53754c804e73edf29a41ec219ee772fe723966"},
-  "syntakt-sd-bits-swarm": {"w": "e2e264e5f6c6641db39131d2304b2f4e5b954eb51038c0815c6062b238d9e410", "p": "3e96d9e16ccc8a0d45d9fbe90dbc659a214056aeff9c10cd3785214059375b64"},
-  "syntakt-tg-sd-bits-swarm": {"w": "248d8783151d5163363a516994b2de4a41b6da184659888f64a10f9942ab450c", "p": "7c65c2d1bf6e861851935dd87e99d65a3c6b0c1c627b7e0a3430e052a3808c5b"},
-  "syntakt-sd-bits-swarm-macro": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "25b78515a7a15373358eb0857f766397e19a8388a389acfb3a7ca60fd917c71d"},
-  "syntakt-tg-sd-bits-swarm-macro": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "92dc8fb3fab97b89412f803e4d20c66a7fe46b6ff02288033b51c6b7f671a742"},
-  "syntakt-sd-bits-swarm-acid": {"w": "57b7edc76f2c984676ad75fea46e2a23517365a028e4233f6527dcb61a96c210", "p": "a05e3fd8f7a36d65756f693cfe188d253204b3ff013ca37eb4aa6fc935478205"},
-  "syntakt-tg-sd-bits-swarm-acid": {"w": "f5aad1c8dfa532977b69ba18fdf02af25dd3d3280f9a81a89be3e6a4667928ba", "p": "53eb86d2e4b291362529b13da710ac26532fee30404269e3009862821a98c768"},
-  "syntakt-sd-bits-swarm-macro-acid": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "08e10218788266a0aab21fc8a4ce1689a0c4129cecbd67cd310c52f9886b830a"},
-  "syntakt-tg-sd-bits-swarm-macro-acid": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "3d2090445af24079364b35900880fdc5c845583e34284a1d7006bc90c5e53a46"},
-  "syntakt-sd-bits-swarm-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "af4a660abca6f4908ae3ccf2a4580c9d94eca7ff3ba0e7a5b40306a60d2b5ab0"},
-  "syntakt-sd-bits-swarm-macro-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "ec6218c814c744dad81e35cf52b9e144eef069fecfd0bcc02d821b3eace555eb"},
-  "syntakt-sd-bits-swarm-acid-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "acd18356190e7ac04374b9d7bd1657721b3f852c582b909be058293721fdf4f5"},
-  "syntakt-sd-bits-swarm-macro-acid-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "699756c133a19489743233fd6193dd44f83f1e77853ba20100322eaa9425c7a7"},
-  "syntakt-cp-toy-bits": {"w": "4c592622fd417a96b01fcc884ca1c5634b43c19cd27ad4fc8515dc285aa2e156", "p": "a799e1e55f0ddfea31a5ed8cd67bd1c99396aacdc9f4551ca0ed54fbb7313d82"},
-  "syntakt-tg-cp-toy-bits": {"w": "834c62f3802c8f195ea97375d2431ba112582aaa3f7b8bfd233d4734892c90e6", "p": "25d7673f194115c2f8dd2100ec3f4fe91dfafd9639aa0727134560d2d8d6f58f"},
-  "syntakt-cp-toy-bits-macro": {"w": "359a37cf81fda468d511a6b4302d27a3b8cdeaab6e9480ae0cd919cb09d2e8e4", "p": "028ce2ca9d55383c1e3d828d2e371fc7a04f9abc848103311c0c7f86c222b190"},
-  "syntakt-tg-cp-toy-bits-macro": {"w": "156af3a119a4c437fc7edaca1d116b17c1353866cd43069d144e669513d4ec84", "p": "c72a5af62213f19a45c6e47176ddce07014b214fa8875055f194fdf33a13d535"},
-  "syntakt-cp-toy-bits-acid": {"w": "17a14832ecf8d9a1fec7fd1c393cd8e33b88915426c1b46116aaa4077cc5bae4", "p": "a92ca6629a739b7bcb742342681374a967e8c52a19be6efb8fc9293604fea006"},
-  "syntakt-tg-cp-toy-bits-acid": {"w": "086f7858eabcec874f89eb617afa5e920b214543a0a720574cf0df1aff8f2daf", "p": "0975ced2b36bb3d71140bc8017d4ccaa84c67c0799edeac5831fbbf55ce2fcec"},
-  "syntakt-cp-toy-bits-macro-acid": {"w": "de31eab6ac4b41df17bec877335e5d3ebee93bbd62116fca63bd382798841440", "p": "d36da06ed2f05a0b5fc3af5c5e84a9adee9231e283103e64159b5b2a00ebf8a3"},
-  "syntakt-tg-cp-toy-bits-macro-acid": {"w": "9ae034f392ace1d914bf2b87e2767f1da2949ec5e2359366e69af9680e845eb0", "p": "c9106f8ec8ddd7d19f71196751508b2b32a6f44620d887ffed725892adb0dd89"},
-  "syntakt-cp-toy-bits-wave": {"w": "1ce9d1c5db4e27e54a67a7d563903dcde8aebba6e9a2dcd71c2b7124d2107e48", "p": "5b02727eaff8263f97a5f85ee2624e771cfe5a7de55c008c52021f65b161e80c"},
-  "syntakt-cp-toy-bits-macro-wave": {"w": "3adf0b4b8aeaa6fe36de49676b601afd4a257a8ee80604cec80a51f6f88f2440", "p": "914f1de3854ae86013990a2ff93e288ccd4129e3a49c9b8c7f0e11f7c656ec30"},
-  "syntakt-cp-toy-bits-acid-wave": {"w": "346e572ccd080dbab095e9fc9cb853fc4106a33f87f92e6f8d66202deaad4bcc", "p": "5b8fb71217b2c700cf177e8f61114b6e84ed6ef288eb40a7af37fcd5c6bfeb73"},
-  "syntakt-cp-toy-bits-macro-acid-wave": {"w": "2360ecf3712b97057bb32e915de019d842a230a079601db6bb09f31b4e41615e", "p": "12a1334cc7df853fca7bb4803add0c67a5ae1fcf42c56d774695cab2cbcf4291"},
-  "syntakt-cp-toy-swarm": {"w": "e2e264e5f6c6641db39131d2304b2f4e5b954eb51038c0815c6062b238d9e410", "p": "4a9bef6fa8c3e65d127c06ad985ad2054836e33c725cff0d1632a676cc9bdc5f"},
-  "syntakt-tg-cp-toy-swarm": {"w": "a981e697e5375a08f6f6c4562be685e74c9bf9db7302338d53e20746ffeda1f3", "p": "ff81bcffc505dec316678746a08a8a63e04c56532f22ab76d16cb20da13b93eb"},
-  "syntakt-cp-toy-swarm-macro": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "7359ccd595ce5c2a4fce204572095d663d7ba053486a71cff05888b0c88783a3"},
-  "syntakt-tg-cp-toy-swarm-macro": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "20626025b0266e1ee6f49223b846918532c9973c07c5c38b23e02e86e740c5ca"},
-  "syntakt-cp-toy-swarm-acid": {"w": "57b7edc76f2c984676ad75fea46e2a23517365a028e4233f6527dcb61a96c210", "p": "c3b9f863e5342525f9519dc880065be6819279b58c371571d6cae22ec42b6625"},
-  "syntakt-tg-cp-toy-swarm-acid": {"w": "f5aad1c8dfa532977b69ba18fdf02af25dd3d3280f9a81a89be3e6a4667928ba", "p": "d4178850025e8f4842a5b233c9ac63814dad165420938932dba4fb84f5625958"},
-  "syntakt-cp-toy-swarm-macro-acid": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "8a585ce1acf74698c6dce11022a4a17147dbfbcb0067dd6a84859b518d80fc3a"},
-  "syntakt-tg-cp-toy-swarm-macro-acid": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "f44dce163556e570db07f97a7302f06c8fd72c39717fe33290e2e8946e9bb981"},
-  "syntakt-cp-toy-swarm-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "0137127cd4528beae02f46233edf8bf5b59b004cb5014ee291a7ad46bd41ff45"},
-  "syntakt-cp-toy-swarm-macro-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "bbd309ec536675ce7a335b68a0059e4c2c9ad8195f493850065935c409252b64"},
-  "syntakt-cp-toy-swarm-acid-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "c09e28abfc06eec97201ed3010f73dab0b793ca952ed0084f3e10ab15bf8f9fd"},
-  "syntakt-cp-toy-swarm-macro-acid-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "230476cd823ca9b83d43b28ff9106281f762b9712465a1a07ca778342e3a788b"},
-  "syntakt-cp-bits-swarm": {"w": "e2e264e5f6c6641db39131d2304b2f4e5b954eb51038c0815c6062b238d9e410", "p": "68fbe1de3798fa0967f1de83e982c002e3007775ef410c2d10c3dcb93e1c1032"},
-  "syntakt-tg-cp-bits-swarm": {"w": "d4d22314f7bf39d1f9d392e5111944d5aeb5555519ae236d3007952df5467d16", "p": "4da8349398fedbcf8a473f70ceee7494fcd4e3f6d5e9078d458d41ab21d2536d"},
-  "syntakt-cp-bits-swarm-macro": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "ae03724a7613951fb6a9dd3722db40bb4a8f55b85f813395c8f1b27402b191fd"},
-  "syntakt-tg-cp-bits-swarm-macro": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "97f5e2ec7525aaff5854985dfaeb6f3e0a81ac38fad5a9bc20cd648166112ddf"},
-  "syntakt-cp-bits-swarm-acid": {"w": "57b7edc76f2c984676ad75fea46e2a23517365a028e4233f6527dcb61a96c210", "p": "9ceba25ac423010d35f24ce83ee0303d8cf9493181f4d4be2e87158d6f035c74"},
-  "syntakt-tg-cp-bits-swarm-acid": {"w": "f5aad1c8dfa532977b69ba18fdf02af25dd3d3280f9a81a89be3e6a4667928ba", "p": "3cc2f750f4428889d6721d586ee1d18f043ebbe60fe7d1078fc6a8564a2406e3"},
-  "syntakt-cp-bits-swarm-macro-acid": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "04cc3ef11a1db8f21dafffd1ef30c1c110d113e85596d5bc10bdbe31beb195b6"},
-  "syntakt-tg-cp-bits-swarm-macro-acid": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "8bab1568d500bd067070d2e63512bdfa8b6090d53065de03afa385e9045969f5"},
-  "syntakt-cp-bits-swarm-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "1e6b00e2d193d8deacbc2bd55740c109d78115cc97ce4022982c8858a1f7a1bd"},
-  "syntakt-cp-bits-swarm-macro-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "ab0b96556b60228bb117f3e1cdc5d94b47120f858b7c2e4ac908dada06f78194"},
-  "syntakt-cp-bits-swarm-acid-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "3dcf61447e192a34916483b4364e7e6ed5411105c4352085be619123ea35729b"},
-  "syntakt-cp-bits-swarm-macro-acid-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "d8489d81ff639669dad946e817e029aaa54fbd9aa10aa3016835f82ebe8eaa09"},
-  "syntakt-toy-bits-swarm": {"w": "e2e264e5f6c6641db39131d2304b2f4e5b954eb51038c0815c6062b238d9e410", "p": "b69670e3dceef5800b459909cb22cd8ba2c8490174bd4c9a57e52f63bf0a436f"},
-  "syntakt-tg-toy-bits-swarm": {"w": "bfff22b0f49160f78e58028dae050eebe4726c4c8f00db710780303d8172ef29", "p": "c0083779130111bf2fb05be8b9ab4456648faacd8a66b02805a778700280c040"},
-  "syntakt-toy-bits-swarm-macro": {"w": "1e7442d36187bb5c8a88bdc3768d1297e95abf917642dab77bb5b631a6b2294c", "p": "0e3d25b53ba97fefc8652082d2599df0ec94e6b53d4a2e9a955ed5ec6d46a0db"},
-  "syntakt-tg-toy-bits-swarm-macro": {"w": "aca74cb24db247186bf799358a4ee018c864968ac14dec7e759bd720068608c8", "p": "5bc2bf27fb034c32eb6c41f244c029826fbd12c24c9fd5bab10d0ce0bbc39386"},
-  "syntakt-toy-bits-swarm-acid": {"w": "57b7edc76f2c984676ad75fea46e2a23517365a028e4233f6527dcb61a96c210", "p": "a19e71aaf06d1fa1c7d64659fa67d240877f3b9241b395fd85197098df22e463"},
-  "syntakt-tg-toy-bits-swarm-acid": {"w": "f5aad1c8dfa532977b69ba18fdf02af25dd3d3280f9a81a89be3e6a4667928ba", "p": "25cb9e738ea94c7149361fc50212ccb0cfc18d9ef6492c7b403a6c0099b3fb3a"},
-  "syntakt-toy-bits-swarm-macro-acid": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "aa810691367928bfa8126c05a7da08e9496773f0f4ca9bc9b8027d5af8577607"},
-  "syntakt-tg-toy-bits-swarm-macro-acid": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "8e5dfd94bea32867b8cff83c4511a168142410a6a5340dd8cf1be318c64f9bae"},
-  "syntakt-toy-bits-swarm-wave": {"w": "5ebf36226de2f0765ef2c46d5f9c13b9f756db8eec36ed49094637d9bea179b2", "p": "ba8f658d2eeb86c55723f8ab68cdee43e2789eedd4ffc26b47978b71637a1013"},
-  "syntakt-toy-bits-swarm-macro-wave": {"w": "67fc819ffcc6eac3ee4cbcb765339fb90f6d2bee481d29e2881d6434884fde03", "p": "2f48dadc905804638877aa60173a7cfd4d0350b3655fe8b09ebb92dbc7105889"},
-  "syntakt-toy-bits-swarm-acid-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "d15b23ee2610b48e516c27e0c30198897247f641c66365f85261d56e84614aa4"},
-  "syntakt-toy-bits-swarm-macro-acid-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "40fc944d228c4130d827539c735079b31de79bd752f1180dc494611e437146e5"},
-  "syntakt-sd-cp-toy-bits": {"w": "6e40a243ef591ee13566db7c0ec4c03e064e459cfdb467f79c5231cdcaf859c5", "p": "c7d2dd362220832683eb5a61ad41258a66a56a1ac6e8b217b8bbb64857817627"},
-  "syntakt-tg-sd-cp-toy-bits": {"w": "ff77376bdd8d3ec069a7815ff95cb5565e98e0bdcc465a146c86167649592a08", "p": "b19b9cebcd74251cbaab94a61cb8e2f47511768e23a9d40d2752619bf53d3919"},
-  "syntakt-sd-cp-toy-bits-macro": {"w": "de31eab6ac4b41df17bec877335e5d3ebee93bbd62116fca63bd382798841440", "p": "e66e81c06af8ae754ff21d0c33c089c7b9f81d686e21f4f21b4f0d269150e1f9"},
-  "syntakt-tg-sd-cp-toy-bits-macro": {"w": "9ae034f392ace1d914bf2b87e2767f1da2949ec5e2359366e69af9680e845eb0", "p": "ea754d376dea25016f3dc31828ffa289851b0eab0bb551964b24bb5d59864b49"},
-  "syntakt-sd-cp-toy-bits-acid": {"w": "6eaad5b396c6635123b3872041d3628a45e3bc1600a07e22cf4edebb0cf0cfe7", "p": "0491cb02d29535f1b5531afe8972b3f624f9da500e6c9d9cb8f3abcaceaafed9"},
-  "syntakt-tg-sd-cp-toy-bits-acid": {"w": "341841b4c4a3877993efb1dd2551bd17491e66930ee0c6e8f06ca9bef02e3686", "p": "e84669236091b01fa44804f4936bf2f15b5879572b9d949efbcb86e133ef7c3a"},
-  "syntakt-sd-cp-toy-bits-macro-acid": {"w": "32551aaa93d707f87314b474bb0be9358d1f41cef2db0637fd1ce7846ce063a0", "p": "5374ce3606e2e6f0b02e053ec957cc47e6ae1e5712f6b7fd41edd4155d21ba68"},
-  "syntakt-tg-sd-cp-toy-bits-macro-acid": {"w": "d1618a84061d9acb26735225f19384044a8528db7f0d92f6b16394cea81d136c", "p": "07bfca36689fe6f4d073530c9d8ec02d9afa0290fbb745c96917d8188aba2402"},
-  "syntakt-sd-cp-toy-bits-wave": {"w": "346e572ccd080dbab095e9fc9cb853fc4106a33f87f92e6f8d66202deaad4bcc", "p": "5f3800dd65da24889cac386f0d42105543c7c1a6d97cb7ef668935a5dc92b50a"},
-  "syntakt-sd-cp-toy-bits-macro-wave": {"w": "2360ecf3712b97057bb32e915de019d842a230a079601db6bb09f31b4e41615e", "p": "b5c11e2f3ba36bf70f86c960dd4576020097cf6b0c3784cf5fd007b719489438"},
-  "syntakt-sd-cp-toy-bits-acid-wave": {"w": "51264be34e5ccd34a39b487594b34687aaaa4df37a8358617d722ebb65334097", "p": "49b70efbab816a13fab1feafa4dd50dd83812520f2234d022c1dab649a055bc2"},
-  "syntakt-sd-cp-toy-bits-macro-acid-wave": {"w": "76ed4e3ba0a95003502a2453b6f362e76d3a36cd4854822a8ad738b6414757de", "p": "7f358454112f041427e64f97b4a6e86951df275b5a83b97c4097f7a78541bc76"},
-  "syntakt-sd-cp-toy-swarm": {"w": "0d37782baa71cf0e118589c68eaaf65854dcb8d312bfe5cdc223cf1862cd49f6", "p": "e6e2ce15aa68677d188326c7a3a9417fbed7c7b964d4f1624f47c285e44a1e9a"},
-  "syntakt-tg-sd-cp-toy-swarm": {"w": "64eaf48daa7167499f5a0883481a672b142516da87fc07ea10f24fc5098f9c80", "p": "8fe4e32506aa155240a955c025300e9a32d327686ecbecb04185e89767d4341d"},
-  "syntakt-sd-cp-toy-swarm-macro": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "c07fb7b03170bcf072b2f156333193cf6460fe272739377c5157e1ade2ca260f"},
-  "syntakt-tg-sd-cp-toy-swarm-macro": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "75aaaba771a7b8889a951b374d0eb3467711782474bb5c1d53a4d21e6cd3e363"},
-  "syntakt-sd-cp-toy-swarm-acid": {"w": "8d1eea4c07e2c3226dad2659319c121eea40cb96c5390c1580994c21286eee7e", "p": "42ab939ec8567d25c76a8baf70c299af3c241d855e1b5e17aa382c7d6aab159e"},
-  "syntakt-tg-sd-cp-toy-swarm-acid": {"w": "516bea48a0ceea68187643510840ccd1fbcddc7f183306c1a00d1604fedcf45a", "p": "6f6a30d36a9767f5265e06d2ab3481106fe3eede2c257b40be7fed30d563f6b8"},
-  "syntakt-sd-cp-toy-swarm-macro-acid": {"w": "4c284f074b4565f9d5d87bb40fa358cbf83972a0454c91659833e48969b0dfca", "p": "d051143136a7a544114244c8c0cc3657f09a8e55929cd463f1e3ddbe37a33130"},
-  "syntakt-tg-sd-cp-toy-swarm-macro-acid": {"w": "ae00b3e07f8ffb31fe6c49a492a26215520bfa1e40ccefc906278eea254c40f7", "p": "3f3f7081bae5287cf577f1a20cc4eb1871a8876a33ac5c1c7126798600c5b818"},
-  "syntakt-sd-cp-toy-swarm-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "d1238594b0dd46a68bc068b3b13227ccfb76484f172a0f46210cc377d0503f5d"},
-  "syntakt-sd-cp-toy-swarm-macro-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "ee56c2b32807cc76a50788f93b5e3487a5480cbcfeac81d74348b4fe11cfeb10"},
-  "syntakt-sd-cp-toy-swarm-acid-wave": {"w": "14807be788122e1dd93ba760ad321b8ea8a369191a6dadf4da3b8e751d13c7df", "p": "4654fa527a5ace636b9ef0b68c1f74e182630a94fe6dc7168200a585d7f57860"},
-  "syntakt-sd-cp-toy-swarm-macro-acid-wave": {"w": "8ef948e9d20bdd06abf369e92ee63e9e253c4e6577c9b0084d3de5bad0b3f066", "p": "dbb7a57145f62f0f39758bb73f12f80644681bcdba39bec2155a5fffcc70721c"},
-  "syntakt-sd-cp-bits-swarm": {"w": "0d37782baa71cf0e118589c68eaaf65854dcb8d312bfe5cdc223cf1862cd49f6", "p": "f86da834216e165764e0c2ea013021b509a596fa1097feac7b5da01d5cde00d5"},
-  "syntakt-tg-sd-cp-bits-swarm": {"w": "2c1dcd6caa5aa535a587c4c3a1a3e3af40d4a7bd103b218cc502e2124cf86bf4", "p": "9d192d3d560b10c7e3115322c626a7768910ddf40d82f7e2f8ff9c4a197dad3f"},
-  "syntakt-sd-cp-bits-swarm-macro": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "af581b33dbed9142b6de2bb19b20cfb45eb8471741bc19867c313b56b379209d"},
-  "syntakt-tg-sd-cp-bits-swarm-macro": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "6c16109ea87adae9bd2ffeaa8541247a2b61b6b97650be39d233f5e7566cb252"},
-  "syntakt-sd-cp-bits-swarm-acid": {"w": "8d1eea4c07e2c3226dad2659319c121eea40cb96c5390c1580994c21286eee7e", "p": "75ce3d38d7c844ea65b3fc2b2813532b9a92dd4684e3f2bdef27948cefb3e456"},
-  "syntakt-tg-sd-cp-bits-swarm-acid": {"w": "516bea48a0ceea68187643510840ccd1fbcddc7f183306c1a00d1604fedcf45a", "p": "6118c2617161b74a997323551358ddce46166690ef708a321c250d09d2003d0f"},
-  "syntakt-sd-cp-bits-swarm-macro-acid": {"w": "4c284f074b4565f9d5d87bb40fa358cbf83972a0454c91659833e48969b0dfca", "p": "114afc0a7e4a8786591d070fde9736bc757d128592b255270c62750e8f97c82a"},
-  "syntakt-tg-sd-cp-bits-swarm-macro-acid": {"w": "ae00b3e07f8ffb31fe6c49a492a26215520bfa1e40ccefc906278eea254c40f7", "p": "1b22bb153c4f7daac781fcdd7a72f02493e1017f6c473b11cb86044a3ae6a064"},
-  "syntakt-sd-cp-bits-swarm-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "48c9eeedbf7622cbd2a8c996dc132be42ff6b77bcb5143e5ecea4f4fb9a95fa3"},
-  "syntakt-sd-cp-bits-swarm-macro-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "5c358d3f4ce29fe1f48d479a03a669baa5ede97f378304e4f732f4dbce1095a0"},
-  "syntakt-sd-cp-bits-swarm-acid-wave": {"w": "14807be788122e1dd93ba760ad321b8ea8a369191a6dadf4da3b8e751d13c7df", "p": "2b761a675b5e9975ff1d8ada9583abd6e7f73fdae156bd0a31807281439e129b"},
-  "syntakt-sd-cp-bits-swarm-macro-acid-wave": {"w": "8ef948e9d20bdd06abf369e92ee63e9e253c4e6577c9b0084d3de5bad0b3f066", "p": "9865b6ec5b5b37b028a5800fb7cb1009a07bfd25f87bfe786eb5b6fd42fb50fa"},
-  "syntakt-sd-toy-bits-swarm": {"w": "0d37782baa71cf0e118589c68eaaf65854dcb8d312bfe5cdc223cf1862cd49f6", "p": "582e9083d79cd747b8061a39e22ca2f05554eeb0756af14799b1316e88f3fe8a"},
-  "syntakt-tg-sd-toy-bits-swarm": {"w": "2c1dcd6caa5aa535a587c4c3a1a3e3af40d4a7bd103b218cc502e2124cf86bf4", "p": "99d0b37716fb4ea5f73c3c350c361f68109a4f0a5f4bb2281428a74c3006bd44"},
-  "syntakt-sd-toy-bits-swarm-macro": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "5454d34457c86dc048587733636c06dbf335994763cb255a94cff958df581c97"},
-  "syntakt-tg-sd-toy-bits-swarm-macro": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "90efc46e1d10611c984f1ab71bc0ec26a4bc0a64f32491782f26dcc663078d80"},
-  "syntakt-sd-toy-bits-swarm-acid": {"w": "8d1eea4c07e2c3226dad2659319c121eea40cb96c5390c1580994c21286eee7e", "p": "a9d2f765737e8b5910db2c98d09a005bf122e8e1cb8ab9a470f51c87f9de6731"},
-  "syntakt-tg-sd-toy-bits-swarm-acid": {"w": "516bea48a0ceea68187643510840ccd1fbcddc7f183306c1a00d1604fedcf45a", "p": "2a8eca3ae4bc0f38013c28372fb0cc96d1b0011d90de40059a5470d07ef82504"},
-  "syntakt-sd-toy-bits-swarm-macro-acid": {"w": "4c284f074b4565f9d5d87bb40fa358cbf83972a0454c91659833e48969b0dfca", "p": "7dc451eccce3da40c7fb6d271b267fac1f95e13f94aca9f962533b010cac6314"},
-  "syntakt-tg-sd-toy-bits-swarm-macro-acid": {"w": "ae00b3e07f8ffb31fe6c49a492a26215520bfa1e40ccefc906278eea254c40f7", "p": "e58072f1219ba21027df3e5d59448867c22edff2d96bfc6f4aed52ab1c71501d"},
-  "syntakt-sd-toy-bits-swarm-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "d540b0796c93f52932d9c88e6583e254c9d3cbafce86aa2ddfc3864739f1b9b3"},
-  "syntakt-sd-toy-bits-swarm-macro-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "4595595853b81d0cc7e0119d499051b9ce7afa5985eb18d6b1c2b68b6608e71f"},
-  "syntakt-sd-toy-bits-swarm-acid-wave": {"w": "14807be788122e1dd93ba760ad321b8ea8a369191a6dadf4da3b8e751d13c7df", "p": "0451f04ad297dd4df6d21e1192474aee911b1a04073f744ec4ba5aa9e66fda3d"},
-  "syntakt-sd-toy-bits-swarm-macro-acid-wave": {"w": "8ef948e9d20bdd06abf369e92ee63e9e253c4e6577c9b0084d3de5bad0b3f066", "p": "82b1866a9620204041d64f1f57056fd30fcf6b77b2700c8be2e226a65017ae53"},
-  "syntakt-cp-toy-bits-swarm": {"w": "0d37782baa71cf0e118589c68eaaf65854dcb8d312bfe5cdc223cf1862cd49f6", "p": "3433d4b81ee7cafa5400195a7a0aa770dbe097f2aa6c2fa499743d6c50b6768a"},
-  "syntakt-tg-cp-toy-bits-swarm": {"w": "eb510cb2734b5e428dc67e4252e7c196b1b4e28a61859b65b57d907a939186f6", "p": "7a3e77c297549d39f1419639351cc328ee30eef2d88f430d6d7c2bd20d120bc2"},
-  "syntakt-cp-toy-bits-swarm-macro": {"w": "d5f0f7d5f9ae55ffc83956aef73e5f85a56d5d83e7e312b7eb4e77c9aab551ce", "p": "57b373c9c7470ba116d21eecae7f9ca80d2b75abca1cc964ab67641a9d67053c"},
-  "syntakt-tg-cp-toy-bits-swarm-macro": {"w": "3dec25a6e4fe1d7dd9c526a1f5ff7347a5dc18d8e41687af5f97f99412151117", "p": "d7646cff6e68afb622761e30a2409ecf3a00e3be7e60a66af75934261a9424a2"},
-  "syntakt-cp-toy-bits-swarm-acid": {"w": "8d1eea4c07e2c3226dad2659319c121eea40cb96c5390c1580994c21286eee7e", "p": "efef2efefacb79102fd6e1c75c3620208f761e13162c10b0696a0aeffc376cf2"},
-  "syntakt-tg-cp-toy-bits-swarm-acid": {"w": "516bea48a0ceea68187643510840ccd1fbcddc7f183306c1a00d1604fedcf45a", "p": "f658ff418b24935563121526df099527a04b8e8dd06f0929e9a52c44c0ddb9cf"},
-  "syntakt-cp-toy-bits-swarm-macro-acid": {"w": "4c284f074b4565f9d5d87bb40fa358cbf83972a0454c91659833e48969b0dfca", "p": "73bf29a2da3fd5cb5b4be057dd1f14f7abca0510c5563f503669fc3b057ddf1a"},
-  "syntakt-tg-cp-toy-bits-swarm-macro-acid": {"w": "ae00b3e07f8ffb31fe6c49a492a26215520bfa1e40ccefc906278eea254c40f7", "p": "e46aafd18942b32a82304945c243ffc5faa18d3d8dce401862d408333207cf48"},
-  "syntakt-cp-toy-bits-swarm-wave": {"w": "7dbda686f9502a77537afaec4fd6ec9fdff8d9ba469a521a9867b89b37d30955", "p": "4a826729a312b30c1c771844353b2aad50fae880c0c6207d4ee831bf11a52a78"},
-  "syntakt-cp-toy-bits-swarm-macro-wave": {"w": "e32fbd556bdfa382e03bc76f380bbc32714f604d46b885a39d4dfa4c891ff6c5", "p": "56825d6107fa9f7ffe08557a3d3893207eb77877bb0424700faf4e9ec4a9880b"},
-  "syntakt-cp-toy-bits-swarm-acid-wave": {"w": "14807be788122e1dd93ba760ad321b8ea8a369191a6dadf4da3b8e751d13c7df", "p": "bad8a243ddc692fd84986738a5096623dbfaac237b5b19f5b36fb091839068bf"},
-  "syntakt-cp-toy-bits-swarm-macro-acid-wave": {"w": "8ef948e9d20bdd06abf369e92ee63e9e253c4e6577c9b0084d3de5bad0b3f066", "p": "961fba3ad31447d0a6eb69f798201e6e289812e100a6513777fc179d9beb2e85"},
-  "syntakt-sd-cp-toy-bits-swarm": {"w": "d5a6c342d74317dcc4c0d9655e0ad5037b8f2972bd280b8bd2589f4528e2a66b", "p": "ebee93e96a83f16d8f2d81e3e13872614e1972c0226d7e5292bd9a54897ec39c"},
-  "syntakt-tg-sd-cp-toy-bits-swarm": {"w": "e2151929c5d4023841f56047bb3752a7358c619114881158b1cd203d32a2cc41", "p": "9ae1a5b199ab1f33d0eb69e1bd267149e8909fdb6609230620c994bfeeb5d9b8"},
-  "syntakt-sd-cp-toy-bits-swarm-macro": {"w": "4c284f074b4565f9d5d87bb40fa358cbf83972a0454c91659833e48969b0dfca", "p": "6345d4a31e8d0152ebd57293563f334cc713539e6cfc79539777d6ea0b14ec37"},
-  "syntakt-tg-sd-cp-toy-bits-swarm-macro": {"w": "ae00b3e07f8ffb31fe6c49a492a26215520bfa1e40ccefc906278eea254c40f7", "p": "213c5b59eb363a599dca150bcbf1dbe376b5848ee99bd46725527b82f0e6c6ed"},
-  "syntakt-sd-cp-toy-bits-swarm-acid": {"w": "8b5f84d376e6780f5be1a32fcca977a017d33dd64728ed5b278ad9e5effb2de3", "p": "3bbbfb7b44548749e9af97d9e12acfa083ddb9a759b6d3521e03140e57879184"},
-  "syntakt-tg-sd-cp-toy-bits-swarm-acid": {"w": "51b6e806de8cf7d5bcb31683e947b14972a9da00283761ef2ce95636e8009fa6", "p": "d3315f0ec2121d79ee205c6619cd7363bec89b60ec3e81450ddc16f0c0793c7f"},
-  "syntakt-sd-cp-toy-bits-swarm-macro-acid": {"w": "6f9cf90fb133cc37dc2e6c76e0d84fbd9fb033ba3b735a1101cd58d96df7bdf5", "p": "cfc760466db48a094a900018e9c600c85511f454b00110c5242cd2cc719b8e88"},
   "syntakt-tg-sd-cp-toy-bits-swarm-macro-acid": {"w": "045d7a3afb79336a765556762de67b49d1b3143dc5ee89559fae1b08529e6afe", "p": "c1f8b90c879c09659c843589daf4213c7e32696f94a80f64679c7a3e90473060"},
-  "syntakt-sd-cp-toy-bits-swarm-wave": {"w": "14807be788122e1dd93ba760ad321b8ea8a369191a6dadf4da3b8e751d13c7df", "p": "0f696c90c0fff81d9d813dc2817e9a9c9b98c2702cc9b764f1e6db0b9dda23de"},
-  "syntakt-sd-cp-toy-bits-swarm-macro-wave": {"w": "8ef948e9d20bdd06abf369e92ee63e9e253c4e6577c9b0084d3de5bad0b3f066", "p": "a6587dbc581ba250b14e49f82904f2015f8cfa56673f6b0a6418fa2ca02cc540"},
-  "syntakt-sd-cp-toy-bits-swarm-acid-wave": {"w": "ffc92fbd591e835746ba8e9ac32122b63528f3528fb8ed08c4b46c1e596d8303", "p": "d2169ba44dcb2d35b554a5493c57188568c67458edf38a2924d5a508ecdeb013"},
-  "syntakt-sd-cp-toy-bits-swarm-macro-acid-wave": {"w": "5082226af044eb8b7f0a8c31e1ebc4959d0e7793ebc0226e5365102d8c9bbb70", "p": "ff9e376264b096936d4081494c25f47ed2970828d5a0138ad760950d74e97138"},
 };
 
 // "Samples OS" tab: official Model:Samples OS 1.13 inside the official Model:Cycles container
@@ -1806,39 +79,13 @@ const CREDITS = [
     en: "the reverse-engineering method for Elektron firmware", fr: "la méthode de rétro-ingénierie des firmwares Elektron" },
 ];
 
-const FLASH_GUIDE = `${REPO}/blob/main/FLASH.md`;
+const FLASH_GUIDE = `${REPO}/blob/main/RECOVERY.md`;
 const GUIDE = "../guide/";                      // the site's guide (docs/guide/)
 // mod id -> anchor of its section in the guide (one line per mod)
-const GUIDE_OF = {
-  usb6: "usb6",
-  "model-tg": "model-tg",
-  "sample-preview": "sample-preview",
-  "latching-mute": "mute",
-  "trig-preview": "preview",
-  "browser-scroll": "scroll",
-  "trig-hold": "trig-hold",
-  syntakt: "syntakt",
-  arp: "arp",
-  "tempo-max": "tempo",
-  "boot-anim": "boot-anim",
-  "multiline-browser": "multiline",
-  "level-pan-values": "level-pan",
-  "trigless-dim": "trigless",
-  "midi-both": "midi-both",
-  "midi-live-both": "midi-live-both",
-  macro: "macro",
-  acid: "acid",
-  wave: "wave",
-  "chord-keys": "chord-keys",
-  "track-filter": "track-filter",
-  "lfo-plus": "lfo-plus",
-};
-
-// Step 1's sections, in display order: the `cat` of each feature (tools/gen_flasher_tweaks.py, same list there
-// without "other"). A feature without a known cat goes to "other", at the end.
-const CATS = ["pack", "sound", "seq", "live", "screen", "io", "other"];
+// Step 1's sections, in display order: the `cat` of each feature (os.json, tools/gen_flasher_tweaks.py, same list
+// there without "other"). A feature without a known cat goes to "other", at the end.
+const CATS = ["sound", "seq", "live", "screen", "io", "other"];
 const CAT_ICON = {
-  pack: '<rect x="3" y="7" width="12" height="12" rx="2.5"/><path d="M7 7V5.5A2.5 2.5 0 0 1 9.5 3H18.5A2.5 2.5 0 0 1 21 5.5v9a2.5 2.5 0 0 1-2.5 2.5H15"/>',
   sound: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 7.5v3"/>',
   seq: '<rect x="2.5" y="8" width="4" height="8" rx="1.2"/><rect x="10" y="8" width="4" height="8" rx="1.2" fill="currentColor"/><rect x="17.5" y="8" width="4" height="8" rx="1.2"/>',
   live: '<path d="M7 3v18M17 3v18"/><rect x="4.5" y="13" width="5" height="4" rx="1" fill="var(--paper)"/><rect x="14.5" y="6" width="5" height="4" rx="1" fill="var(--paper)"/>',
@@ -1846,9 +93,6 @@ const CAT_ICON = {
   io: '<path d="M9 2.5v5M15 2.5v5"/><rect x="6" y="7.5" width="12" height="6" rx="1.5"/><path d="M12 13.5v4a3 3 0 0 0 3 3h3"/>',
   other: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>',
 };
-const SEARCH_FROM = 20;         // the search field shows from this many mods
-const PARTLY = false;           // true: an unticked engine card tested with some engines only says "Partly tested"
-const DISCORD = "https://discord.gg/hWegtJZcmm";
 
 // ---------------------------------------------------------------------------
 // Texts
@@ -1856,14 +100,16 @@ const DISCORD = "https://discord.gg/hWegtJZcmm";
 const T = {
   en: {
     title: "Model:Cycles Flasher",
-    tagline: "Install mods on your Elektron Model:Cycles or Model:Samples, right from your browser.",
+    tagline: "Install the Modded Cycles OS on your Elektron Model:Cycles or Model:Samples, right from your browser.",
     s1: "What do you want to install?",
-    tab_mods: "Mods",
+    tab_mods: "Modded Cycles OS",
+    os_lede: "One firmware with the {n} features below, built in your browser from your own official files. Nothing to pick: everyone runs the same OS, so projects, tips and bug reports mean the same thing for everyone.",
+    os_status_exp: "Experimental: every feature was checked in the emulator, and most were tested on a Model:Cycles on their own; this exact firmware still needs its own run on the machine.",
+    os_status_tested: "Tested: this exact firmware has run on a real Model:Cycles.",
+    os_machines: "Added machines, after Chord in the MACHINES menu: {list}.",
+    os_needs: "Step 2 asks for two official files: <code>model-cycles_OS1.13.syx</code> and <code>Syntakt_OS1.42.syx</code> (the Syntakt engines are read from it; 1.41 works too). No Syntakt needed.",
     tab_restore: "Official firmware",
-    mods_note: 'Tick what you want: mods combine, unless a line says otherwise. <span class="tag ok">Tested</span>: tried on a real Model:Cycles. <span class="tag exp">Experimental</span>: checked in the emulator, not on the machine yet.',
     cats_label: "Sections",
-    cat_lit: ", with ticked mods",
-    cat_pack: "Packs", cat_pack_sub: "several mods in one",
     cat_sound: "Sounds & machines", cat_sound_sub: "new machines, filters",
     cat_seq: "Sequencer", cat_seq_sub: "trigs, tempo, arpeggios",
     cat_live: "Live playing", cat_live_sub: "mutes, chords, mixing",
@@ -1871,54 +117,16 @@ const T = {
     cat_io: "USB & MIDI", cat_io_sub: "audio and MIDI in and out",
     cat_other: "Other mods", cat_other_sub: "",
     grp_n: "{n} mods", grp_n1: "1 mod",
-    grp_on: "<b>{k}</b> ticked of {n}", grp_on1: "<b>1</b> ticked of {n}",
     details: "Details",
     details_of: "Details: {name}",
-    also: "Also contains {n} mods of this list: {names}.",
     need_syntakt: "+ Syntakt OS in step 2",
-    with_mod: "with {name}",
-    part_tested: "Partly tested",
-    good_to_know: "Good to know:",
-    clash_row: "<b>Doesn't go with the mod {name}</b>, already ticked: {why}. Ticking this one unticks it.",
-    clash_generic: "both change the same part of the firmware",
-    swapped: "The mod {off} was unticked: it doesn't go with {on}.",
-    swapped_n: "The mods {off} were unticked: they don't go with {on}.",
-    quoted: "“{name}”",
-    undo: "Undo",
-    eng_group: "Engines",
-    combo_known: "Already tried on the machine: {list}.",
-    combo_all: "the {n} engines",
-    take: "Use this choice",
     d_status: "Status",
     d_tested: "Tested on a real Model:Cycles.",
     d_exp: "Checked in the emulator, not tested on a Model:Cycles yet.",
-    d_combos: "Tried on the machine: {list}. The other choices are checked in the emulator.",
-    d_with_tested: "With {name}: tried on the machine with {list}.",
-    d_join_new: "With {name}: checked in the emulator, not tested on a Model:Cycles yet.",
-    d_with_tested_one: "With {name}: tried on the machine.",
-    d_contains: "Contains", d_contains_v: "{names}: nothing more to tick.",
-    d_clash: "Doesn't go with", d_clash_v: "{name}: {why}.",
     d_file: "Extra file", d_file_syntakt: "your Syntakt OS file, asked for in step 2.",
-    d_requires: "Works with", d_requires_v: "{name} only: ticking this one ticks it too, and unticking {name} unticks this one.",
     d_engines: "Engines",
     d_note: "Before installing",
     d_guide: "How to use it", read_guide: "Read the guide",
-    sel_title: "Your selection",
-    sel_n: "{n} mods", sel_n1: "1 mod",
-    sel_incl: "+ {n} included",
-    sel_exp: "{n} experimental", sel_exp1: "1 experimental",
-    sel_none: "No mod ticked yet: tick the ones to install.",
-    sel_show: "Show", sel_hide: "Hide",
-    sel_clear: "Untick all",
-    sel_remove: "Untick {name}",
-    sel_next: "Step 2",
-    sel_syntakt: "+ your Syntakt OS file, to load in step 2.",
-    search_label: "Search the mods",
-    search_ph: "Search: tempo, filter, mute…",
-    search_clear: "Clear the search",
-    found: "<b>{n}</b> of {total} mods for “{q}” · ",
-    show_all: "show all",
-    found_none: `No mod for “{q}”. An idea for a mod? <a href="${DISCORD}" target="_blank" rel="noopener">Suggest it on Discord</a>. · `,
     restore_text: "Sends your official OS file <b>unchanged</b>, to go back to the stock firmware. It is also a good first rehearsal: it checks your cable and your setup without changing anything.",
     tab_samples: "Samples OS",
     samples_title: "Turn your Model:Cycles into a Model:Samples",
@@ -1940,6 +148,7 @@ const T = {
     drop_again: "Checked. Click or drop to use another file.",
     get_os: `Don't have it? <a href="${ELEKTRON_DL}" target="_blank" rel="noopener">Download Model:Cycles OS 1.13 from elektron.se</a>, then unzip it.`,
     s2_samples: "Load both official OS files",
+    s2_os: "Load your official OS files",
     drop2_title: "Drop model-samples_OS1.13.syx here",
     drop2_sub: "the official Model:Samples OS, or click to choose it",
     get_os_samples: `Don't have it? <a href="${ELEKTRON_SMP_DL}" target="_blank" rel="noopener">Download Model:Samples OS 1.13 from elektron.se</a>, then unzip it.`,
@@ -1991,13 +200,14 @@ const T = {
     reading: "Reading {name}…",
     os_ok: "Official Model:Cycles OS 1.13 recognised.",
     os_custom: "{name}: {device} firmware, but not the official OS 1.13 file. It will be sent <b>exactly as it is</b>.",
-    os_custom_mods: "Your mod selection is ignored for this file.",
+    os_custom_mods: "The Modded Cycles OS is not applied to this file.",
     os_restore_needs: "To restore the official firmware, load the official <code>model-cycles_OS1.13.syx</code>.",
     os_bad: "This file can't be used: {err}",
     building: "Preparing the firmware…",
     built: "Firmware ready: {mods}.",
     built_ref: "Checked against the reference build.",
     built_ref_mods: "Each mod checked against its reference build.",
+    done_os: "Then press MACHINES on a track: after Chord come {list}. The Syntakt engines' knobs show the Syntakt's names. The 6 original machines are unchanged. If something goes wrong, flash the official firmware back with this page (first set the tracks that use an added machine back to an original machine).",
     build_failed: "The firmware couldn't be prepared: {err}",
     stock_ready: "Ready to send the official firmware, unchanged.",
     smp_ok: "Official Model:Samples OS 1.13 recognised.",
@@ -2008,22 +218,6 @@ const T = {
     needs_syntakt: "The Syntakt engines are read from the official Syntakt OS file: drop it below.",
     license_mit: "MIT license",
     miss_syntakt: "Load the official Syntakt OS file (step 2).",
-    combo_tested: "This choice was tested on a real Model:Cycles.",
-    combo_new: "New choice: checked in the emulator, not tested on a Model:Cycles yet.",
-    included: "(included with {name})",
-    with_tg: "With Model-TG: its Sampler is the 7th machine and these engines come after it, from the 8th. A track set to an added machine plays another one on the version without Model-TG, and the other way round.",
-    with_macro: "With the MACRO machine: it comes right after these engines. The engines' load governor looks after its tracks too.",
-    join_name_macro: "MACRO",
-    join_label_macro: "47 models from Braids",
-    with_acid: "With the ACID machine: it comes last, after these engines and MACRO. The engines' load governor looks after its tracks too.",
-    join_name_acid: "ACID",
-    join_label_acid: "acid bass in the style of the TB-303",
-    with_wave: "With the Wave machine: it comes last, after these engines, MACRO and ACID. The engines' load governor looks after its tracks too.",
-    join_name_wave: "Wave",
-    join_label_wave: "your own wavetables",
-    renumber: "Before changing this choice or going back to the official firmware, set the tracks that use an added machine back to an original one (Kick…Chord): their numbers depend on the ticked engines, and MACHINES can freeze on such a track.",
-    done_syn_tg: "Then press MACHINES on a track: after Chord comes the Sampler, then {list}. Their knobs show the Syntakt's names. Model-TG's Attack, Filter and Resonance work on them too: hold MACHINE and turn DECAY, SWEEP or CONTOUR. If something goes wrong, flash the official firmware back with this page (first set the tracks that use an added machine back to an original machine).",
-    done_syn: "Then press MACHINES on a track: after Chord come {list}. Their knobs show the Syntakt's names. The 6 original machines are unchanged. If something goes wrong, flash the official firmware back with this page (first set the tracks that use an added machine back to an original machine).",
     warn_samples_port: "This port is a Model:Samples (a Model:Cycles running the Samples OS): it refuses a Model:Cycles firmware over USB. The way back goes through the startup menu and the MIDI IN (see the full guide).",
     samples_needs_cycles: "For the Samples OS, the first file must be the official <code>model-cycles_OS1.13.syx</code>: it provides the startup menu, updater and signature that stay on your Model:Cycles.",
     samples_ready: "Firmware ready: the Model:Samples OS for your Model:Cycles.",
@@ -2063,26 +257,25 @@ const T = {
     mach_smp: "Model:Samples, on its own OS",
     mach_cos: "Model:Samples, already on the Cycles OS",
     mach_title: "Mods on a Model:Samples",
-    mach_text: "Whatever the machine, the page installs the Model:Cycles OS with the mods you tick; on a Model:Samples, Model-TG's Sampler plays your samples. The firmware is packed inside your Model:Samples' own firmware (its startup menu, updater and signature stay in place), so step 2 also asks for the official Model:Samples OS file.",
+    mach_text: "Whatever the machine, the page installs the same Modded Cycles OS; on a Model:Samples, the Sampler plays your samples. The firmware is packed inside your Model:Samples' own firmware (its startup menu, updater and signature stay in place): step 2 also asks for the official Model:Samples OS file.",
     mach_w_smp: "Choose this when the machine runs its Model:Samples OS (it starts as a Model:Samples).",
-    mach_w_cos: "Choose this when it already runs the Model:Cycles OS installed from this page (here, or from the Samples OS tab): this is how you change mods later. That OS refuses firmwares built for a Model:Cycles: nothing is written.",
-    mach_w1: "Tested on a real Model:Samples, both choices: on its own OS, and already on the Cycles OS to change mods.",
+    mach_w_cos: "Choose this when it already runs the Model:Cycles OS installed from this page (here, or from the Samples OS tab): this is how you install a newer version later. That OS refuses firmwares built for a Model:Cycles: nothing is written.",
+    mach_w1: "Tested on a real Model:Samples, both choices: on its own OS, and already on the Cycles OS to update.",
     mach_w2: "Back up your samples and projects with Elektron Transfer first: the Model:Cycles OS uses the same storage.",
     mach_w3: `The way back to the Model:Samples OS stays in the Samples OS tab, “Model:Samples: back to its OS” (<a href="${GUIDE}#mods-on-samples">guide</a>).`,
     mach_w4: "Only for a real Model:Samples. A Model:Cycles running the Samples OS also answers as a Model:Samples and would take this firmware, then refuse Model:Cycles firmwares over USB until its startup menu reinstalls its OS through the MIDI IN.",
     mach_w5: "A Model:Cycles OS installed with another tool refuses these firmwares (nothing is written): first bring the Model:Samples OS back with the Samples OS tab's first choice, “Model:Cycles → Samples OS”, then choose “Model:Samples, on its own OS” here.",
     mach_credit: "Original flasher by RDS (AIM), integrated into Modded Cycles by DaftMaple.",
-    sel_samples: "+ your Model:Samples OS file, to load in step 2.",
     needs_samples_file: "Load the official Model:Samples OS below: the mods go inside its firmware.",
     built_smp: "Packed for your Model:Samples (on its own OS).",
     built_cos: "Packed for your Model:Samples (on the Cycles OS).",
     for_samples: "for Model:Samples",
-    done_mach: "It restarts as a <b>Model:Cycles</b> with your mods (Elektron Transfer sees a “Model:Samples” if Model-TG's Transfer identity is on SMP). To change mods later, choose “Model:Samples, already on the Cycles OS”; to go back, the Samples OS tab.",
+    done_mach: "It restarts as a <b>Model:Cycles</b> running the Modded Cycles OS (Elektron Transfer sees a “Model:Samples” if Model-TG's Transfer identity is on SMP). To install a newer version later, choose “Model:Samples, already on the Cycles OS”; to go back, the Samples OS tab.",
     dev_mach_smp_on_cycles: "This machine answers as a Model:Cycles. If it is a Model:Samples already running the Cycles OS from this page, choose “Model:Samples, already on the Cycles OS” in step 1; if it is a Model:Cycles, choose “Model:Cycles”.",
     dev_mach_cos_on_samples: "This machine answers as a Model:Samples. If it runs its Model:Samples OS, choose “Model:Samples, on its own OS” in step 1. If it runs the Cycles OS with Model-TG, set Device Config › Transfer back to CYC (or restart it), then Refresh.",
-    cos_mods: "To add mods, use the Mods tab and choose your Model:Samples as the machine: it installs the same Model:Cycles OS, with the mods you tick.",
+    cos_mods: "To get the mods, use the Modded Cycles OS tab and choose your Model:Samples as the machine: it installs the same Modded Cycles OS.",
     done_samples: "It restarts as a <b>Model:Samples</b>: Elektron Transfer and your computer see a “Model:Samples”. Load your samples with Transfer.",
-    pick_one: "Select at least one mod, or switch to “Official firmware”.",
+    pick_one: "Nothing to install: reload the page, or switch to “Official firmware”.",
     midi_asking: "Asking for MIDI access…",
     midi_wait: "Waiting for your permission: Chrome shows a prompt near the address bar. Click “Allow”. If you blocked it before, click the icon left of the address and allow MIDI.",
     midi_denied: "MIDI access was refused. Click the icon left of the address, allow MIDI, reload the page and try again.",
@@ -2096,7 +289,7 @@ const T = {
     mods_list_restore: "Official firmware (unchanged)",
     mods_list_custom: "Custom file {name} (sent as is)",
     miss_file: "Load your official OS file (step 2).",
-    miss_mod: "Select a mod (step 1), or switch to “Official firmware”.",
+    miss_mod: "Nothing to install: reload the page, or switch to “Official firmware”.",
     miss_build: "Preparing the firmware…",
     miss_fw: "The firmware isn't ready (step 2).",
     miss_midi: "Allow MIDI access (step 3).",
@@ -2131,7 +324,6 @@ const T = {
     remaining: "{t} left",
     done_title: "Transfer complete.",
     done_body: "The Model:Cycles now writes the firmware (<code>UPDATING FLASH</code>) and restarts by itself. <b>Don't turn it off</b> until it has restarted.",
-    done_6ch: "With the 6-channel mod, your computer should then show a Model:Cycles audio device with <b>6 input channels</b>.",
     stopped: "Stopped. Turn the Model:Cycles off and on, open CONFIG › UPGRADE again, then flash again.",
     send_error: "The transfer failed: {err}. Turn the Model:Cycles off and on, open CONFIG › UPGRADE again and retry.",
     port_gone: "The MIDI output has disappeared. Check the connection and pick it again.",
@@ -2140,14 +332,16 @@ const T = {
   },
   fr: {
     title: "Flasher Model:Cycles",
-    tagline: "Installez des mods sur votre Elektron Model:Cycles ou Model:Samples, depuis votre navigateur.",
+    tagline: "Installez le Modded Cycles OS sur votre Elektron Model:Cycles ou Model:Samples, depuis votre navigateur.",
     s1: "Que voulez-vous installer ?",
-    tab_mods: "Mods",
+    tab_mods: "Modded Cycles OS",
+    os_lede: "Un seul firmware avec les {n} fonctions ci-dessous, construit dans votre navigateur à partir de vos propres fichiers officiels. Rien à choisir : tout le monde a le même OS, donc les projets, les astuces et les rapports de bug veulent dire la même chose pour tous.",
+    os_status_exp: "Expérimental : chaque fonction a été vérifiée en émulation, et la plupart testées chacune sur un Model:Cycles ; ce firmware précis attend encore son propre essai sur la machine.",
+    os_status_tested: "Testé : ce firmware précis a tourné sur un vrai Model:Cycles.",
+    os_machines: "Machines ajoutées, après Chord dans le menu MACHINES : {list}.",
+    os_needs: "L'étape 2 demande deux fichiers officiels : <code>model-cycles_OS1.13.syx</code> et <code>Syntakt_OS1.42.syx</code> (les moteurs du Syntakt y sont lus ; 1.41 convient aussi). Pas besoin d'avoir un Syntakt.",
     tab_restore: "Firmware officiel",
-    mods_note: 'Cochez ce que vous voulez : les mods se combinent, sauf mention contraire. <span class="tag ok">Testé</span> : essayé sur un vrai Model:Cycles. <span class="tag exp">Expérimental</span> : vérifié en émulation, pas encore sur la machine.',
     cats_label: "Rubriques",
-    cat_lit: ", avec des mods cochés",
-    cat_pack: "Packs", cat_pack_sub: "plusieurs mods en un",
     cat_sound: "Sons et machines", cat_sound_sub: "nouvelles machines, filtres",
     cat_seq: "Séquenceur", cat_seq_sub: "trigs, tempo, arpèges",
     cat_live: "Jeu en live", cat_live_sub: "mutes, accords, mixage",
@@ -2155,54 +349,16 @@ const T = {
     cat_io: "USB et MIDI", cat_io_sub: "audio et MIDI vers l'extérieur",
     cat_other: "Autres mods", cat_other_sub: "",
     grp_n: "{n} mods", grp_n1: "1 mod",
-    grp_on: "<b>{k}</b> cochés sur {n}", grp_on1: "<b>1</b> coché sur {n}",
     details: "Détails",
     details_of: "Détails : {name}",
-    also: "Contient aussi {n} mods de la liste : {names}.",
     need_syntakt: "+ OS Syntakt à l'étape 2",
-    with_mod: "avec {name}",
-    part_tested: "Testé en partie",
-    good_to_know: "À savoir :",
-    clash_row: "<b>Ne va pas avec le mod {name}</b>, déjà coché : {why}. Cocher celui-ci le décochera.",
-    clash_generic: "les deux modifient le même endroit du firmware",
-    swapped: "Le mod {off} a été décoché : il ne va pas avec {on}.",
-    swapped_n: "Les mods {off} ont été décochés : ils ne vont pas avec {on}.",
-    quoted: "« {name} »",
-    undo: "Annuler",
-    eng_group: "Moteurs",
-    combo_known: "Déjà essayé sur la machine : {list}.",
-    combo_all: "les {n} moteurs",
-    take: "Prendre ce choix",
     d_status: "État",
     d_tested: "Testé sur un vrai Model:Cycles.",
     d_exp: "Vérifié en émulation, pas encore testé sur un Model:Cycles.",
-    d_combos: "Essayé sur la machine : {list}. Les autres choix sont vérifiés en émulation.",
-    d_with_tested: "Avec {name} : essayé sur la machine avec {list}.",
-    d_join_new: "Avec {name} : vérifié en émulation, pas encore testé sur un Model:Cycles.",
-    d_with_tested_one: "Avec {name} : essayé sur la machine.",
-    d_contains: "Contient", d_contains_v: "{names} : rien à cocher en plus.",
-    d_clash: "Ne va pas avec", d_clash_v: "{name} : {why}.",
     d_file: "Fichier en plus", d_file_syntakt: "votre fichier d'OS Syntakt, demandé à l'étape 2.",
-    d_requires: "Marche avec", d_requires_v: "{name} seulement : cocher celui-ci le coche aussi, et décocher {name} décoche celui-ci.",
     d_engines: "Moteurs",
     d_note: "Avant d'installer",
     d_guide: "Mode d'emploi", read_guide: "Lire le guide",
-    sel_title: "Votre sélection",
-    sel_n: "{n} mods", sel_n1: "1 mod",
-    sel_incl: "+ {n} inclus",
-    sel_exp: "{n} expérimentaux", sel_exp1: "1 expérimental",
-    sel_none: "Aucun mod coché : cochez ceux à installer.",
-    sel_show: "Voir", sel_hide: "Masquer",
-    sel_clear: "Tout décocher",
-    sel_remove: "Décocher {name}",
-    sel_next: "Étape 2",
-    sel_syntakt: "+ votre fichier d'OS Syntakt, à charger à l'étape 2.",
-    search_label: "Chercher un mod",
-    search_ph: "Chercher : tempo, filtre, mute…",
-    search_clear: "Effacer la recherche",
-    found: "<b>{n}</b> mods sur {total} pour « {q} » · ",
-    show_all: "tout afficher",
-    found_none: `Aucun mod pour « {q} ». Une idée de mod ? <a href="${DISCORD}" target="_blank" rel="noopener">Proposez-la sur Discord</a>. · `,
     restore_text: "Envoie votre fichier d'OS officiel <b>sans le modifier</b>, pour revenir au firmware d'origine. C'est aussi une bonne répétition avant un mod : elle vérifie le câble et l'installation sans rien changer.",
     tab_samples: "OS Samples",
     samples_title: "Transformer le Model:Cycles en Model:Samples",
@@ -2224,6 +380,7 @@ const T = {
     drop_again: "Vérifié. Cliquez ou déposez un autre fichier pour le remplacer.",
     get_os: `Vous ne l'avez pas ? <a href="${ELEKTRON_DL}" target="_blank" rel="noopener">Téléchargez l'OS Model:Cycles 1.13 sur elektron.se</a>, puis dézippez-le.`,
     s2_samples: "Déposez les deux fichiers d'OS officiels",
+    s2_os: "Déposez vos fichiers d'OS officiels",
     drop2_title: "Déposez model-samples_OS1.13.syx ici",
     drop2_sub: "l'OS officiel du Model:Samples, ou cliquez pour le choisir",
     get_os_samples: `Vous ne l'avez pas ? <a href="${ELEKTRON_SMP_DL}" target="_blank" rel="noopener">Téléchargez l'OS Model:Samples 1.13 sur elektron.se</a>, puis dézippez-le.`,
@@ -2274,13 +431,14 @@ const T = {
     reading: "Lecture de {name}…",
     os_ok: "OS officiel Model:Cycles 1.13 reconnu.",
     os_custom: "{name} : firmware {device}, mais pas le fichier d'OS 1.13 officiel. Il sera envoyé <b>tel quel</b>.",
-    os_custom_mods: "Votre sélection de mods est ignorée pour ce fichier.",
+    os_custom_mods: "Le Modded Cycles OS n'est pas appliqué à ce fichier.",
     os_restore_needs: "Pour restaurer le firmware officiel, déposez le fichier officiel <code>model-cycles_OS1.13.syx</code>.",
     os_bad: "Fichier inutilisable : {err}",
     building: "Préparation du firmware…",
     built: "Firmware prêt : {mods}.",
     built_ref: "Conforme au build de référence.",
     built_ref_mods: "Chaque mod est conforme à son build de référence.",
+    done_os: "Appuyez ensuite sur MACHINES sur une piste : après Chord viennent {list}. Les potards des moteurs du Syntakt affichent les noms du Syntakt. Les 6 machines d'origine ne changent pas. En cas de problème, reflashez le firmware officiel avec cette page (remettez d'abord sur une machine d'origine les pistes qui utilisent une machine ajoutée).",
     build_failed: "Impossible de préparer le firmware : {err}",
     stock_ready: "Prêt à envoyer le firmware officiel, sans modification.",
     smp_ok: "OS officiel Model:Samples 1.13 reconnu.",
@@ -2291,22 +449,6 @@ const T = {
     needs_syntakt: "Les moteurs du Syntakt se lisent dans le fichier officiel de l'OS Syntakt : déposez-le ci-dessous.",
     license_mit: "licence MIT",
     miss_syntakt: "Déposez le fichier officiel de l'OS Syntakt (étape 2).",
-    combo_tested: "Ce choix a été testé sur un vrai Model:Cycles.",
-    combo_new: "Nouveau choix : vérifié en émulation, pas encore testé sur un Model:Cycles.",
-    included: "(inclus avec {name})",
-    with_tg: "Avec Model-TG : son Sampler est la 7e machine et ces moteurs viennent après lui, à partir de la 8e. Une piste réglée sur une machine ajoutée en joue une autre sur la version sans Model-TG, et inversement.",
-    with_macro: "Avec la machine MACRO : elle vient juste après ces moteurs. Le régulateur de charge des moteurs veille aussi sur ses pistes.",
-    join_name_macro: "MACRO",
-    join_label_macro: "47 modèles de Braids",
-    with_acid: "Avec la machine ACID : elle vient en dernier, après ces moteurs et MACRO. Le régulateur de charge des moteurs veille aussi sur ses pistes.",
-    join_name_acid: "ACID",
-    join_label_acid: "basse acide à la manière de la TB-303",
-    with_wave: "Avec la machine Wave : elle vient en dernier, après ces moteurs, MACRO et ACID. Le régulateur de charge des moteurs veille aussi sur ses pistes.",
-    join_name_wave: "Wave",
-    join_label_wave: "vos propres tables d'ondes",
-    renumber: "Avant de changer de choix ou de revenir au firmware officiel, remettez sur une machine d'origine (de Kick à Chord) les pistes qui utilisent une machine ajoutée : leurs numéros dépendent des moteurs cochés, et MACHINES peut geler sur une telle piste.",
-    done_syn_tg: "Appuyez ensuite sur MACHINES sur une piste : après Chord vient le Sampler, puis {list}. Leurs potards affichent les noms du Syntakt. Attack, Filtre et Résonance de Model-TG y fonctionnent aussi : maintenez MACHINE et tournez DECAY, SWEEP ou CONTOUR. En cas de problème, reflashez le firmware officiel avec cette page (remettez d'abord sur une machine d'origine les pistes qui utilisent une machine ajoutée).",
-    done_syn: "Appuyez ensuite sur MACHINES sur une piste : après Chord viennent {list}. Leurs potards affichent les noms du Syntakt. Les 6 machines d'origine ne changent pas. En cas de problème, reflashez le firmware officiel avec cette page (remettez d'abord sur une machine d'origine les pistes qui utilisent une machine ajoutée).",
     warn_samples_port: "Ce port est un Model:Samples (un Model:Cycles sous l'OS Samples) : il refuse un firmware Model:Cycles par USB. Le retour passe par le menu de démarrage et le MIDI IN (voir le guide).",
     samples_needs_cycles: "Pour l'OS Samples, le premier fichier doit être le <code>model-cycles_OS1.13.syx</code> officiel : il fournit le menu de démarrage, l'updater et la signature qui restent sur votre Model:Cycles.",
     samples_ready: "Firmware prêt : l'OS Model:Samples pour votre Model:Cycles.",
@@ -2345,26 +487,25 @@ const T = {
     mach_smp: "Model:Samples, sous son OS",
     mach_cos: "Model:Samples, déjà sous l'OS Cycles",
     mach_title: "Des mods sur un Model:Samples",
-    mach_text: "Quelle que soit la machine, la page installe l'OS du Model:Cycles avec les mods cochés ; sur un Model:Samples, le Sampler de Model-TG joue vos samples. Le firmware est emballé dans le firmware de votre Model:Samples (son menu de démarrage, son updater et sa signature restent en place) : l'étape 2 demande donc aussi le fichier officiel de l'OS Model:Samples.",
+    mach_text: "Quelle que soit la machine, la page installe le même Modded Cycles OS ; sur un Model:Samples, le Sampler joue vos samples. Le firmware est emballé dans le firmware de votre Model:Samples (son menu de démarrage, son updater et sa signature restent en place) : l'étape 2 demande donc aussi le fichier officiel de l'OS Model:Samples.",
     mach_w_smp: "Choisissez ceci quand la machine tourne sous son OS Model:Samples (elle démarre en Model:Samples).",
-    mach_w_cos: "Choisissez ceci quand elle tourne déjà sous l'OS du Model:Cycles installé depuis cette page (ici, ou depuis l'onglet OS Samples) : c'est ainsi qu'on change de mods plus tard. Cet OS refuse les firmwares construits pour un Model:Cycles : rien n'est écrit.",
-    mach_w1: "Testé sur un vrai Model:Samples, les deux choix : sous son OS, et déjà sous l'OS Cycles pour changer de mods.",
+    mach_w_cos: "Choisissez ceci quand elle tourne déjà sous l'OS du Model:Cycles installé depuis cette page (ici, ou depuis l'onglet OS Samples) : c'est ainsi qu'on installe une version plus récente plus tard. Cet OS refuse les firmwares construits pour un Model:Cycles : rien n'est écrit.",
+    mach_w1: "Testé sur un vrai Model:Samples, les deux choix : sous son OS, et déjà sous l'OS Cycles pour mettre à jour.",
     mach_w2: "Sauvegardez d'abord vos samples et vos projets avec Elektron Transfer : l'OS du Model:Cycles utilise le même stockage.",
     mach_w3: `Le retour à l'OS du Model:Samples reste dans l'onglet OS Samples, « Model:Samples : retour à son OS » (<a href="${GUIDE}#mods-on-samples">guide</a>).`,
     mach_w4: "Seulement pour un vrai Model:Samples. Un Model:Cycles sous l'OS Samples répond lui aussi Model:Samples et prendrait ce firmware, puis refuserait les firmwares Model:Cycles par USB jusqu'à ce que son menu de démarrage réinstalle son OS par le MIDI IN.",
     mach_w5: "Un OS Model:Cycles installé avec un autre outil refuse ces firmwares (rien n'est écrit) : rendez d'abord l'OS du Model:Samples avec le premier choix de l'onglet OS Samples, « Model:Cycles → OS Samples », puis choisissez ici « Model:Samples, sous son OS ».",
     mach_credit: "Flasher d'origine de RDS (AIM), intégré à Modded Cycles par DaftMaple.",
-    sel_samples: "+ votre fichier d'OS Model:Samples, à charger à l'étape 2.",
     needs_samples_file: "Déposez l'OS officiel du Model:Samples ci-dessous : les mods vont dans son firmware.",
     built_smp: "Emballé pour votre Model:Samples (sous son OS).",
     built_cos: "Emballé pour votre Model:Samples (sous l'OS Cycles).",
     for_samples: "pour Model:Samples",
-    done_mach: "Il redémarre en <b>Model:Cycles</b> avec vos mods (Elektron Transfer voit un « Model:Samples » si l'identité Transfer de Model-TG est sur SMP). Pour changer de mods plus tard, choisissez « Model:Samples, déjà sous l'OS Cycles » ; pour revenir, l'onglet OS Samples.",
+    done_mach: "Il redémarre en <b>Model:Cycles</b> sous le Modded Cycles OS (Elektron Transfer voit un « Model:Samples » si l'identité Transfer de Model-TG est sur SMP). Pour installer une version plus récente plus tard, choisissez « Model:Samples, déjà sous l'OS Cycles » ; pour revenir, l'onglet OS Samples.",
     dev_mach_smp_on_cycles: "Cette machine répond comme un Model:Cycles. Si c'est un Model:Samples déjà sous l'OS Cycles de cette page, choisissez « Model:Samples, déjà sous l'OS Cycles » à l'étape 1 ; si c'est un Model:Cycles, choisissez « Model:Cycles ».",
     dev_mach_cos_on_samples: "Cette machine répond comme un Model:Samples. Si elle tourne sous son OS Model:Samples, choisissez « Model:Samples, sous son OS » à l'étape 1. Si elle tourne sous l'OS Cycles avec Model-TG, remettez Device Config › Transfer sur CYC (ou redémarrez-la), puis Rafraîchir.",
-    cos_mods: "Pour ajouter des mods, utilisez l'onglet Mods et choisissez votre Model:Samples comme machine : il installe le même OS du Model:Cycles, avec les mods cochés.",
+    cos_mods: "Pour avoir les mods, utilisez l'onglet Modded Cycles OS et choisissez votre Model:Samples comme machine : il installe le même Modded Cycles OS.",
     done_samples: "Il redémarre en <b>Model:Samples</b> : Elektron Transfer et votre ordinateur voient un « Model:Samples ». Chargez vos samples avec Transfer.",
-    pick_one: "Cochez au moins un mod, ou passez sur « Firmware officiel ».",
+    pick_one: "Rien à installer : rechargez la page, ou passez sur « Firmware officiel ».",
     midi_asking: "Demande d'accès MIDI…",
     midi_wait: "En attente de votre autorisation : Chrome affiche une demande près de la barre d'adresse. Cliquez sur « Autoriser ». Si vous l'avez bloquée, cliquez sur l'icône à gauche de l'adresse et autorisez le MIDI.",
     midi_denied: "Accès MIDI refusé. Cliquez sur l'icône à gauche de l'adresse, autorisez le MIDI, rechargez la page et réessayez.",
@@ -2378,7 +519,7 @@ const T = {
     mods_list_restore: "Firmware officiel (sans modification)",
     mods_list_custom: "Fichier {name} (envoyé tel quel)",
     miss_file: "Déposez votre fichier d'OS officiel (étape 2).",
-    miss_mod: "Cochez un mod (étape 1), ou passez sur « Firmware officiel ».",
+    miss_mod: "Rien à installer : rechargez la page, ou passez sur « Firmware officiel ».",
     miss_build: "Préparation du firmware…",
     miss_fw: "Le firmware n'est pas prêt (étape 2).",
     miss_midi: "Autorisez le MIDI (étape 3).",
@@ -2413,7 +554,6 @@ const T = {
     remaining: "encore {t}",
     done_title: "Transfert terminé.",
     done_body: "Le Model:Cycles écrit maintenant le firmware (<code>UPDATING FLASH</code>) puis redémarre tout seul. <b>Ne l'éteignez pas</b> avant qu'il ait redémarré.",
-    done_6ch: "Avec le mod 6 canaux, votre ordinateur doit ensuite voir un périphérique audio Model:Cycles avec <b>6 canaux d'entrée</b>.",
     stopped: "Arrêté. Éteignez puis rallumez le Model:Cycles, rouvrez CONFIG › UPGRADE, puis relancez.",
     send_error: "Le transfert a échoué : {err}. Éteignez puis rallumez le Model:Cycles, rouvrez CONFIG › UPGRADE et réessayez.",
     port_gone: "La sortie MIDI a disparu. Vérifiez le branchement et choisissez-la de nouveau.",
@@ -2425,188 +565,148 @@ const T = {
 // Feature texts shown in the UI (fallback: labels from tweaks.js).
 const FEAT = {
   en: {
-    usb6: { label: "6-channel USB audio",
-      short: "Each track on its own USB channel. No stereo mix over USB any more.",
-      desc: "Each track gets its own USB channel (48 kHz / 32-bit): record the 6 tracks separately in your DAW. The stereo mix is no longer sent over USB. OS updates over USB keep working." },
-    "model-tg": { label: "Model-TG",
-      short: "TinyGregAudio's big pack: a 7th Sampler machine and many additions.",
-      parts: ["Sampler (7th machine)", "resampling", "retrig and master FX", "filter and resonance on the stock machines", "slide trigs", "Scale Lock", "samples through Elektron Transfer"],
-      desc: "A Sampler machine (7th machine) with seven playback modes, resampling, a beat-repeat page with master FX, Attack, Filter and Resonance on the stock machines, slide trigs that glide the parameters from one trig to the next, Scale Lock, sample upload through Elektron Transfer, and lower CPU use. It already includes drumkilla's three tweaks. With the Syntakt engines, the Sampler stays the 7th machine and the engines follow it.",
-      note: "Only install an OS while Device Config > Transfer is set to CYC (every power-on starts at CYC). Projects using the Sampler won't play those tracks on another firmware." },
-    "sample-preview": { label: "Sample preview (Model-TG)",
-      short: "On a Sampler track, in the preset menu, the pad plays the sample under the cursor.",
-      desc: "On a Sampler track, press FUNC + MACHINES (preset menu) and move the cursor onto a sample: the track's pad (or its trig keys in keyboard mode) plays it, just as the original OS lets you hear the preset under the cursor. Nothing plays by itself while you scroll. A sample that isn't in memory yet loads on the first press (a short wait), into free space or in place of samples the project doesn't use. The track keeps its own sample: its trigs still play it, and so does its pad once you leave the menu. Sampler presets that remember their sample should also play that sample instead of the track's.",
-      note: "If there isn't enough free memory (a preview keeps room for recording and never removes a sample your project uses), or while Model-TG is resampling, the press plays nothing. It needs Model-TG: unticking Model-TG unticks it." },
-    "latching-mute": { label: "Latching mute mode",
-      short: "TRACK + FUNC: mute mode stays on, no need to hold FUNC.",
-      desc: "Hold TRACK and tap FUNC: mute mode stays on, so you mute tracks without holding FUNC. A short tap on FUNC leaves it." },
-    "trig-preview": { label: "Trig preview",
-      short: "Sequencer stopped, hold a step and press PAGE to hear it.",
-      desc: "With the sequencer stopped or paused, hold a step and press PAGE: the step plays with its own note, length and p-locks." },
-    "browser-scroll": { label: "Scroll long names",
-      short: "In the sound browser, names too long for the screen scroll.",
-      desc: "In the sound browser, a name too long for the screen scrolls so you can read it." },
-    syntakt: { label: "Real Syntakt engines",
-      short: "Syntakt engines as extra machines, read from your own Syntakt OS file.",
-      desc: "The Syntakt's own engines, read from your Syntakt OS file (step 2) and added after Chord, in this order, with the Syntakt's knob names and defaults. Tick the ones you want." },
-    "eng-sd": { short: "vintage snare", note: "Vintage snare." },
-    "eng-cp": { short: "vintage clap", note: "Vintage clap." },
-    "eng-toy": { short: "toy-like percussion", note: "Toy-like tuned percussion." },
-    "eng-bits": { short: "digital, bit crush", note: "Two digital oscillators with rate and bit reduction. PUNCH switches Bit Redux on." },
-    "eng-swarm": { short: "supersaw", note: "A swarm of detuned saws (supersaw). PUNCH adds the sub-octave." },
-    "trig-hold": { label: "Easier trig removal",
-      short: "A short press removes the trig; a long one keeps it and shows its settings.",
-      desc: "Pressing a trig key whose step already holds a trig removes it if you let go within half a second (0.2 s on the stock OS). Hold it longer and the trig stays, as before: its settings show up. Turning a knob while you hold keeps the trig too." },
-    arp: { label: "Arpeggiator",
-      short: "The retrig becomes an arpeggiator: held notes play one after another.",
-      desc: "The retrig becomes an arpeggiator: hold several notes on a track with RETRIG held (or A.On) and they play one after another at the retrig rate. FUNC + RETRIG adds Arp (direction: UP, DOWN, UPDN, RAND, PLAY or OFF) and Oct (1 to 4 octaves), saved with the pattern." },
-    "tempo-max": { label: "Tempo up to 546 BPM",
-      short: "Tempo goes up to 546 BPM instead of 300, MIDI clock included.",
-      desc: "The tempo goes up to 546.0 BPM instead of 300: TEMPO knob, tap tempo, incoming MIDI clock and saved projects. 546 is the ceiling of the project format. Tempo-synced LFOs stay right at these speeds.",
-      note: "Above 300 BPM, the processor may struggle to keep up with busy patterns: push it knowingly. A project saved above 300 BPM reopens at 120 BPM on the original OS." },
-    "boot-anim": { label: "modded-cycles startup animation",
-      short: "At startup the modded-cycles logo animates, without making startup longer.",
-      desc: "When the Model:Cycles starts, the four rounded squares of the modded-cycles logo pop in one by one and “modded-cycles” types itself underneath, instead of the original tile animation. It lasts as long as the original: startup is not slower." },
-    "multiline-browser": { label: "Multi-line browser",
-      short: "The browser shows three names at once in a small font, a > before the current one.",
-      desc: "The sound, folder and sample browser shows 3 names at once in a small font, instead of one in big letters. A > marks the name under the cursor, the loaded sound stays highlighted, and a small mark stands for a folder. With Scroll long names or Model-TG, only the name under the cursor scrolls. From an idea and a script by a community member." },
-    "level-pan-values": { label: "Volume and pan as numbers",
-      short: "On the main screen, LEVEL/DATA shows the track's volume and pan as numbers.",
-      desc: "On the main screen, turning LEVEL/DATA shows the selected track's volume as a number (0 to 127) next to its bar; with FUNC held, its pan (-64 to 63). The number goes away 3 to 4 seconds after you stop turning.",
-      note: "On the main screen, LEVEL/DATA now moves in steps of 1 instead of 2, so the number goes through every value: turn twice as far for the same change. While it shows, the number hides the loudspeaker icon or the “R” at the end of the bar." },
-    "trigless-dim": { label: "Dimmed trigless trigs",
-      short: "A trig key holding a trigless trig lights dimmed, so you tell it from a note trig.",
-      desc: "A trig key that holds a trigless trig (FUNC + trig key) lights dimmed instead of at full brightness, so you can tell it from a note trig at a glance. It keeps its usual blink. Note trigs, p-locked trigs and the playing light don't change.",
-      note: "The key is dimmed by lighting it for one millisecond out of every three, 333 times a second, so it looks steady." },
-    "midi-both": { label: "MIDI OUT while in THRU",
-      short: "With THR selected, the Cycles forwards incoming MIDI and sends its own MIDI too.",
-      clash: "both change what THR does with the Cycles' own MIDI",
-      desc: "In CONFIG › MIDI › PORTS, set OUT/THRU to THR: the Cycles keeps forwarding what arrives on its MIDI IN, and also sends its own clock, notes and parameter changes on its MIDI OUT. OUT works as before, and the menu doesn't change.",
-      note: "Best when only one side plays notes. The Cycles passes on what it receives as it comes in, without waiting for whole messages like a MIDI merger box: if the device on MIDI IN and the Cycles both send notes or knob moves, some can reach the next device wrong (a wrong or stuck note). Clock and start/stop are not affected." },
-    "midi-live-both": { label: "Live MIDI OUT + THRU toggle",
-      short: "With THR selected, FUNC + press LEVEL/DATA adds or removes the Cycles' own MIDI.",
-      clash: "both change what THR does with the Cycles' own MIDI",
-      desc: "Keeps the original OUT/THR menu. In CONFIG › MIDI › PORTS, with OUT/THRU on THR, hold FUNC and press the LEVEL/DATA knob: the Cycles also sends its own clock, notes and parameter changes, while still forwarding incoming MIDI. Do it again to go back to forwarding only. The screen shows THR either way; a press without FUNC switches to OUT, as before.",
-      note: "Best when only one side plays notes. The Cycles passes on what it receives as it comes in, without waiting for whole messages like a MIDI merger box: if the device on MIDI IN and the Cycles both send notes or knob moves, some can reach the next device wrong (a wrong or stuck note). Clock and start/stop are not affected." },
+    "model-tg": { label: "Sampler machine (Model-TG)",
+      short: "TinyGregAudio's Model-TG: a Sampler machine with seven playback modes, resampling, a retrig page with master FX, slide trigs and more.",
+      parts: ["Sampler machine (7th)", "resampling", "retrig page and 12 master FX", "Attack, Filter and Resonance on the original machines", "slide trigs", "Scale Lock", "samples through Elektron Transfer", "System page"],
+      desc: "The Sampler is the 7th machine, right after Chord. It plays samples from the internal storage with seven playback modes (one shot, loop, slice, granular, stretch, pluck, wave), slices them by hand or by transients, resamples a track or the whole output, and comes with a retrig page (beat repeat on the tempo grid plus 12 master effects), Attack, Filter and Resonance on the original machines, slide trigs that glide every parameter from one trig to the next, Scale Lock, sample upload through Elektron Transfer and a System page with the processor load. Press FUNC + MACHINES on a Sampler track to pick a sample. Model-TG 1.1.0, built from its own sources, with one change: in mute mode each track key mutes at once.",
+      note: "Only install an OS while Device Config › Transfer is set to CYC (every power-on starts at CYC). Projects that use an added machine won't play those tracks on the official firmware: set them back to an original machine before going back." },
+    syntakt: { label: "Syntakt engines",
+      short: "SD VINTAGE, CP VINTAGE, SY TOY, SY BITS and SY SWARM as machines 8 to 12, read from your own Syntakt OS file.",
+      desc: "The Syntakt's own digital engines, copied from your Syntakt OS file in your browser (no Syntakt needed) and added after the Sampler, in this order: SDVtg, CPVtg, SYToy, SYBit, SYSwm. The four machine knobs and PUNCH take the Syntakt's parameters, with the Syntakt's names on screen and its defaults when you pick the machine. In the emulator they sound like the Syntakt, sample for sample. A load governor watches the processor: when too many heavy voices play at once, it fades out the least audible one instead of letting the sound stutter." },
+    "eng-sd": { short: "vintage snare" },
+    "eng-cp": { short: "vintage clap" },
+    "eng-toy": { short: "tuned toy-like percussion" },
+    "eng-bits": { short: "two digital oscillators, with rate and bit reduction on PUNCH" },
+    "eng-swarm": { short: "a swarm of detuned saws, with a sub-octave on PUNCH" },
     macro: { label: "MACRO machine",
-      short: "One extra machine with 47 synthesis models, from Braids' open-source code.",
-      desc: "An extra machine after Chord (after the Sampler with Model-TG, after the Syntakt engines if you tick them too) with the 47 synthesis models of Braids, Émilie Gillet's open-source macro-oscillator, from her own code: analog-style waves, FM, vowels and speech, physical models, drums, wavetables and noises. SHAPE picks the model, COLOR and SWEEP shape it, CONTOUR lets the amp envelope open the timbre. FUNC + PITCH gives lo-fi: turn left to lower the sample rate (RATE, down to about 4 kHz), right to lower the bit depth (BITS, down to 2 bits). DECAY, GATE and PUNCH work as on Tone.",
-      note: "About twice as heavy on the processor as an original machine; 13 models (the TRIPLE waves, the wavetables, CSAW…) are computed at 48 kHz and cost about half as much, and RATE lightens them further. On its own it has no load governor: several MACRO tracks playing at once can make the sound crackle, so start with one or two. On a MACRO track, FUNC + PITCH no longer fine-tunes the note. With the Syntakt engines, their load governor looks after MACRO tracks too. A project using MACRO needs a firmware with MACRO at the same place: it comes after the Sampler of Model-TG and the ticked Syntakt engines (ACID comes after it), so its number depends on Model-TG and on the ticked engines." },
+      short: "Machine 13: the 47 synthesis models of Braids, Émilie Gillet's macro-oscillator. SHAPE picks the model.",
+      desc: "An extra machine, the 13th, with the 47 synthesis models of Braids, from Émilie Gillet's own open-source code: analog-style waves, FM, vowels and speech, physical models, drums, wavetables and noises. SHAPE picks the model, COLOR and SWEEP shape it, CONTOUR lets the amp envelope open the timbre. Hold FUNC and turn PITCH for lo-fi: left lowers the sample rate (46K down to 4K), right the bit depth (12B down to 2B), OFF in the middle. Thirteen models are computed at 48 kHz for half the processor time.",
+      note: "About as heavy on the processor as a Syntakt engine for most models; the load governor looks after MACRO voices too." },
     acid: { label: "ACID machine",
-      short: "One extra machine: an acid bass in the style of the TB-303, with a drive knob and slides from your trigs.",
-      desc: "An extra machine after Chord, always the last one (after the Sampler with Model-TG, then the Syntakt engines and MACRO if you tick them too): an acid bass in the style of the TB-303, from the open-source Open303 model by Robin Schmidt. COLOR is the cutoff, SHAPE the resonance, SWEEP the env mod, CONTOUR the drive (from clean to fuzz, at about the same volume) and DECAY the decay; PUNCH switches the wave from saw to square. A trig whose length (LEN) runs past the next trig slides into the next note instead of playing it again; a pad played while another is held slides too.",
-      note: "About as heavy on the processor as Tone. Turn GATE on for notes that hold their whole length, as on the original. With the Syntakt engines, their load governor looks after ACID tracks too: a track it stopped plays its next note afresh, without sliding. A project using ACID needs a firmware with ACID at the same place: it is the last machine, so its number depends on Model-TG, the ticked Syntakt engines and MACRO." },
-    wave: { label: "Wave machine",
-      short: "One extra machine that plays your own wavetables, kept in /Wavetables.",
-      clash: "both add machines in the same place in memory",
-      desc: "An extra machine after Chord that plays one of your wavetables. Convert the table on the site (Convert tab): it bakes in quieter, shorter copies per octave so high notes don't fold back, and the same page sends it to the machine over USB. On the Wave track, FUNC + MACHINES opens /Wavetables: pick the table and press YES (the screen says Table loaded). The track remembers its table across project reloads and restarts. COLOR moves through the table, SHAPE makes each note start further in and glide back (Env Pos), SWEEP and CONTOUR are the low-pass cutoff and resonance, and FUNC + SWEEP sends the filter envelope up or down (OFF in the middle). With the Syntakt engines, MACRO and ACID, Wave comes last.",
-      note: "About 1.5 Tone voices per Wave voice. Not with Model-TG. A project using Wave needs a firmware with Wave at the same place: it is the last machine, so its number depends on the engines, MACRO and ACID you tick." },
-    "chord-keys": { label: "Chord Keys",
-      short: "On a CHORD track, TRIG 1–16 play the chords of your scale.",
-      clash: "both change the notes of the TRIG keys (Model-TG has its own Scale Lock)",
-      desc: "Play one CHORD track with the lower TRIG buttons: I–VII on 1–7, one octave higher on 8–14, then I–II two octaves higher on 15–16. T1–T6 keep their usual controls. FUNC + RETRIG adds Keys, Root, Scale and a triad/7/9/11/13 choice per degree, shared across octaves and saved with the pattern." },
-    "track-filter": { label: "Per-track filter (LP / OFF / HP)",
-      short: "Hold MACHINES and turn SWEEP: low-pass to the left, off in the centre, high-pass to the right.",
-      clash: "both use MACHINES + SWEEP / CONTOUR for a track filter",
-      desc: "Hold MACHINES and turn SWEEP: a filter on the track, low-pass to the left, off in the centre, high-pass to the right, like a DJ mixer, with the Model:Samples' range (5 Hz to 20 kHz). CONTOUR sets the resonance, COLOR and SHAPE a filter envelope (amount up or down, decay) restarted by each note. Four real parameters on every machine: p-locks, LFO, velocity, MIDI CC 74 and 71, saved with the sound and the pattern.",
-      note: "Can't be ticked together with Model-TG for now: both use MACHINES + SWEEP / CONTOUR. Model-TG's filter will make way for this one once it is tested. A sound opened on another firmware plays without its filter." },
+      short: "Machine 14, the last one: an acid bass in the style of the TB-303, with a drive knob and slides from your trigs.",
+      desc: "The last machine, the 14th: an acid bass in the style of the TB-303, from Robin Schmidt's open-source Open303 model, rewritten in fixed point. COLOR is the cutoff, SHAPE the resonance, SWEEP the env mod, CONTOUR the drive (from clean to fuzz, at about the same volume) and DECAY the decay; PUNCH switches the wave from saw to square. A trig whose length (LEN) runs past the next trig slides into the next note instead of playing it again; played live, a note played while another is held slides too. Each note fades in over less than a millisecond, so there is no click.",
+      note: "Turn GATE on for notes that hold their whole length, as on the original. Under a very heavy load the governor can fade an ACID note out; the track's next trig then plays afresh." },
     "lfo-plus": { label: "LFO 2, 3, 4",
-      "clash_track-filter": "both keep their settings in the same place of the sound",
-      short: "Three more LFOs on every track: press [LFO] again to reach LFO 2, 3 and 4.",
-      desc: "Each track gets three more LFOs next to the original one. On the LFO page, press [LFO] again: a big 2, then 3, then 4 shows in the left box, and the fifth press closes the page. Each extra LFO has its own speed, multiplier, waveform, destination and depth. Fade, start phase and mode stay shared with LFO 1. LFO 2 is saved with the sound and can be p-locked. LFO 3 and 4 are for live play: one setting per track, not saved. From DavidCaruso's Model-TG-VA-DR-v1, rewritten for this project. Works with or without Model-TG.",
-      note: "An extra LFO set to LFO 1's destination does nothing, and the DEST knob skips destinations another LFO of the track already uses. LFO 3 and 4 go back to their defaults at power-on and cannot be p-locked. With Model-TG, it also fixes the Attack, Filter and Resonance p-locks, which came back on other parameters after reloading a pattern. Not with the Per-track filter for now: both keep their settings in the same place of the sound." },
+      short: "Three more LFOs per track: on the LFO page, press LFO again for LFO 2, 3 and 4.",
+      desc: "On the LFO page, press [LFO] again: a big 2, then 3, then 4 shows in the left box, and the fifth press closes the page. Each extra LFO has its own speed, multiplier, waveform, destination and depth; fade, start phase and mode stay shared with LFO 1. LFO 2 is saved with the sound and can be p-locked; LFO 3 and 4 are for live play (one setting per track, not saved). Rewritten for this project from DavidCaruso's Model-TG-VA-DR-v1 firmware." },
+    "trig-preview": { label: "Trig preview",
+      short: "Sequencer stopped or paused: hold a step and press PAGE to hear it, with its note, length and p-locks.",
+      desc: "With the sequencer stopped or paused (after a MIDI Stop too), hold a step and press PAGE: the step plays with its own note, length and p-locks. By drumkilla, part of Model-TG, with this project's fix for the paused sequencer." },
+    "trig-hold": { label: "Easier trig removal",
+      short: "A quick press on a step that holds a trig removes it, instead of opening it as a hold.",
+      desc: "On the original OS a press longer than 200 ms on a step counts as a hold, so the trig often stays. Here a step that already holds a trig waits 500 ms before it counts as a hold, and the choice is also made when you release the key: a normal press removes the trig, a long press still opens it to edit its p-locks. Empty steps keep the original timing." },
+    arp: { label: "Arpeggiator",
+      short: "Hold several notes with RETRIG and they play as an arpeggio; FUNC + RETRIG sets direction and range.",
+      desc: "RETRIG becomes the arpeggiator: hold RETRIG and play several notes, they arpeggiate at the retrig rate. FUNC + RETRIG opens its settings: direction (up, down, up/down, random, or in the order played) and range (1 to 4 octaves), saved with the pattern. In live recording the arpeggio records the notes it plays." },
+    "tempo-max": { label: "Tempo up to 546 BPM",
+      short: "The TEMPO knob, tap tempo, MIDI clock and saved projects go past 300 BPM, up to 546.",
+      desc: "The TEMPO knob, tap tempo, the MIDI clock sent and received, and loading a project all accept tempos up to 546 BPM, the most the project format can hold. Tempo-synced LFOs stay in time above 351 BPM, where the original OS lost the cycle." },
+    "latching-mute": { label: "Latching mute mode",
+      short: "Hold TRACK and tap FUNC: mute mode stays on, no need to hold FUNC. A short tap on FUNC leaves it.",
+      desc: "Hold TRACK and tap FUNC: mute mode stays on, so you mute and unmute tracks without holding FUNC. A short tap on FUNC leaves it. By drumkilla, part of Model-TG; in this OS each track key mutes at once in mute mode." },
+    "sample-preview": { label: "Sample preview",
+      short: "On a Sampler track, in the preset menu, the track's pad plays the sample under the cursor.",
+      desc: "On a Sampler track, press FUNC + MACHINES (preset menu) and move the cursor onto a sample: the track's pad (or its trig keys in keyboard mode) plays it, just as the original OS lets you hear the preset under the cursor. Nothing plays by itself while you scroll. A sample that isn't in memory yet loads on the first press (a short wait), into free space or in place of samples the project doesn't use. The track keeps its own sample: its trigs still play it, and so does its pad once you leave the menu.",
+      note: "If there isn't enough free memory (a preview keeps room for recording and never removes a sample your project uses), or while the Sampler is resampling, the press plays nothing." },
+    "browser-scroll": { label: "Scrolling names",
+      short: "In the sound browser, names too long for the screen scroll.",
+      desc: "In the sound browser, a name too long for the screen scrolls so you can read it. By drumkilla, part of Model-TG." },
+    "boot-anim": { label: "Startup animation",
+      short: "When the Model:Cycles starts, the four squares of the modded-cycles logo pop in and “modded-cycles” types itself underneath.",
+      desc: "When the Model:Cycles starts, the four squares of the modded-cycles logo pop in and “modded-cycles” types itself underneath, instead of the original tile animation: same duration, while the project loads." },
+    "multiline-browser": { label: "Multi-line browser",
+      short: "The preset browser shows three names at once in a small font, with a > on the name under the cursor.",
+      desc: "The browser shows three names at once in a small font instead of one in big letters: you see what comes before and after while you look for a sound. The loaded sound is shown inverted, folders get a marker, and long names still scroll. From an idea by a community member." },
+    "level-pan-values": { label: "Volume and pan as numbers",
+      short: "On the main screen, LEVEL/DATA shows the track's volume as a number (0 to 127); with FUNC held, its pan (-64 to 63).",
+      desc: "On the main screen, turning LEVEL/DATA shows the track's volume (0 to 127) as a number for a few seconds; with FUNC held, its pan (-64 to 63). LEVEL/DATA then moves in steps of 1 instead of 2 there. Based on a mod by djd_oz." },
+    "trigless-dim": { label: "Dimmed trigless trigs",
+      short: "A step that holds a trigless trig lights dimmed, so you can tell it from a note trig.",
+      desc: "In grid recording, a trig key that holds a trigless trig (a lock without a note) lights dimmed instead of full, so you tell it from a note trig at a glance. Based on a mod by djd_oz." },
+    "midi-live-both": { label: "Live MIDI OUT + THRU toggle",
+      short: "With THR selected, hold FUNC and press the LEVEL/DATA knob to add the Cycles' own MIDI to what it forwards, or take it away.",
+      desc: "With THR selected in CONFIG › MIDI › PORTS › OUT/THRU, the Model:Cycles forwards incoming MIDI. Hold FUNC and press the LEVEL/DATA knob: it also sends its own clock, notes and parameter changes; press again to stop. The screen stays on THR. Best when only one side plays notes, since what comes in is passed on as it arrives. By AveyCole." },
+    "step-rec": { label: "Step record",
+      short: "Sequencer stopped, press REC twice: play the notes of the pattern one step at a time. PLAY skips a step, STOP goes back.",
+      desc: "With the sequencer stopped, press REC twice quickly: step record starts on step 1 and that step blinks. Each note you play (the TRIG keys on the active track, a pad on its own track, or a MIDI keyboard) is written on the blinking step; notes held together go on the same step, and it moves on when you let go. PLAY skips a step, STOP goes back one, REC stops; it also stops after the last step. Knobs turned before a note become p-locks on that note and the next ones; the track's sound comes back as it was when step record ends." },
+    "mod-settings": { label: "USB audio: stereo or 6 tracks",
+      short: "SETTINGS › Mods › USB Audio: the stereo mix (2CH) or each track on its own channel (6CH), switched from the machine.",
+      desc: "SETTINGS gets a last line, Mods, which opens Mod Settings, the page for the mods' own settings. Its first setting, USB Audio, sends the computer the stereo mix (2CH, as stock) or each of the six tracks on its own channel (6CH), to record stems. Press LEVEL/DATA to switch: the Model:Cycles reconnects to the computer about a second later with 2 or 6 inputs, and keeps the choice after power-off. In 6CH the stereo mix is not sent over USB. 6-channel audio based on ms-multi-output by scottmetoyer." },
+    "mach-sampler": { label: "Model-TG sampler" },
+    "mach-macro": { label: "47 models from Braids" },
+    "mach-acid": { label: "acid bass in the style of the TB-303" },
   },
   fr: {
-    usb6: { label: "Audio USB 6 canaux",
-      short: "Chaque piste sur son propre canal USB. Plus de mix stéréo en USB.",
-      desc: "Chaque piste a son propre canal USB (48 kHz / 32 bits) : enregistrez les 6 pistes séparément dans votre logiciel. Le mix stéréo n'est plus envoyé en USB. La mise à jour de l'OS par USB continue de fonctionner." },
-    "model-tg": { label: "Model-TG",
-      short: "Le grand pack de TinyGregAudio : une 7e machine Sampler et de nombreux ajouts.",
-      parts: ["Sampler (7e machine)", "rééchantillonnage", "retrig et effets master", "filtre et résonance sur les machines d'origine", "slide trigs", "Scale Lock", "samples par Elektron Transfer"],
-      desc: "Une machine Sampler (7e machine) à sept modes de lecture, le rééchantillonnage, une page de retrig avec effets master, Attack, Filtre et Résonance sur les machines d'origine, des slide trigs qui font glisser les paramètres d'un trig au suivant, Scale Lock, l'envoi d'échantillons par Elektron Transfer, et moins de charge processeur. Contient déjà les trois tweaks de drumkilla. Avec les moteurs du Syntakt, le Sampler reste la 7e machine et les moteurs le suivent.",
-      note: "N'installez un OS que lorsque Device Config > Transfer est sur CYC (chaque démarrage repart sur CYC). Les projets qui utilisent le Sampler ne joueront pas ces pistes sur un autre firmware." },
-    "sample-preview": { label: "Écoute des samples (Model-TG)",
-      short: "Sur une piste Sampler, dans le menu des presets, le pad joue le sample sous le curseur.",
-      desc: "Sur une piste Sampler, appuyez sur FUNC + MACHINES (menu des presets) et placez le curseur sur un sample : le pad de la piste (ou ses touches de pas en mode clavier) le joue, comme l'OS d'origine fait entendre le preset sous le curseur. Rien ne joue tout seul pendant le défilement. Un sample pas encore en mémoire se charge au premier appui (un court instant), dans la place libre ou à la place de samples que le projet n'utilise pas. La piste garde son propre sample : ses trigs le jouent toujours, et son pad aussi dès que vous quittez le menu. Les presets du Sampler qui gardent leur sample devraient aussi faire entendre ce sample plutôt que celui de la piste.",
-      note: "S'il n'y a pas assez de mémoire libre (une écoute garde de la place pour l'enregistrement et ne retire jamais un sample utilisé par votre projet), ou pendant que Model-TG rééchantillonne, l'appui ne joue rien. L'option demande Model-TG : décocher Model-TG la décoche." },
-    "latching-mute": { label: "Mode mute verrouillé",
-      short: "TRACK + FUNC : le mode mute reste actif, plus besoin de tenir FUNC.",
-      desc: "Maintenez TRACK et tapez FUNC : le mode mute reste actif, vous mutez les pistes sans tenir FUNC. Un appui court sur FUNC en sort." },
-    "trig-preview": { label: "Écoute d'un pas",
-      short: "Séquenceur arrêté, maintenez un pas et appuyez sur PAGE pour l'entendre.",
-      desc: "Séquenceur à l'arrêt ou en pause, maintenez un pas et appuyez sur PAGE : le pas joue avec sa note, sa longueur et ses p-locks." },
-    "browser-scroll": { label: "Défilement des noms longs",
-      short: "Dans le navigateur de sons, les noms trop longs pour l'écran défilent.",
-      desc: "Dans le navigateur de sons, un nom trop long pour l'écran défile pour rester lisible." },
-    syntakt: { label: "Vrais moteurs du Syntakt",
-      short: "Des moteurs du Syntakt en machines en plus, lus dans votre propre OS Syntakt.",
-      desc: "Les moteurs du Syntakt, lus dans votre fichier d'OS Syntakt (étape 2) et ajoutés après Chord, dans cet ordre, avec les noms et réglages des potards du Syntakt. Cochez ceux que vous voulez." },
-    "eng-sd": { short: "caisse claire vintage", note: "Caisse claire vintage." },
-    "eng-cp": { short: "clap vintage", note: "Clap vintage." },
-    "eng-toy": { short: "percu façon jouet", note: "Percussion accordée façon jouet." },
-    "eng-bits": { short: "numérique, bit crush", note: "Deux oscillateurs numériques avec réduction d'échantillonnage et de bits. PUNCH active Bit Redux." },
-    "eng-swarm": { short: "supersaw", note: "Un essaim de dents de scie désaccordées (supersaw). PUNCH ajoute l'octave inférieure." },
-    "trig-hold": { label: "Effacer un trig plus facilement",
-      short: "Un appui bref efface le trig ; un appui long le garde et montre ses réglages.",
-      desc: "Un appui sur une touche de pas qui porte déjà un trig l'efface si vous relâchez en moins d'une demi-seconde (0,2 s avec l'OS d'origine). Tenez plus longtemps et le trig reste, comme avant : ses réglages s'affichent. Tourner un potard pendant l'appui garde aussi le trig." },
-    arp: { label: "Arpégiateur",
-      short: "Le retrig devient un arpégiateur : les notes tenues se jouent l'une après l'autre.",
-      desc: "Le retrig devient un arpégiateur : tenez plusieurs notes sur une piste avec RETRIG tenu (ou A.On) et elles se jouent l'une après l'autre au rythme du retrig. FUNC + RETRIG ajoute Arp (sens : UP, DOWN, UPDN, RAND, PLAY ou OFF) et Oct (1 à 4 octaves), enregistrés avec le pattern." },
-    "tempo-max": { label: "Tempo jusqu'à 546 BPM",
-      short: "Le tempo monte jusqu'à 546 BPM au lieu de 300, horloge MIDI comprise.",
-      desc: "Le tempo monte jusqu'à 546,0 BPM au lieu de 300 : potard TEMPO, tap tempo, horloge MIDI reçue et projets enregistrés. 546 est le plafond du format des projets. Les LFO synchronisés au tempo restent justes à ces vitesses.",
-      note: "Au-delà de 300 BPM, le processeur peut avoir plus de mal à suivre la cadence sur des patterns chargés : à utiliser en connaissance de cause. Un projet enregistré au-dessus de 300 BPM se rouvre à 120 BPM sur l'OS d'origine." },
-    "boot-anim": { label: "Animation de démarrage modded-cycles",
-      short: "Au démarrage, le logo modded-cycles s'anime, sans rallonger le démarrage.",
-      desc: "Au démarrage du Model:Cycles, les quatre carrés arrondis du logo modded-cycles apparaissent un par un et « modded-cycles » s'écrit dessous, à la place de l'animation de carreaux d'origine. Elle dure autant que l'originale : le démarrage n'est pas plus long." },
-    "multiline-browser": { label: "Navigateur sur plusieurs lignes",
-      short: "Le navigateur affiche trois noms à la fois en petite police, un > devant le nom courant.",
-      desc: "Le navigateur de sons, de dossiers et d'échantillons affiche 3 noms à la fois en petite police, au lieu d'un seul en gros caractères. Un > signale le nom sous le curseur, le son chargé reste en surbrillance, et un petit repère désigne un dossier. Avec Défilement des noms longs ou Model-TG, seul le nom sous le curseur défile. D'après une idée et un script d'un membre de la communauté." },
-    "level-pan-values": { label: "Volume et pan en chiffres",
-      short: "Sur l'écran principal, LEVEL/DATA affiche le volume et le pan de la piste en chiffres.",
-      desc: "Sur l'écran principal, tourner LEVEL/DATA affiche le volume de la piste sélectionnée en chiffres (0 à 127) à côté de sa barre ; avec FUNC tenu, son pan (-64 à 63). Le chiffre disparaît 3 à 4 secondes après le dernier mouvement.",
-      note: "Sur l'écran principal, LEVEL/DATA avance maintenant de 1 au lieu de 2, pour que le chiffre passe par toutes les valeurs : tournez deux fois plus pour le même changement. Tant qu'il est affiché, le chiffre cache le haut-parleur ou le « R » au bout de la barre." },
-    "trigless-dim": { label: "Trigless trigs atténués",
-      short: "Une touche de pas avec un trigless trig s'allume atténuée : on la distingue d'un trig de note.",
-      desc: "Une touche de pas qui porte un trigless trig (FUNC + touche de pas) s'allume atténuée au lieu de pleine lumière : on la distingue d'un trig de note d'un coup d'œil. Elle garde son clignotement habituel. Trigs de note, trigs avec p-locks et lumière de lecture ne changent pas.",
-      note: "La touche est atténuée en l'allumant une milliseconde sur trois, 333 fois par seconde : elle paraît stable." },
-    "midi-both": { label: "MIDI OUT pendant THRU",
-      short: "Sur THR, le Cycles relaie le MIDI reçu et envoie aussi son propre MIDI.",
-      clash: "les deux changent ce que THR fait du MIDI du Cycles",
-      desc: "Dans CONFIG › MIDI › PORTS, réglez OUT/THRU sur THR : le Cycles continue de relayer ce qui arrive sur son MIDI IN, et envoie aussi son horloge, ses notes et ses changements de paramètres sur sa sortie MIDI. OUT marche comme avant, et le menu ne change pas.",
-      note: "Le mieux est qu'un seul côté joue des notes. Le Cycles fait suivre ce qu'il reçoit au fil de l'eau, sans attendre les messages entiers comme un boîtier de fusion MIDI : si l'appareil branché sur le MIDI IN et le Cycles envoient tous les deux des notes ou des mouvements de potards, certains peuvent arriver faussés à l'appareil suivant (note fausse ou bloquée). L'horloge et start/stop ne sont pas touchés." },
-    "midi-live-both": { label: "Basculer MIDI OUT + THRU en direct",
-      short: "Sur THR, FUNC + appui sur LEVEL/DATA ajoute ou retire le MIDI du Cycles.",
-      clash: "les deux changent ce que THR fait du MIDI du Cycles",
-      desc: "Garde le menu OUT/THR d'origine. Dans CONFIG › MIDI › PORTS, avec OUT/THRU sur THR, tenez FUNC et appuyez sur le potard LEVEL/DATA : le Cycles envoie aussi son horloge, ses notes et ses changements de paramètres, tout en relayant le MIDI reçu. Refaites-le pour revenir au relais seul. L'écran affiche THR dans les deux cas ; un appui sans FUNC passe en OUT, comme avant.",
-      note: "Le mieux est qu'un seul côté joue des notes. Le Cycles fait suivre ce qu'il reçoit au fil de l'eau, sans attendre les messages entiers comme un boîtier de fusion MIDI : si l'appareil branché sur le MIDI IN et le Cycles envoient tous les deux des notes ou des mouvements de potards, certains peuvent arriver faussés à l'appareil suivant (note fausse ou bloquée). L'horloge et start/stop ne sont pas touchés." },
+    "model-tg": { label: "Machine Sampler (Model-TG)",
+      short: "Model-TG de TinyGregAudio : une machine Sampler à sept modes de lecture, le rééchantillonnage, une page de retrig avec effets master, les slide trigs, et plus.",
+      parts: ["machine Sampler (7e)", "rééchantillonnage", "page de retrig et 12 effets master", "Attack, filtre et résonance sur les machines d'origine", "slide trigs", "Scale Lock", "samples par Elektron Transfer", "page System"],
+      desc: "Le Sampler est la 7e machine, juste après Chord. Il joue les samples du stockage interne avec sept modes de lecture (one shot, boucle, slice, granulaire, stretch, pluck, wave), les découpe à la main ou par transitoires, rééchantillonne une piste ou toute la sortie, et apporte une page de retrig (répétition sur la grille du tempo plus 12 effets master), Attack, filtre et résonance sur les machines d'origine, des slide trigs qui glissent chaque paramètre d'un trig au suivant, le Scale Lock, l'envoi de samples par Elektron Transfer et une page System avec la charge du processeur. Appuyez sur FUNC + MACHINES sur une piste Sampler pour choisir un sample. Model-TG 1.1.0, construit depuis ses propres sources, avec une retouche : en mode mute, chaque touche de piste mute tout de suite.",
+      note: "N'installez un OS que lorsque Device Config › Transfer est sur CYC (chaque allumage redémarre sur CYC). Les projets qui utilisent une machine ajoutée ne joueront pas ces pistes sur le firmware officiel : remettez-les sur une machine d'origine avant d'y revenir." },
+    syntakt: { label: "Moteurs du Syntakt",
+      short: "SD VINTAGE, CP VINTAGE, SY TOY, SY BITS et SY SWARM en machines 8 à 12, lus dans votre propre fichier d'OS Syntakt.",
+      desc: "Les moteurs numériques du Syntakt, copiés depuis votre fichier d'OS Syntakt dans votre navigateur (pas besoin d'avoir un Syntakt) et ajoutés après le Sampler, dans cet ordre : SDVtg, CPVtg, SYToy, SYBit, SYSwm. Les quatre potards de machine et PUNCH prennent les paramètres du Syntakt, avec ses noms à l'écran et ses réglages par défaut quand vous choisissez la machine. En émulation, ils sonnent comme le Syntakt, échantillon par échantillon. Un régulateur de charge surveille le processeur : quand trop de voix lourdes jouent en même temps, il éteint en fondu la moins audible plutôt que de laisser le son bégayer." },
+    "eng-sd": { short: "caisse claire vintage" },
+    "eng-cp": { short: "clap vintage" },
+    "eng-toy": { short: "percussion accordée façon jouet" },
+    "eng-bits": { short: "deux oscillateurs numériques, réduction de fréquence et de bits sur PUNCH" },
+    "eng-swarm": { short: "un essaim de dents de scie désaccordées, sous-octave sur PUNCH" },
     macro: { label: "Machine MACRO",
-      short: "Une machine en plus avec 47 modèles de synthèse, tirés du code libre de Braids.",
-      desc: "Une machine ajoutée après Chord (après le Sampler avec Model-TG, après les moteurs du Syntakt si vous les cochez aussi) avec les 47 modèles de synthèse de Braids, le macro-oscillateur libre d'Émilie Gillet, à partir de son propre code : ondes façon analogique, FM, voyelles et voix, modèles physiques, percussions, tables d'ondes et bruits. SHAPE choisit le modèle, COLOR et SWEEP le façonnent, CONTOUR laisse l'enveloppe d'ampli ouvrir le timbre. FUNC + PITCH donne le lo-fi : à gauche, la fréquence d'échantillonnage baisse (RATE, jusqu'à 4 kHz environ) ; à droite, la résolution (BITS, jusqu'à 2 bits). DECAY, GATE et PUNCH marchent comme sur Tone.",
-      note: "Environ deux fois plus gourmande en calcul qu'une machine d'origine ; 13 modèles (les TRIPLE, les tables d'ondes, CSAW…) sont calculés à 48 kHz et coûtent environ moitié moins, et RATE les allège encore. Seule, elle n'a pas de régulateur de charge : plusieurs pistes MACRO qui jouent en même temps peuvent faire craquer le son ; commencez avec une ou deux. Sur une piste MACRO, FUNC + PITCH n'accorde plus la note. Avec les moteurs du Syntakt, leur régulateur de charge veille aussi sur les pistes MACRO. Un projet qui utilise MACRO demande un firmware où MACRO est à la même place : elle vient après le Sampler de Model-TG et les moteurs du Syntakt cochés (ACID vient après elle), son numéro dépend donc de Model-TG et des moteurs cochés." },
+      short: "Machine 13 : les 47 modèles de synthèse de Braids, le macro-oscillateur d'Émilie Gillet. SHAPE choisit le modèle.",
+      desc: "Une machine ajoutée, la 13e, avec les 47 modèles de synthèse de Braids, tirés du code libre d'Émilie Gillet : ondes analogiques, FM, voyelles et parole, modèles physiques, percussions, tables d'ondes et bruits. SHAPE choisit le modèle, COLOR et SWEEP le sculptent, CONTOUR laisse l'enveloppe d'ampli ouvrir le timbre. Maintenez FUNC et tournez PITCH pour le lo-fi : à gauche la fréquence d'échantillonnage baisse (46K à 4K), à droite la résolution (12B à 2B), OFF au milieu. Treize modèles sont calculés à 48 kHz pour moitié moins de temps processeur.",
+      note: "À peu près aussi lourd pour le processeur qu'un moteur du Syntakt pour la plupart des modèles ; le régulateur de charge veille aussi sur les voix MACRO." },
     acid: { label: "Machine ACID",
-      short: "Une machine en plus : une basse acide à la manière de la TB-303, avec un potard de saturation et le slide tiré de vos trigs.",
-      desc: "Une machine ajoutée après Chord, toujours la dernière (après le Sampler avec Model-TG, puis les moteurs du Syntakt et MACRO si vous les cochez aussi) : une basse acide à la manière de la TB-303, d'après le modèle libre Open303 de Robin Schmidt. COLOR règle le cutoff, SHAPE la résonance, SWEEP l'env mod, CONTOUR la saturation (du son propre au fuzz, à volume à peu près égal) et DECAY la décroissance ; PUNCH passe l'onde de scie à carré. Un trig dont la longueur (LEN) dépasse le trig suivant glisse vers la note suivante au lieu de la rejouer ; un pad joué pendant qu'un autre est tenu glisse aussi.",
-      note: "À peu près aussi gourmande en calcul que Tone. Allumez GATE pour que les notes tiennent toute leur longueur, comme sur l'original. Avec les moteurs du Syntakt, leur régulateur de charge veille aussi sur les pistes ACID : une piste qu'il a arrêtée rejoue sa note suivante, sans glisser. Un projet qui utilise ACID demande un firmware où ACID est à la même place : c'est la dernière machine, son numéro dépend donc de Model-TG, des moteurs du Syntakt cochés et de MACRO." },
-    wave: { label: "Machine Wave",
-      short: "Une machine en plus : elle joue vos propres tables d'ondes, rangées dans /Wavetables.",
-      clash: "les deux ajoutent des machines au même endroit de la mémoire",
-      desc: "Une machine ajoutée après Chord qui joue une de vos tables d'ondes. Convertissez la table sur le site (rubrique Convert) : elle grave des copies plus douces et plus courtes par octave, pour que les aigus ne se replient pas, et la même page l'envoie à la machine par USB. Sur la piste Wave, FUNC + MACHINES ouvre /Wavetables : choisissez la table et appuyez sur YES (l'écran affiche Table loaded). La piste retient sa table quand vous rechargez le projet ou rallumez la machine. COLOR parcourt la table, SHAPE fait partir chaque note plus loin dans la table puis revenir (Env Pos), SWEEP et CONTOUR sont la coupure et la résonance du passe-bas, et FUNC + SWEEP envoie l'enveloppe de coupure vers le haut ou vers le bas (OFF au milieu). Avec les moteurs du Syntakt, MACRO et ACID, Wave vient en dernier.",
-      note: "Environ 1,5 voix Tone par voix Wave. Pas avec Model-TG. Un projet qui utilise Wave demande un firmware où Wave est à la même place : c'est la dernière machine, son numéro dépend des moteurs, de MACRO et d'ACID cochés." },
-    "chord-keys": { label: "Chord Keys",
-      short: "Sur une piste CHORD, les TRIG 1–16 jouent les accords de votre gamme.",
-      clash: "les deux changent les notes des boutons TRIG (Model-TG a son propre Scale Lock)",
-      desc: "Jouez une piste CHORD avec les boutons TRIG du bas : I–VII sur 1–7, une octave plus haut sur 8–14, puis I–II deux octaves plus haut sur 15–16. T1–T6 gardent leurs commandes habituelles. FUNC + RETRIG ajoute Keys, Root, Scale et le choix triade/7/9/11/13 par degré, commun aux octaves et enregistré avec le pattern." },
-    "track-filter": { label: "Filtre par piste (LP / OFF / HP)",
-      short: "MACHINES tenu + SWEEP : passe-bas à gauche, rien au centre, passe-haut à droite.",
-      clash: "les deux utilisent MACHINES + SWEEP / CONTOUR pour un filtre de piste",
-      desc: "Maintenez MACHINES et tournez SWEEP : un filtre sur la piste, passe-bas à gauche, rien au centre, passe-haut à droite, comme sur une table de mixage DJ, avec la plage du Model:Samples (5 Hz à 20 kHz). CONTOUR règle la résonance, COLOR et SHAPE une enveloppe du filtre (quantité vers le haut ou le bas, decay) relancée à chaque note. Quatre vrais paramètres de toutes les machines : p-locks, LFO, vélocité, CC MIDI 74 et 71, enregistrés avec le son et le pattern.",
-      note: "Ne se coche pas avec Model-TG pour l'instant : les deux utilisent MACHINES + SWEEP / CONTOUR. Le filtre de Model-TG laissera la place à celui-ci une fois testé. Un son ouvert sur un autre firmware joue sans son filtre." },
+      short: "Machine 14, la dernière : une basse acide à la manière de la TB-303, avec un potard de saturation et des slides depuis vos trigs.",
+      desc: "La dernière machine, la 14e : une basse acide à la manière de la TB-303, d'après le modèle libre Open303 de Robin Schmidt, réécrit en virgule fixe. COLOR règle le cutoff, SHAPE la résonance, SWEEP l'env mod, CONTOUR la saturation (du son propre au fuzz, à volume à peu près égal) et DECAY la décroissance ; PUNCH passe l'onde de scie à carré. Un trig dont la longueur (LEN) dépasse le trig suivant glisse vers la note suivante au lieu de la rejouer ; en jeu live, une note jouée pendant qu'une autre est tenue glisse aussi. Chaque note monte en moins d'une milliseconde : pas de clic.",
+      note: "Mettez GATE pour des notes tenues toute leur longueur, comme sur l'original. Sous une très forte charge, le régulateur peut éteindre une note ACID en fondu ; le trig suivant de la piste rejoue alors la note." },
     "lfo-plus": { label: "LFO 2, 3, 4",
-      "clash_track-filter": "les deux rangent leurs réglages au même endroit du son",
-      short: "Trois LFO de plus sur chaque piste : appuyez encore sur [LFO] pour passer à LFO 2, 3 et 4.",
-      desc: "Chaque piste reçoit trois LFO de plus, à côté de celui d'origine. Sur la page LFO, appuyez encore sur [LFO] : un grand 2, puis 3, puis 4 s'affiche dans le cadre de gauche, et le cinquième appui ferme la page. Chaque LFO de plus a sa vitesse, son multiplicateur, sa forme, sa destination et sa profondeur. Le fondu, la phase de départ et le mode restent communs avec LFO 1. LFO 2 est sauvé avec le son et se p-locke. LFO 3 et 4 servent au live : un réglage par piste, pas sauvé. D'après le Model-TG-VA-DR-v1 de DavidCaruso, réécrit pour ce projet. Marche avec ou sans Model-TG.",
-      note: "Un LFO de plus réglé sur la destination de LFO 1 ne fait rien, et la molette DEST saute les destinations déjà prises par un autre LFO de la piste. LFO 3 et 4 reviennent à leurs réglages par défaut à l'allumage et ne se p-lockent pas. Avec Model-TG, corrige aussi les p-locks d'Attack, de Filtre et de Résonance, qui revenaient sur d'autres paramètres au rechargement d'un pattern. Pas avec le Filtre par piste pour l'instant : les deux rangent leurs réglages au même endroit du son." },
+      short: "Trois LFO de plus par piste : sur la page LFO, appuyez encore sur LFO pour LFO 2, 3 et 4.",
+      desc: "Sur la page LFO, appuyez encore sur [LFO] : un grand 2, puis 3, puis 4 s'affiche dans le cadre de gauche, et le cinquième appui ferme la page. Chaque LFO de plus a sa vitesse, son multiplicateur, sa forme, sa destination et sa profondeur ; le fondu, la phase de départ et le mode restent communs avec LFO 1. LFO 2 est sauvé avec le son et se p-locke ; LFO 3 et 4 servent au live (un réglage par piste, pas sauvé). Réécrit pour ce projet d'après le firmware Model-TG-VA-DR-v1 de DavidCaruso." },
+    "trig-preview": { label: "Écoute d'un pas",
+      short: "Séquenceur à l'arrêt ou en pause : maintenez un pas et appuyez sur PAGE pour l'entendre, avec sa note, sa longueur et ses p-locks.",
+      desc: "Séquenceur à l'arrêt ou en pause (après un Stop MIDI aussi), maintenez un pas et appuyez sur PAGE : le pas joue avec sa note, sa longueur et ses p-locks. Par drumkilla, inclus dans Model-TG, avec le correctif de ce projet pour le séquenceur en pause." },
+    "trig-hold": { label: "Effacer un trig plus facilement",
+      short: "Un appui bref sur un pas qui porte un trig l'efface, au lieu de l'ouvrir comme un maintien.",
+      desc: "Sur l'OS d'origine, un appui de plus de 200 ms sur un pas compte comme un maintien et le trig reste souvent. Ici un pas qui porte déjà un trig attend 500 ms avant de compter comme un maintien, et le choix se fait aussi au relâchement : un appui normal efface le trig, un appui long l'ouvre toujours pour régler ses p-locks. Les pas vides gardent le délai d'origine." },
+    arp: { label: "Arpégiateur",
+      short: "Tenez plusieurs notes avec RETRIG : elles jouent en arpège ; FUNC + RETRIG règle le sens et l'étendue.",
+      desc: "RETRIG devient l'arpégiateur : tenez RETRIG et jouez plusieurs notes, elles s'arpègent à la vitesse du retrig. FUNC + RETRIG ouvre ses réglages : sens (montant, descendant, aller-retour, aléatoire, ou dans l'ordre joué) et étendue (1 à 4 octaves), sauvés avec le pattern. En enregistrement live, l'arpège enregistre les notes qu'il joue." },
+    "tempo-max": { label: "Tempo jusqu'à 546 BPM",
+      short: "Le potard TEMPO, le tap tempo, l'horloge MIDI et les projets sauvés dépassent 300 BPM, jusqu'à 546.",
+      desc: "Le potard TEMPO, le tap tempo, l'horloge MIDI envoyée et reçue, et le chargement d'un projet acceptent les tempos jusqu'à 546 BPM, le maximum que le format du projet peut contenir. Les LFO synchronisés au tempo restent en mesure au-delà de 351 BPM, où l'OS d'origine perdait le cycle." },
+    "latching-mute": { label: "Mode mute verrouillé",
+      short: "Maintenez TRACK et tapez FUNC : le mode mute reste actif, plus besoin de tenir FUNC. Un appui bref sur FUNC en sort.",
+      desc: "Maintenez TRACK et tapez FUNC : le mode mute reste actif, vous mutez et démutez les pistes sans tenir FUNC. Un appui bref sur FUNC en sort. Par drumkilla, inclus dans Model-TG ; dans cet OS, chaque touche de piste mute tout de suite en mode mute." },
+    "sample-preview": { label: "Écoute des samples",
+      short: "Sur une piste Sampler, dans le menu des presets, le pad de la piste joue le sample sous le curseur.",
+      desc: "Sur une piste Sampler, appuyez sur FUNC + MACHINES (menu des presets) et amenez le curseur sur un sample : le pad de la piste (ou ses touches de pas en mode clavier) le joue, comme l'OS d'origine fait entendre le preset sous le curseur. Rien ne joue tout seul pendant que vous faites défiler. Un sample pas encore en mémoire se charge au premier appui (une courte attente), dans la place libre ou à la place de samples que le projet n'utilise pas. La piste garde son propre sample : ses trigs le jouent toujours, et son pad aussi une fois sorti du menu.",
+      note: "S'il n'y a pas assez de mémoire libre (une écoute garde de la place pour l'enregistrement et ne retire jamais un sample que votre projet utilise), ou pendant que le Sampler rééchantillonne, l'appui ne joue rien." },
+    "browser-scroll": { label: "Noms qui défilent",
+      short: "Dans le navigateur de sons, les noms trop longs pour l'écran défilent.",
+      desc: "Dans le navigateur de sons, un nom trop long pour l'écran défile pour que vous puissiez le lire. Par drumkilla, inclus dans Model-TG." },
+    "boot-anim": { label: "Animation de démarrage modded-cycles",
+      short: "Au démarrage du Model:Cycles, les quatre carrés du logo modded-cycles apparaissent et « modded-cycles » s'écrit dessous.",
+      desc: "Au démarrage du Model:Cycles, les quatre carrés du logo modded-cycles apparaissent et « modded-cycles » s'écrit dessous, à la place de l'animation de carreaux d'origine : même durée, pendant le chargement du projet." },
+    "multiline-browser": { label: "Navigateur sur plusieurs lignes",
+      short: "Le navigateur de presets affiche trois noms à la fois en petite police, avec un > sur le nom sous le curseur.",
+      desc: "Le navigateur affiche trois noms à la fois en petite police au lieu d'un seul en grand : vous voyez ce qui vient avant et après pendant que vous cherchez un son. Le son chargé s'affiche inversé, les dossiers ont un repère, et les noms longs défilent toujours. D'après l'idée d'un membre de la communauté." },
+    "level-pan-values": { label: "Volume et pan en chiffres",
+      short: "Sur l'écran principal, LEVEL/DATA affiche le volume de la piste en chiffres (0 à 127) ; avec FUNC tenu, son pan (-64 à 63).",
+      desc: "Sur l'écran principal, tourner LEVEL/DATA affiche le volume de la piste (0 à 127) en chiffres pendant quelques secondes ; avec FUNC tenu, son pan (-64 à 63). LEVEL/DATA avance alors de 1 au lieu de 2 à cet endroit. D'après un mod de djd_oz." },
+    "trigless-dim": { label: "Trigless trigs atténués",
+      short: "Un pas qui porte un trigless trig s'allume atténué, pour le distinguer d'un trig de note.",
+      desc: "En enregistrement sur la grille, une touche de pas qui porte un trigless trig (un lock sans note) s'allume atténuée au lieu de pleine, pour la distinguer d'un coup d'œil d'un trig de note. D'après un mod de djd_oz." },
+    "midi-live-both": { label: "Basculer MIDI OUT + THRU en direct",
+      short: "Avec THR choisi, maintenez FUNC et appuyez sur le potard LEVEL/DATA pour ajouter le MIDI du Cycles à ce qu'il relaie, ou le retirer.",
+      desc: "Avec THR choisi dans CONFIG › MIDI › PORTS › OUT/THRU, le Model:Cycles relaie le MIDI reçu. Maintenez FUNC et appuyez sur le potard LEVEL/DATA : il envoie aussi sa propre horloge, ses notes et ses changements de paramètres ; appuyez encore pour arrêter. L'écran reste sur THR. Au mieux quand un seul côté joue des notes, puisque ce qui entre est relayé tel quel. Par AveyCole." },
+    "step-rec": { label: "Step record",
+      short: "Séquenceur à l'arrêt, deux appuis sur REC : entrez les notes du pattern pas à pas. PLAY saute un pas, STOP recule.",
+      desc: "Séquenceur à l'arrêt, appuyez deux fois vite sur REC : le step record démarre au pas 1, qui clignote. Chaque note jouée (les touches TRIG sur la piste active, un pad sur sa propre piste, ou un clavier MIDI) est écrite sur le pas qui clignote ; les notes tenues ensemble vont sur le même pas, qui avance quand vous relâchez. PLAY saute un pas, STOP recule d'un pas, REC arrête ; il s'arrête aussi après le dernier pas. Les potards tournés avant une note deviennent des p-locks sur cette note et les suivantes ; le son de la piste revient comme avant à la fin du step record." },
+    "mod-settings": { label: "Audio USB : stéréo ou 6 pistes",
+      short: "SETTINGS › Mods › USB Audio : le mix stéréo (2CH) ou chaque piste sur son propre canal (6CH), au choix depuis la machine.",
+      desc: "SETTINGS gagne une dernière ligne, Mods, qui ouvre Mod Settings, la page des réglages des mods. Son premier réglage, USB Audio, envoie à l'ordinateur le mix stéréo (2CH, comme d'origine) ou chacune des six pistes sur son propre canal (6CH), pour enregistrer des pistes séparées. Appuyez sur LEVEL/DATA pour basculer : le Model:Cycles se reconnecte à l'ordinateur environ une seconde plus tard avec 2 ou 6 entrées, et garde le choix après extinction. En 6CH, le mix stéréo n'est pas envoyé en USB. Audio 6 canaux d'après ms-multi-output de scottmetoyer." },
+    "mach-sampler": { label: "sampler de Model-TG" },
+    "mach-macro": { label: "47 modèles de Braids" },
+    "mach-acid": { label: "basse acide à la manière de la TB-303" },
   },
 };
 
@@ -2625,7 +725,7 @@ const st = {
   syntaktError: null,
   os: null,                // { raw, name, info, sha, stock }
   osError: null,
-  fw: null,                // { raw, name, kind: "built"|"stock"|"custom", mods:[labels], ref:bool, modsRef:bool, sixch:bool }
+  fw: null,                // { raw, name, kind: "built"|"stock"|"custom", mods:[labels], ref:bool, modsRef:bool, machines:[…] }
   fwError: null,
   building: false,
   buildKey: null,
@@ -2722,212 +822,71 @@ function applyLang(lang) {
 }
 
 // ---------------------------------------------------------------------------
-// Step 1 — features
+// Step 1 — the Modded Cycles OS: one firmware, what it contains (nothing to pick)
 // ---------------------------------------------------------------------------
-// feature id -> { on: bool, variant: id } ; engine cards (real Syntakt engines): { on: bool, engines: [codes] }
-const selection = {};
-// display-only state of the picker (never saved): open Details drawers, folded sections, search, last swap (Undo)
-const pick = { open: new Set(), folded: new Set(), q: "", swap: null, selOpen: false };
+// display-only state: open Details drawers, folded sections
+const pick = { open: new Set(), folded: new Set() };
 
-// Engine card: the combination of ticked engines (kept in catalog order) and its tweak.
-// Two cards that can't be ticked together (Model-TG and the tweaks it already holds, or the Syntakt engines).
-function excludes(f, g) {
-  const no = (a, b) => (a.excludes || []).includes(b.id) || (a.includes || []).includes(b.id);
-  return no(f, g) || no(g, f);
-}
-
-// The ticked card that already holds this one (Model-TG holds drumkilla's tweaks): the card shows ticked and
-// locked, "included with Model-TG", but adds nothing to the build (it is not on in the selection).
-function includedBy(f) {
-  return ((window.MC_TWEAKS && window.MC_TWEAKS.features) || []).find((g) => (g.includes || []).includes(f.id) && isOn(g.id));
-}
-
-// A card whose required card is off goes off too, whatever turned that one off (unticked, or excluded by another
-// card). Run before every render and every build: the builder never gets sample preview without Model-TG.
-// Repeated until nothing changes, so a chain (A requires B requires C) goes off whole in one call.
-function dropOrphans() {
-  const feats = (window.MC_TWEAKS && window.MC_TWEAKS.features) || [];
-  for (let changed = true; changed; ) {
-    changed = false;
-    for (const f of feats)
-      if (f.requires && isOn(f.id) && !isOn(f.requires)) { selection[f.id].on = false; changed = true; }
-  }
-}
-
-function comboOf(f, sel) {
-  return f.combos.find((c) => c.engines.join() === sel.engines.join());
-}
-
-// The ticked engines' combination of a feature card with engines, if it is on.
-function comboOfFeature(id) {
-  const f = ((window.MC_TWEAKS && window.MC_TWEAKS.features) || []).find((x) => x.id === id && x.engines);
-  return f && isOn(id) ? comboOf(f, selection[id]) : null;
-}
-
-// The cards that hold this one when they are ticked too (f.joins, in machine order: MACRO joins the Syntakt engines,
-// notes/50; ACID joins them and MACRO, notes/54 §11). The first ticked one (the root) builds the version with every
-// ticked card that joins it; those add no tweak of their own.
-const hostsOf = (f) => [].concat(f.joins || []);
-function joinedTo(f) {
-  const h = hostsOf(f).find(isOn);
-  return h ? featById(h) || null : null;
-}
-// The ticked cards this root card holds, in card order, joined by "+": the key of its version ("macro", "acid",
-// "macro+acid"), or "".
-function joinKey(f) {
-  return features().filter((g) => isOn(g.id) && joinedTo(g) === f).map((g) => g.id).join("+");
-}
-// What a combination builds with the ticked cards: itself, or its version with them (same fields: id, tg, tested,
-// tg_tested).
-function versionOf(f, c) {
-  const k = c && joinKey(f);
-  return k ? c[k] : c;
-}
-// A card with variants that holds others (MACRO with ACID, no engines): its version with them, or null.
-function hostVersion(f) {
-  const k = f.versions && joinKey(f);
-  return k ? f.versions[k] || null : null;
-}
-const triedWith = (v, tg) => !!(v && (tg ? v.tg_tested : v.tested));
-
-// The mods, shown by section (cat), in FEATURES order inside a section. The build keeps FEATURES order whatever the
-// display order (chosenTweaks, REF_MAINOS keys).
 const features = () => (window.MC_TWEAKS && window.MC_TWEAKS.features) || [];
 const featById = (id) => features().find((f) => f.id === id);
-function selOf(f) {
-  return selection[f.id] ||
-    (selection[f.id] = f.engines ? { on: false, engines: [] } : { on: false, variant: f.variants[0].id });
-}
-const label = (f) => featText(f.id, "label", f.label);
-// a mod without a short text shows the first sentence of its description (cut to 2 lines by the CSS)
+// os.json, as tools/gen_flasher_tweaks.py embeds it: name, version, status, the tweak ids (the REF_MAINOS key),
+// the machines it adds, the files it needs
+const osInfo = () => (window.MC_TWEAKS && window.MC_TWEAKS.os) ||
+  { name: "Modded Cycles OS", version: "?", status: "experimental", key: "", tweaks: [], machines: [], needs: [] };
+const osName = () => `${osInfo().name} ${osInfo().version}`;
+const osFile = (suffix = "") => `${osInfo().name.toLowerCase().replace(/\s+/g, "-")}_${osInfo().version}${suffix}.syx`;
+const label = (f) => featText(f.id, "label", f.id);
 function shortOf(f) {
-  const d = featText(f.id, "desc", f.desc);
-  return featText(f.id, "short", "") || (d.match(/^.*?[.!?](?=\s|$)/) || [d])[0];
+  const short = featText(f.id, "short", "");
+  if (short) return short;
+  const d = featText(f.id, "desc", "");
+  return (d.match(/^.*?[.!?](?=\s|$)/) || [d])[0];
 }
 const catOf = (f) => (f.cat && CATS.includes(f.cat) ? f.cat : "other");
 const order = () => CATS.flatMap((c) => features().filter((f) => catOf(f) === c));    // display order
-// the real "excludes" (explained to the user); excludes() above also counts what a pack includes
-const clashOnly = (f, g) => (f.excludes || []).includes(g.id) || (g.excludes || []).includes(f.id);
-// "clash_<id>": why this card doesn't go with that one in particular; "clash": with any other
-const clashWhy = (f, g) => featText(f.id, "clash_" + g.id, "") || featText(g.id, "clash_" + f.id, "")
-  || featText(f.id, "clash", "") || featText(g.id, "clash", "") || t("clash_generic");
-// the card whose clash with g keeps f from going with g: f itself, or the card f requires (ticking sample preview
-// ticks Model-TG, so it doesn't go with what Model-TG doesn't go with); null if f goes with g
-function clashVia(f, g) {
-  if (clashOnly(f, g)) return f;
-  const req = f.requires && f.requires !== g.id && featById(f.requires);
-  return req && clashOnly(req, g) ? req : null;
-}
-
-// Tested or experimental, down to the exact engine combination (with Model-TG, the combined version's own tests).
-// "part": an unticked engine card that is tested with some engines only (PARTLY).
-function statusOf(f) {
-  const sel = selOf(f);
-  if (f.engines) {
-    if (!sel.on) return PARTLY && f.status === "tested" && f.combos.some((c) => !c.tested && !c.tg_tested) ? "part" : f.status;
-    return triedWith(versionOf(f, comboOf(f, sel)), isOn("model-tg")) ? "tested" : "experimental";
-  }
-  // MACRO or ACID ticked with the engines, ACID with MACRO: the combined version's own tests
-  const host = sel.on ? joinedTo(f) : null;
-  if (host) return triedWith(host.engines ? versionOf(host, comboOfFeature(host.id)) : hostVersion(host), isOn("model-tg"))
-    ? "tested" : "experimental";
-  const own = sel.on ? hostVersion(f) : null;
-  if (own) return triedWith(own, isOn("model-tg")) ? "tested" : "experimental";
-  // Model-TG's card follows the engines' choice
-  // (a card that requires another one, sample preview, keeps its own status: those tests didn't include it)
-  const withId = sel.on && f.with && !f.requires ? Object.keys(f.with).find(isOn) : null;
-  const tgCombo = withId ? comboOfFeature(withId) : null;
-  if (tgCombo) return triedWith(versionOf(featById(withId), tgCombo), true) ? "tested" : "experimental";
-  return f.status === "tested" ? "tested" : "experimental";
-}
 const tagHtml = (s) => s === "tested" ? `<span class="tag ok">${esc(t("tested"))}</span>`
-  : s === "part" ? `<span class="tag ok">${esc(t("part_tested"))}</span>` : `<span class="tag exp">${esc(t("experimental"))}</span>`;
+  : `<span class="tag exp">${esc(t("experimental"))}</span>`;
 
-// Tick or untick a card: cards that can't go together turn the other one off, as before; a real clash (excludes) is
-// said on the row just ticked and in the selection bar, with Undo. A card that only works with another one
-// (f.requires: sample preview needs Model-TG) ticks that one first, with that card's own exclusions, as if the user
-// had ticked it; a card left without the card it requires goes off too (dropOrphans), said with the others.
-function setOn(f, on) {
-  if (includedBy(f)) return;                           // locked while the card holding it is ticked
-  const before = JSON.parse(JSON.stringify(selection));
-  pick.swap = null;
-  const off = [];
-  const turnOn = (h) => {
-    const sel = selOf(h);
-    sel.on = true;
-    for (const g of features())
-      if (g !== h && isOn(g.id) && excludes(h, g)) { selection[g.id].on = false; if (clashOnly(h, g)) off.push(g.id); }
-    if (h.engines && !sel.engines.length) sel.engines = [h.engines[0].code];
-  };
-  if (!on) selOf(f).on = false;
-  else {
-    const need = f.requires && featById(f.requires);
-    if (need && !isOn(need.id)) turnOn(need);
-    turnOn(f);
-  }
-  dropOrphans();
-  if (on) for (const g of features())
-    if (g.requires && before[g.id] && before[g.id].on && !isOn(g.id) && !off.includes(g.id)) off.push(g.id);
-  if (off.length) pick.swap = { by: f.id, off, before };
+// The machines the OS adds after Chord, in MACHINES order (os.json): [{ code, name, label }]; a label is translated
+// when FEAT has a "mach-<code>" entry.
+function osMachines() {
+  return osInfo().machines.map((m) => ({ code: m.code, name: m.name, label: featText("mach-" + m.code, "label", m.label) }));
 }
-// One engine pad: the ticked engines stay in catalog order; no engine left turns the card off.
-function setEngine(f, code, on) {
-  const sel = selOf(f), keep = new Set(sel.engines);
-  if (on) keep.add(code); else keep.delete(code);
-  sel.engines = f.engines.map((e) => e.code).filter((c) => keep.has(c));
-  if (!sel.engines.length) sel.on = false;
-  pick.swap = null;
-}
-function undo() {
-  if (!pick.swap) return null;
-  const by = pick.swap.by, before = pick.swap.before;
-  for (const id in before) selection[id] = before[id];
-  pick.swap = null;
-  return by;
-}
+const machineList = () => osMachines().map((m) => `<b>${esc(m.name)}</b> (${esc(m.label)})`).join(", ");
 
-// Search (shown from SEARCH_FROM mods): accent- and case-insensitive, in both languages, every word must match.
-const fold = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-const hay = {};
-function haystack(f) {
-  if (hay[f.id]) return hay[f.id];
-  const parts = [f.label, f.desc];
-  for (const L of ["en", "fr"]) {
-    const x = FEAT[L][f.id] || {};
-    parts.push(x.label, x.short, x.desc, x.clash, (x.parts || []).join(" "), T[L]["cat_" + catOf(f)]);
-    for (const e of f.engines || []) parts.push(e.name, e.label, (FEAT[L]["eng-" + e.code] || {}).short);
-  }
-  if (f.credit) parts.push(f.credit.who);
-  return (hay[f.id] = fold(parts.filter(Boolean).join(" ")));
+// The OS header of step 1: name, version, status, what to expect, the added machines, the files it needs.
+function renderOsHead() {
+  const box = $("os-head");
+  if (!box) return;
+  const o = osInfo();
+  box.innerHTML = `<div class="os-title"><span class="os-name">${esc(osName())}</span>${tagHtml(o.status)}</div>` +
+    `<p class="os-lede">${t("os_lede", { n: features().length })}</p>` +
+    `<p class="os-lede">${esc(t(o.status === "tested" ? "os_status_tested" : "os_status_exp"))}</p>` +
+    `<p class="os-lede">${t("os_machines", { list: machineList() })}</p>` +
+    `<p class="os-lede">${t("os_needs")}</p>`;
 }
-const searching = () => features().length >= SEARCH_FROM && pick.q.trim() !== "";
-const matches = (f) => !searching() || fold(pick.q).split(/\s+/).filter(Boolean).every((w) => haystack(f).includes(w));
 
 function renderFeatures() {
   const box = $("features");
   if (!box || !window.MC_TWEAKS || !window.MC_TWEAKS.features) return;
   const focusId = document.activeElement && document.activeElement.id;
-  features().forEach(selOf);
+  renderOsHead();
   box.innerHTML = "";
-  dropOrphans();                                   // a card without the card it requires goes off
   for (const c of CATS) {
     const mods = features().filter((f) => catOf(f) === c);
     if (!mods.length) continue;
-    const lit = mods.filter((f) => isOn(f.id) || includedBy(f));
-    const folded = pick.folded.has(c) && !searching();
+    const folded = pick.folded.has(c);
     const g = document.createElement("section");
     g.className = "grp";
     g.id = "cat-" + c;
-    g.hidden = !mods.some(matches);
-    const n = lit.length ? t(lit.length > 1 ? "grp_on" : "grp_on1", { k: lit.length, n: mods.length })
-      : esc(t(mods.length > 1 ? "grp_n" : "grp_n1", { n: mods.length }));
     const sub = t("cat_" + c + "_sub");
     g.innerHTML = `<h3><button type="button" class="grp-h" id="grp-h-${c}" aria-expanded="${!folded}" aria-controls="grp-${c}">` +
       `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CAT_ICON[c]}</svg>` +
-      `<span class="gt">${esc(t("cat_" + c))}</span>${sub ? `<span class="gs">${esc(sub)}</span>` : ""}<span class="gn">${n}</span>` +
+      `<span class="gt">${esc(t("cat_" + c))}</span>${sub ? `<span class="gs">${esc(sub)}</span>` : ""}` +
+      `<span class="gn">${esc(t(mods.length > 1 ? "grp_n" : "grp_n1", { n: mods.length }))}</span>` +
       `<svg class="chev" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5l4 4 4-4"/></svg>` +
       `</button></h3>` +
-      (folded && lit.length ? `<p class="grp-sel">${lit.map((f) => `<span class="${includedBy(f) ? "inc" : ""}">${esc(label(f))}</span>`).join("")}</p>` : "");
+      (folded ? `<p class="grp-sel">${mods.map((f) => `<span>${esc(label(f))}</span>`).join("")}</p>` : "");
     const body = document.createElement("div");
     body.className = "grp-body";
     body.id = "grp-" + c;
@@ -2936,159 +895,53 @@ function renderFeatures() {
     g.appendChild(body);
     box.appendChild(g);
   }
-  renderFind();
   renderCats();
-  renderSelection();
   // keyboard users keep their place: the element that had the focus gets it back after the rebuild
   if (focusId && (!document.activeElement || document.activeElement.id !== focusId) && $(focusId)) $(focusId).focus({ preventScroll: true });
 }
 
+// One row per feature of the OS: name, author, status, one sentence; Details opens the drawer. No checkbox: the OS
+// is one firmware.
 function renderRow(f) {
-  const sel = selOf(f), holder = includedBy(f), status = statusOf(f), on = sel.on || !!holder;
   const d = document.createElement("div");
-  d.className = "mod" + (on ? " on" : "") + (holder ? " incl" : "");
+  d.className = "mod on fixed";
   d.id = "mod-" + f.id;
-  d.hidden = !matches(f);
   const side = [];
-  // "by drumkilla" / "based on ms-multi-output by scottmetoyer"; a link inside the <label> doesn't toggle the checkbox
+  // "by drumkilla" / "based on eurorack by Émilie Gillet", with a link to the MIT license of the code the row carries
   if (f.credit) side.push(`<span class="credit">${creditHtml(f.credit)}` +
     (f.license ? ` · <a href="${esc(f.license)}" target="_blank" rel="noopener">${esc(t("license_mit"))}</a>` : "") + `</span>`);
   if (f.needs === "syntakt") side.push(`<span class="need">${esc(t("need_syntakt"))}</span>`);
-  const req = f.requires && featById(f.requires);
-  if (req) side.push(`<span class="need">${esc(t("with_mod", { name: label(req) }))}</span>`);
   const open = pick.open.has(f.id);
-  d.innerHTML = `<label class="mod-row" for="feat-${f.id}">` +
-      `<input type="checkbox" id="feat-${f.id}"${on ? " checked" : ""}${holder ? " disabled" : ""}>` +
-      `<span class="ttl"><span class="nm">${esc(label(f))}</span>${holder ? `<span class="incl">${esc(t("included", { name: label(holder) }))}</span>` : ""}</span>` +
+  d.innerHTML = `<div class="mod-row" id="feat-${f.id}">` +
+      `<span class="ttl"><span class="nm">${esc(label(f))}</span></span>` +
       `<span class="by">${side.join("")}</span>` +
-      `<span class="st">${tagHtml(status)}</span>` +
+      `<span class="st">${tagHtml(f.status)}</span>` +
       `<span class="short">${esc(shortOf(f))}</span>` +
-    `</label>` +
+    `</div>` +
     `<button type="button" class="more" id="more-${f.id}" aria-expanded="${open}" aria-controls="det-${f.id}" aria-label="${esc(t("details_of", { name: label(f) }))}">` +
       `<span class="lbl">${esc(t("details"))}</span><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5l4 4 4-4"/></svg></button>` +
     `<div class="ext"></div>`;
   const ext = d.querySelector(".ext");
-  const add = (html) => ext.insertAdjacentHTML("beforeend", html);
-
-  // a pack: what it brings, and the mods of this list it already holds
-  const parts = featText(f.id, "parts", null);
-  if (parts) add(`<ul class="parts">${parts.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>`);
-  const held = (f.includes || []).map(featById).filter(Boolean);
-  if (held.length) add(`<p class="also">${t("also", { n: held.length, names: held.map((g) => `<b>${esc(label(g))}</b>`).join(", ") })}</p>`);
-  // just unticked: said on the row just ticked, where the eyes are, with Undo
-  if (pick.swap && pick.swap.by === f.id) add(`<p class="say swap">${esc(swapText(pick.swap))} <button type="button" class="lnk" data-undo>${esc(t("undo"))}</button></p>`);
-  // before ticking: why this mod doesn't go with a ticked one
-  if (!on) for (const g of features()) {
-    const by = g !== f && isOn(g.id) && clashVia(f, g);
-    if (by) add(`<p class="say clash">${t("clash_row", { name: esc(t("quoted", { name: label(g) })), why: esc(clashWhy(by, g)) })}</p>`);
-  }
-  // several variants of one mod (none today): a sub-choice once ticked
-  if (!f.engines && f.variants.length > 1 && sel.on) add(renderVariants(f, sel));
-  if (f.engines && sel.on) add(renderEngines(f, sel, status));
-  if (sel.on && featText(f.id, "note", "")) add(`<p class="say"><b>${esc(t("good_to_know"))}</b> ${esc(featText(f.id, "note", ""))}</p>`);
-  add(renderDetails(f, sel, open));
+  const parts = featText(f.id, "parts", null);                 // what a big feature brings, on one line
+  if (parts) ext.insertAdjacentHTML("beforeend", `<ul class="parts">${parts.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>`);
+  ext.insertAdjacentHTML("beforeend", renderDetails(f, open));
   return d;
 }
 
-function swapText(sw) {
-  return t(sw.off.length > 1 ? "swapped_n" : "swapped",
-    { off: sw.off.map((id) => t("quoted", { name: label(featById(id)) })).join(", "), on: t("quoted", { name: label(featById(sw.by)) }) });
-}
-
-function renderVariants(f, sel) {
-  return `<div class="variants">` + f.variants.map((v) =>
-    `<label><input type="radio" name="var-${f.id}" value="${esc(v.id)}"${sel.variant === v.id ? " checked" : ""}>` +
-    `<span>${esc(featText(v.id, "label", v.label || v.id))}<small>${esc(featText(v.id, "note", ""))}</small></span></label>`).join("") + `</div>`;
-}
-
-// An engine card (real Syntakt engines): one pad per engine, the state of the ticked combination, and the warnings in
-// full. The pads sit outside the row's label: no nested labels.
-function renderEngines(f, sel, status) {
-  const pads = f.engines.map((e) => `<label class="pad"><input type="checkbox" id="eng-${e.code}" name="eng-${f.id}" value="${e.code}"` +
-    `${sel.engines.includes(e.code) ? " checked" : ""}><b>${esc(e.name)}</b><span class="vh"> — </span><small class="pl">${esc(e.label)}</small>` +
-    `<small>${esc(featText("eng-" + e.code, "short", ""))}</small></label>`).join("");
-  let html = `<div class="pads" role="group" aria-label="${esc(t("eng_group"))}">${pads}</div>`;
-  const combo = comboOf(f, sel);
-  const tg = isOn("model-tg"), tgName = label(featById("model-tg") || { id: "model-tg", label: "Model-TG" });
-  // MACRO or ACID ticked too: they come after the engines, and the combinations tried are those with them
-  const j = joinKey(f), plus = j ? j.split("+").map((id) => " + " + t("join_name_" + id)).join("") : "";
-  const list = (c, withTg) => (c.engines.length === f.engines.length ? t("combo_all", { n: c.engines.length })
-    : c.engines.map((k) => f.engines.find((e) => e.code === k).name).join(" + ")) + plus + (withTg ? " " + t("with_mod", { name: tgName }) : "");
-  if (combo) {
-    // the ticked engines by name, even when they are all ticked
-    const names = sel.engines.map((k) => f.engines.find((e) => e.code === k).name).join(" + ") + plus +
-      (tg ? " " + t("with_mod", { name: tgName }) : "");
-    html += `<p class="combo">${tagHtml(status)}<b>${esc(names)}.</b> ` +
-      `${esc(t(status === "tested" ? "combo_tested" : "combo_new"))}</p>`;
-    if (status !== "tested") {
-      // the choices already tried on the machine; "Use this choice" only changes this card's engines
-      const here = f.combos.filter((c) => triedWith(j ? c[j] : c, tg));
-      const there = f.combos.filter((c) => triedWith(j ? c[j] : c, !tg));
-      if (here.length) {
-        const best = here.slice().sort((a, b) => dist(a, sel) - dist(b, sel))[0];
-        html += `<p class="combo">${esc(t("combo_known", { list: list(best, tg) }))} ` +
-          `<button type="button" class="lnk" data-take="${f.id}" data-codes="${best.engines.join()}">${esc(t("take"))}</button></p>`;
-      } else if (there.length) html += `<p class="combo">${esc(t("combo_known", { list: there.map((c) => list(c, !tg)).join(" ; ") }))}</p>`;
-    }
-  }
-  if (tg) html += `<p class="combo quiet">${esc(t("with_tg"))}</p>`;
-  for (const id of j ? j.split("+") : []) html += `<p class="combo quiet">${esc(t("with_" + id))}</p>`;
-  html += `<p class="say"><b>${esc(t("good_to_know"))}</b> ${esc(t("renumber"))}</p>`;
-  return html;
-}
-const dist = (c, sel) => c.engines.filter((x) => !sel.engines.includes(x)).length + sel.engines.filter((x) => !c.engines.includes(x)).length;
-
 // The Details drawer: the full description and the facts. Always in the page, hidden while closed.
-function renderDetails(f, sel, open) {
+function renderDetails(f, open) {
   const rows = [];
   const row = (k, v) => rows.push(`<dt>${esc(t(k))}</dt><dd>${v}</dd>`);
-  const tgName = label(featById("model-tg") || { id: "model-tg", label: "Model-TG" });
-  const comboName = (g, c) => (c.engines.length === g.engines.length ? t("combo_all", { n: c.engines.length }) : c.label);
-  let status = esc(t(f.status === "tested" ? "d_tested" : "d_exp"));
-  if (f.combos) {
-    const tried = f.combos.filter((c) => c.tested).map((c) => comboName(f, c))
-      .concat(f.combos.filter((c) => c.tg_tested).map((c) => comboName(f, c) + " " + t("with_mod", { name: tgName })));
-    for (const k of f.joined || []) {                // with MACRO (notes/50), ACID (notes/54 §11)
-      const plus = k.split("+").map((id) => " + " + t("join_name_" + id)).join("");
-      tried.push(...f.combos.filter((c) => triedWith(c[k], false)).map((c) => comboName(f, c) + plus),
-        ...f.combos.filter((c) => triedWith(c[k], true)).map((c) => comboName(f, c) + plus + " " + t("with_mod", { name: tgName })));
-    }
-    status = esc(tried.length ? t("d_combos", { list: tried.join(" ; ") }) : t("d_exp"));
-  }
-  // MACRO, ACID: with the Syntakt engines, ACID with MACRO, their own tests
-  for (const host of hostsOf(f).map(featById).filter(Boolean)) {
-    const mine = (host.joined || []).filter((k) => k.split("+").includes(f.id));
-    const ok = host.combos ? host.combos.filter((c) => mine.some((k) => triedWith(c[k], false) || triedWith(c[k], true)))
-      : mine.some((k) => triedWith(host.versions[k], false) || triedWith(host.versions[k], true)) ? [null] : [];
-    status += " " + esc(ok.length ? (host.combos ? t("d_with_tested", { name: label(host), list: ok.map((c) => comboName(host, c)).join(" ; ") })
-      : t("d_with_tested_one", { name: label(host) })) : t("d_join_new", { name: label(host) }));
-  }
-  // a card with variants that holds others (MACRO): its versions with them
-  for (const k of f.versions ? f.joined || [] : []) {
-    const v = f.versions[k], names = k.split("+").map((id) => label(featById(id) || { id, label: id })).join(", ");
-    status += " " + esc(triedWith(v, false) || triedWith(v, true) ? t("d_with_tested_one", { name: names }) : t("d_join_new", { name: names }));
-  }
-  // Model-TG: its combined versions already tried (not on a card that only rides along, sample preview)
-  for (const gid of f.requires ? [] : Object.keys(f.with || {})) {
-    const g = featById(gid), ok = ((g && g.combos) || []).filter((c) => c.tg_tested);
-    if (ok.length) status += " " + esc(t("d_with_tested", { name: label(g), list: ok.map((c) => comboName(g, c)).join(" ; ") }));
-  }
-  row("d_status", status);
-  const held = (f.includes || []).map(featById).filter(Boolean);
-  if (held.length) row("d_contains", t("d_contains_v", { names: held.map((g) => `<b>${esc(label(g))}</b>`).join(", ") }));
-  const clash = features().filter((g) => g !== f && clashVia(f, g));
-  if (clash.length) row("d_clash", clash.map((g) => t("d_clash_v", { name: `<b>${esc(label(g))}</b>`, why: esc(clashWhy(clashVia(f, g), g)) })).join(" "));
+  row("d_status", esc(t(f.status === "tested" ? "d_tested" : "d_exp")));
   if (f.needs === "syntakt") row("d_file", esc(t("d_file_syntakt")));
-  const req = f.requires && featById(f.requires);
-  if (req) row("d_requires", t("d_requires_v", { name: `<b>${esc(label(req))}</b>` }));
-  if (f.engines) row("d_engines", f.engines.map((e) =>
-    `<b>${esc(e.name)}</b> (${esc(e.label)})${featText("eng-" + e.code, "note", "") ? " : " + esc(featText("eng-" + e.code, "note", "")) : ""}`).join("<br>"));
-  if (!sel.on && featText(f.id, "note", "")) row("d_note", esc(featText(f.id, "note", "")));
-  if (GUIDE_OF[f.id]) row("d_guide", `<a class="feat-guide" href="${GUIDE}#${GUIDE_OF[f.id]}">${esc(t("read_guide"))} <span aria-hidden="true">→</span></a>`);
-  return `<div class="det" id="det-${f.id}"${open ? "" : " hidden"}><p>${esc(featText(f.id, "desc", f.desc))}</p><dl class="facts">${rows.join("")}</dl></div>`;
+  if (f.id === "syntakt") row("d_engines", osMachines().filter((m) => ["sd", "cp", "toy", "bits", "swarm"].includes(m.code))
+    .map((m) => `<b>${esc(m.name)}</b> (${esc(m.label)})${featText("eng-" + m.code, "short", "") ? ": " + esc(featText("eng-" + m.code, "short", "")) : ""}`).join("<br>"));
+  if (featText(f.id, "note", "")) row("d_note", esc(featText(f.id, "note", "")));
+  if (f.guide) row("d_guide", `<a class="feat-guide" href="${GUIDE}#${esc(f.guide)}">${esc(t("read_guide"))} <span aria-hidden="true">→</span></a>`);
+  return `<div class="det" id="det-${f.id}"${open ? "" : " hidden"}><p>${esc(featText(f.id, "desc", ""))}</p><dl class="facts">${rows.join("")}</dl></div>`;
 }
 
-// Section chips: they jump to a section (never filter); the LED lights when the section holds a ticked mod.
+// Section chips: they jump to a section.
 function renderCats() {
   const box = $("cats");
   if (!box) return;
@@ -3096,91 +949,12 @@ function renderCats() {
   box.innerHTML = CATS.map((c) => {
     const mods = features().filter((f) => catOf(f) === c);
     if (!mods.length) return "";
-    const lit = mods.some((f) => isOn(f.id) || includedBy(f));
-    const n = mods.filter(matches).length;
-    return `<li class="${n ? "" : "zero"}"><a href="#cat-${c}" data-cat="${c}"><span class="led${lit ? " on" : ""}" aria-hidden="true"></span>` +
-      `${esc(t("cat_" + c))} <span class="n">${n}</span>${lit ? `<span class="vh">${esc(t("cat_lit"))}</span>` : ""}</a></li>`;
+    return `<li><a href="#cat-${c}" data-cat="${c}">${esc(t("cat_" + c))} <span class="n">${mods.length}</span></a></li>`;
   }).join("");
 }
 
-function renderFind() {
-  if (!$("mod-find")) return;
-  $("mod-find").hidden = features().length < SEARCH_FROM;
-  const q = $("mod-q");
-  q.placeholder = t("search_ph");
-  $("mod-q-clr").setAttribute("aria-label", t("search_clear"));
-  $("mod-q-clr").hidden = !pick.q;
-  if (q.value !== pick.q) q.value = pick.q;
-  const found = $("mod-found");
-  found.hidden = !searching();
-  if (searching()) {
-    const n = features().filter(matches).length;
-    found.innerHTML = (n ? t("found", { n, total: features().length, q: esc(pick.q.trim()) }) : t("found_none", { q: esc(pick.q.trim()) })) +
-      `<button type="button" class="lnk soft" data-showall>${esc(t("show_all"))}</button>`;
-  }
-}
-
-// "Your selection": what will be installed, in display order, with × to untick; stuck to the bottom of the screen
-// while the list scrolls (where IntersectionObserver exists).
-function renderSelection() {
-  const box = $("mod-sel");
-  if (!box) return;
-  const on = order().filter((f) => isOn(f.id));
-  const inc = features().filter((f) => includedBy(f));
-  const exp = on.filter((f) => statusOf(f) === "experimental");
-  if (!on.length) {
-    box.innerHTML = `<div class="sel-h"><div class="sel-sum"><span class="sel-t" id="sel-title" tabindex="-1">${esc(t("sel_title"))}</span></div></div>` +
-      `<p class="sel-none">${esc(t("sel_none"))}</p>`;
-    box.classList.remove("open");
-    live(t("sel_none"));
-    return;
-  }
-  const counts = `<span class="sel-n">${esc(t(on.length > 1 ? "sel_n" : "sel_n1", { n: on.length })) + (inc.length ? " " + esc(t("sel_incl", { n: inc.length })) : "")}</span>` +
-    (exp.length ? `<span class="dotsep"> · </span><span class="fx">${esc(t(exp.length > 1 ? "sel_exp" : "sel_exp1", { n: exp.length }))}</span>` : "");
-  const chip = (f) => {
-    const sel = selOf(f);
-    const mine = inc.filter((g) => (f.includes || []).includes(g.id));
-    const extra = f.engines ? sel.engines.map((c) => f.engines.find((e) => e.code === c).name).join(", ")
-      : mine.length ? t("sel_incl", { n: mine.length }) : "";
-    return `<li class="chip"><span>${esc(label(f))}${extra ? ` <span class="ci">${esc(extra)}</span>` : ""}</span>` +
-      (statusOf(f) === "experimental" ? `<span class="cx" role="img" aria-label="${esc(t("experimental"))}" title="${esc(t("experimental"))}"></span>` : "") +
-      `<button type="button" class="x" data-off="${f.id}" aria-label="${esc(t("sel_remove", { name: label(f) }))}">×</button></li>`;
-  };
-  const sw = pick.swap;
-  box.innerHTML = `<div class="sel-h">` +
-      `<div class="sel-sum"><span class="sel-t" id="sel-title" tabindex="-1">${esc(t("sel_title"))}</span><span class="sel-c">${counts}</span></div>` +
-      `<div class="sel-x">` +
-        `<button type="button" class="lnk soft clear" data-clear>${esc(t("sel_clear"))}</button>` +
-        `<button type="button" class="lnk soft sel-more" aria-expanded="${pick.selOpen}" aria-controls="sel-body">${esc(t(pick.selOpen ? "sel_hide" : "sel_show"))}</button>` +
-        `<a class="btn sel-next" href="#step-file">${esc(t("sel_next"))} <span aria-hidden="true">↓</span></a>` +
-      `</div>` +
-    `</div>` +
-    `<div class="sel-body" id="sel-body">` +
-      `<ul class="chips">${on.map(chip).join("")}${choiceNeedsSyntakt() ? `<li class="sel-need">${esc(t("sel_syntakt"))}</li>` : ""}` +
-        `${st.machine !== "cyc" ? `<li class="sel-need">${esc(t("sel_samples"))}</li>` : ""}</ul>` +
-      (sw ? `<p class="sel-msg">${esc(swapText(sw))} <button type="button" class="lnk" data-undo>${esc(t("undo"))}</button></p>` : "") +
-      `<p class="sel-foot"><button type="button" class="lnk soft" data-clear>${esc(t("sel_clear"))}</button></p>` +
-    `</div>`;
-  box.classList.toggle("open", pick.selOpen);
-  // short announcement for screen readers: the live region stays in place, only its text changes
-  live(box.querySelector(".sel-c").textContent + (sw ? ". " + swapText(sw) : ""));
-}
-function live(text) {
-  const el = $("mod-live");
-  if (el && el.textContent !== text) el.textContent = text;
-}
-
-// One listener per zone (delegation): they survive the rebuild that follows every change.
+// One listener per zone (delegation): they survive the rebuild that follows every language change.
 function wirePicker() {
-  const changed = () => { renderFeatures(); update(); };
-  $("features").addEventListener("change", (e) => {
-    const el = e.target, f = (id) => featById(id);
-    if (el.id && el.id.startsWith("feat-") && f(el.id.slice(5))) setOn(f(el.id.slice(5)), el.checked);
-    else if (el.name && el.name.startsWith("eng-") && f(el.name.slice(4))) setEngine(f(el.name.slice(4)), el.value, el.checked);
-    else if (el.name && el.name.startsWith("var-") && f(el.name.slice(4))) { selOf(f(el.name.slice(4))).variant = el.value; pick.swap = null; }
-    else return;
-    changed();
-  });
   $("features").addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b) return;
@@ -3192,57 +966,14 @@ function wirePicker() {
       const c = b.id.slice(6);
       if (pick.folded.has(c)) pick.folded.delete(c); else pick.folded.add(c);
       renderFeatures();
-    } else if (b.hasAttribute("data-undo")) {
-      const by = undo();
-      changed();
-      if (by && $("feat-" + by)) $("feat-" + by).focus({ preventScroll: true });
-    } else if (b.dataset.take && featById(b.dataset.take)) {
-      selOf(featById(b.dataset.take)).engines = b.dataset.codes.split(",");
-      pick.swap = null;
-      changed();
     }
   });
   $("cats").addEventListener("click", (e) => {               // a jump to a folded section unfolds it first
     const a = e.target.closest("a[data-cat]");
     if (a && pick.folded.delete(a.dataset.cat)) renderFeatures();
   });
-  $("mod-sel").addEventListener("click", (e) => {
-    const b = e.target.closest("button");
-    if (!b) return;
-    if (b.dataset.off && featById(b.dataset.off)) {
-      const xs = [...$("mod-sel").querySelectorAll("[data-off]")], k = xs.indexOf(b);
-      setOn(featById(b.dataset.off), false);
-      changed();
-      const next = $("mod-sel").querySelectorAll("[data-off]")[k] || $("sel-title");   // focus: the next ×, else the title
-      if (next) next.focus({ preventScroll: true });
-      return;
-    }
-    if (b.hasAttribute("data-clear")) { for (const id in selection) selection[id].on = false; pick.swap = null; }
-    else if (b.hasAttribute("data-undo")) {
-      const by = undo();
-      changed();
-      if (by && $("feat-" + by)) $("feat-" + by).focus({ preventScroll: true });
-      return;
-    } else if (b.classList.contains("sel-more")) { pick.selOpen = !pick.selOpen; renderFeatures(); return; }
-    else return;
-    changed();
-  });
-  $("mod-q").addEventListener("input", (e) => { pick.q = e.target.value; renderFeatures(); });
-  $("mod-q").addEventListener("keydown", (e) => { if (e.key === "Escape") { pick.q = ""; renderFeatures(); } });
-  $("mod-q-clr").addEventListener("click", () => { pick.q = ""; renderFeatures(); $("mod-q").focus(); });
-  $("mod-found").addEventListener("click", (e) => { if (e.target.closest("[data-showall]")) { pick.q = ""; renderFeatures(); } });
-  // the selection bar floats only where IntersectionObserver exists (not in jsdom); its shadow only while it floats
-  if ("IntersectionObserver" in window) {
-    $("panel-mods").classList.add("js-sticky");
-    new IntersectionObserver(([en]) => {
-      $("mod-sel").classList.toggle("stuck", !en.isIntersecting && en.boundingClientRect.top > 0);
-    }).observe($("mod-sel-end"));
-  }
 }
 
-// "by drumkilla" / "based on ms-multi-output by scottmetoyer", linked to the repository; a mod received without
-// a public repository: "based on a mod by djd_oz", no link.
-// A link inside the card's <label> doesn't toggle the checkbox (interactive content).
 function creditHtml(c) {
   if (!c.repo) return t(c.kind === "based" ? "credit_mod" : "credit_by", { who: esc(c.who) });
   const url = "https://github.com/" + c.repo;
@@ -3265,51 +996,17 @@ function renderCredits() {
 // Model-TG with the Syntakt engines: the combined version (notes/31), its base (f.with) then the engines' tweak
 // built on top of it (combo.tg). MACRO with the engines adds nothing itself: the engines take their version with MACRO
 // (combo.macro, notes/50). In card order (the REF_MAINOS keys); MCBuilder.build applies them in tweak order.
-function isOn(id) {
-  return !!(selection[id] && selection[id].on);
-}
 
+// The tweaks of the OS (os.json order: the REF_MAINOS key); MCBuilder.build applies them in tweak order.
 function chosenTweaks() {
   const tw = window.MC_TWEAKS;
-  if (!tw || !tw.features) return [];
-  const out = [];
-  for (const f of tw.features) {
-    const sel = selection[f.id];
-    if (!sel || !sel.on) continue;
-    if (joinedTo(f)) continue;                    // MACRO, ACID with the engines, ACID with MACRO: in its host's version
-    const v = f.engines ? versionOf(f, comboOf(f, sel)) || {} : hostVersion(f);
-    let id = v ? (isOn("model-tg") ? v.tg : v.id) : f.variants.length > 1 ? sel.variant : f.variants[0].id;
-    if (!v) for (const [g, alt] of Object.entries(f.with || {})) if (isOn(g)) id = alt;
-    const tk = tw.tweaks.find((x) => x.id === id);
-    if (tk) out.push(tk);
-  }
-  return out;
+  if (!tw || !tw.os) return [];
+  return tw.os.tweaks.map((id) => tw.tweaks.find((x) => x.id === id)).filter(Boolean);
 }
 function chosenLabels() {
-  const tw = window.MC_TWEAKS, out = [];
-  for (const f of (tw && tw.features) || []) {
-    const sel = selection[f.id];
-    if (!sel || !sel.on) continue;
-    let l = featText(f.id, "label", f.label);
-    if (f.engines) l += ` — ${(comboOf(f, sel) || {}).label || ""}`;
-    else if (f.variants.length > 1) l += ` — ${featText(sel.variant, "label", sel.variant)}`;
-    out.push(l);
-  }
-  return out;
+  return [osName()];
 }
-
-// A mod whose engines are copied from the Syntakt OS (tweak "append", notes/17).
-// Real Syntakt engines ticked, in catalog order: [{ code, name, label }].
-function chosenEngines() {
-  const f = ((window.MC_TWEAKS && window.MC_TWEAKS.features) || []).find((x) => x.engines);
-  const sel = f && selection[f.id];
-  if (!sel || !sel.on) return [];
-  const j = joinKey(f);                          // MACRO, then ACID, come after the engines (notes/50, notes/54 §11)
-  return f.engines.filter((e) => sel.engines.includes(e.code))
-    .concat((j ? j.split("+") : []).map((id) => ({ code: id, name: t("join_name_" + id), label: t("join_label_" + id) })));
-}
-
-// The ticked mods need the Syntakt OS file (the selection bar says so in any tab); step 2 asks for it in the Mods tab.
+// The OS reads the Syntakt engines from the official Syntakt OS file: step 2 asks for it in the OS tab.
 function choiceNeedsSyntakt() {
   return chosenTweaks().some((x) => x.append && x.append.syntakt);
 }
@@ -3334,7 +1031,6 @@ function setMachine(m) {
   st.machine = m;
   try { localStorage.setItem("mc-machine", m); } catch (e) { /* private mode */ }
   st.finished = null;
-  renderSelection();                               // its "+ your Model:Samples OS file" line
   update();
 }
 
@@ -3467,7 +1163,6 @@ function update() {
 
 // Decide what will be sent, building it when needed.
 function prepareFirmware() {
-  dropOrphans();                                   // never a card without the card it requires
   const os = st.os;
   st.building = false;
   st.buildKey = null;
@@ -3498,9 +1193,8 @@ function prepareFirmware() {
     if (syntakt) opts.syntakt = syntakt;
     const r = window.MCBuilder.build(raw, window.MC_TWEAKS.device, tweaks, opts);
     log(`Built ${key}: MAIN OS ${r.mainOsSha.slice(0, 12)}…, ${r.patchedBytes} bytes patched, ${r.raw.length} bytes.`, "is-ok");
-    return { raw: r.raw, name: `model-cycles_OS1.13_${key}.syx`, kind: "built", mods: labels, sha: r.mainOsSha,
-      ref: !!REF_MAINOS[key], modsRef: r.modsChecked, sixch: tweaks.some((x) => x.id.startsWith("6ch")),
-      sdv: sdv && (tweaks.find((x) => x.append && x.append.syntakt) || {}).id, engines: sdv ? chosenEngines() : [] };
+    return { raw: r.raw, name: osFile(), kind: "built", mods: labels, sha: r.mainOsSha,
+      ref: !!REF_MAINOS[key], modsRef: r.modsChecked, machines: osMachines() };
   };
   if (!onSamples()) { buildCached(key, makeCycles); return; }
   // A Model:Samples: the same Model:Cycles build (checked as above), then inside the official Model:Samples firmware
@@ -3515,7 +1209,7 @@ function prepareFirmware() {
     log(`Packed ${key} for a Model:Samples (${into === "samples" ? "Samples OS" : "Cycles OS"} running): ` +
       `MAIN OS ${r.mainOsSha.slice(0, 12)}…, ${r.raw.length} bytes.`, "is-ok");
     return Object.assign({}, base, { raw: r.raw, machine: st.machine,
-      name: `model-cycles_OS1.13_${key}_for-samples_${st.machine === "smp" ? "smp-os" : "cyc-os"}.syx` });
+      name: osFile(`_for-samples_${st.machine === "smp" ? "smp-os" : "cyc-os"}`) });
   });
 }
 
@@ -3823,7 +1517,7 @@ function missingReason() {
 function render() {
   refreshDevTexts();
   // step 2 status
-  $("h2s").textContent = t(needsSamplesFile() ? "s2_samples" : "s2");
+  $("h2s").textContent = t(needsSamplesFile() ? "s2_samples" : needsSyntakt() ? "s2_os" : "s2");
   $("drop2-wrap").hidden = !needsSamplesFile();
   $("mach-pane").hidden = st.machine === "cyc";
   $("mach-w-smp").hidden = st.machine !== "smp";
@@ -4022,8 +1716,8 @@ async function flash() {
     r.className = "result ok";
     r.innerHTML = `<p><b>${esc(t(fast ? "done_title_fast" : "done_title"))}</b></p>` +
       (fast ? `<div class="status" id="after" aria-live="polite"></div>` : `<p>${t("done_body")}</p>`) +
-      (fw.sixch ? `<p>${t("done_6ch")}</p>` : "") +
-      (fw.sdv ? `<p>${t(/^syntakt-tg-/.test(fw.sdv) ? "done_syn_tg" : "done_syn", { list: fw.engines.map((e) => `<b>${esc(e.name)}</b> (${esc(e.label)})`).join(", ") })}</p>` : "") +
+      (fw.kind === "built" && fw.machines && fw.machines.length
+        ? `<p>${t("done_os", { list: fw.machines.map((e) => `<b>${esc(e.name)}</b> (${esc(e.label)})`).join(", ") })}</p>` : "") +
       (fw.kind === "samples" ? `<p>${t("done_samples")}</p>` : "") +
       (fw.kind === "cos" ? `<p>${t("done_cos")}</p>` : "") +
       (fw.machine ? `<p>${t("done_mach")}</p>` : "") +

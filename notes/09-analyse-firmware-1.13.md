@@ -82,7 +82,7 @@ Mon décodage des blobs (interfaces Audio Control + MIDIStreaming pour les 101 o
 ## 4ter. Tweaks QoL prêts à l'emploi (drumkilla, testés sur vrai matériel)
 
 `[FAIT]` Trois tweaks pour le M:C 1.13, **testés sur de vraies machines** par leur auteur, buildables avec notre chaîne :
-- **latching-mute** : verrouiller le mode mute (maintenir TRK + tap FUNC), corrige la gêne signalée dans le [dossier §7.2](../dossier-technique.md) ;
+- **latching-mute** : verrouiller le mode mute (maintenir TRK + tap FUNC), corrige la gêne signalée dans le [dossier §7.2](00-dossier-technique.md) ;
 - **trig-preview** : séquenceur à l'arrêt, maintenir un pas + PAGE pour l'écouter (note, longueur, p-locks) ;
 - **browser-scroll** : défilement des noms longs dans le navigateur.
 

@@ -1,5 +1,7 @@
 # 42 — Jouer les accords d'une gamme avec TRIG 1–16
 
+> **Retiré du projet le 18/10/2026** (décision de Maxime, [notes/71](71-os-unique.md)) : trop de conflits avec le reste de l'OS unique (mêmes masques que l'écoute des samples, incompatible Model-TG). Le tweak 45, le générateur, les sources et les preuves sont supprimés du dépôt ; ils restent dans l'historique git avant cette date. Cette note est gardée en archive.
+
 Contribution de **Nico Heuser** ([byNicoHeuser](https://github.com/byNicoHeuser)),
 [PR #46](https://github.com/18nelli18/Modded-Cycles/pull/46), intégrée au flasher par ce projet (renumérotation et
 relecture au §14). Sa demande, dans sa propre conversation du **05/10/2026** : choisir une gamme pour CHORD, jouer

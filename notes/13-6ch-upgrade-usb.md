@@ -7,7 +7,7 @@ Ce qui est fait correspond au point E de la feuille de route ([08 §E](08-feuill
 > ✅ **Validée sur un vrai Model:Cycles le 29/09/2026.** L'utilisateur a flashé `6ch-usbup` par USB (`CONFIG > UPGRADE`) depuis l'OS officiel.
 > Les 6 canaux marchent. Il a ensuite reflashé par USB, **avec `6ch-usbup` installé**, une image `6ch-usbup` + SD VINTAGE, qui a pris.
 > La mise à jour par USB survit donc au mod : c'est la variante qu'installe le flasher web, qui n'envoie plus qu'en USB.
-> La récupération par le MIDI IN ([FLASH §5](../FLASH.md#5-récupération-revenir-à-loriginal)) reste la voie de secours.
+> La récupération par le MIDI IN ([RECOVERY.md](../RECOVERY.md)) reste la voie de secours.
 
 > **Mise à jour (build sur l'image réelle, [14 §5](14-machine-sd-vintage.md#5-place-libre--les-caves-0xff-étaient-des-masques-de-sprites)).**
 > - La première cave, `0x40154ae4`, est en fait le **masque 0xFF d'un sprite** 32×260 : les stubs y auraient fait des trous à l'écran, et `build.py` exigeait `--force-cave`.

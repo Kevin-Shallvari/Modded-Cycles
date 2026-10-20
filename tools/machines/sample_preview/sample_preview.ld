@@ -3,7 +3,7 @@
  *   - 0x40185018 : les copies des pistes 3 à 5 ;
  *   - 0x40185968 : la note jouée (pv_note) et la copie de la piste 6 ;
  *   - 0x40185c58 : le navigateur (pv_parse) et le son écouté qu'il construit.
- * Ces quatre masques servent aussi à chord-keys, qui exclut Model-TG : les deux tweaks ne vont jamais ensemble.
+ * (Chord Keys, retiré du projet le 18/10/2026, utilisait les mêmes masques.)
  * Les données sont écrites dans l'image : ces zones ne sont pas remises à zéro au démarrage. */
 SECTIONS
 {

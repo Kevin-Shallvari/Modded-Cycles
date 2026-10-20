@@ -1,6 +1,6 @@
 # 10 · Faisabilité des fonctionnalités souhaitées
 
-Évaluation au 25/09/2026, fondée sur l'analyse de l'image OS 1.13 ([09](09-analyse-firmware-1.13.md)), du fil forum ([dossier](../dossier-technique.md)) et des dépôts amont.
+Évaluation au 25/09/2026, fondée sur l'analyse de l'image OS 1.13 ([09](09-analyse-firmware-1.13.md)), du fil forum ([dossier](00-dossier-technique.md)) et des dépôts amont.
 Machine **pas encore reçue** : tout ce qui suit est du travail « sans matériel ». Chaque item dit ce qui est faisable **maintenant**, ce qui demandera **une validation matérielle**, et l'effort.
 
 ## Échelle
@@ -39,7 +39,7 @@ Machine **pas encore reçue** : tout ce qui suit est du travail « sans matérie
 
 ### 3. Modifier les algorithmes d'effet — 🔴 (mais réglages possibles 🟡)
 - Reverb et delay sont du **DSP écrit à la main en assembleur ColdFire**. Remplacer un *algorithme* = réécrire du DSP de zéro : hors de portée réaliste sans un très gros travail.
-- **Ce qui est faisable** : ajuster des **paramètres, plages ou valeurs par défaut** d'effet (méthode de `octa-bt-pt` sur l'Octatrack). Rappel : la reverb a déjà un paramètre Tone (FUNC + Reverb Size), le delay un filtre HP/LP fixe ([dossier §5.4](../dossier-technique.md)).
+- **Ce qui est faisable** : ajuster des **paramètres, plages ou valeurs par défaut** d'effet (méthode de `octa-bt-pt` sur l'Octatrack). Rappel : la reverb a déjà un paramètre Tone (FUNC + Reverb Size), le delay un filtre HP/LP fixe ([dossier §5.4](00-dossier-technique.md)).
 - Verdict : pas de nouveaux algorithmes ; des retouches de paramètres, oui, à cadrer précisément.
 
 ### 4. Moteur Sample (charger des samples comme un Model:Samples) — 🔴
@@ -75,7 +75,7 @@ Machine **pas encore reçue** : tout ce qui suit est du travail « sans matérie
 - Bon candidat une fois le multipiste validé : effort moyen, caves suffisantes.
 
 ### 10. Mode polyphonique du moteur de synthé — 🔴
-- **1 voix par piste, sans vol de voix** (confirmé par Ess, [dossier §4.4](../dossier-technique.md)). La polyphonie = plusieurs voix par piste = changement fondamental du moteur + coût CPU sur une plateforme déjà juste.
+- **1 voix par piste, sans vol de voix** (confirmé par Ess, [dossier §4.4](00-dossier-technique.md)). La polyphonie = plusieurs voix par piste = changement fondamental du moteur + coût CPU sur une plateforme déjà juste.
 - Verdict : très difficile, à considérer en dernier.
 
 ---

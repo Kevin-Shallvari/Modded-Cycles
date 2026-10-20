@@ -92,4 +92,4 @@ Deux écarts, sans effet sur ce qui part sur le câble :
 
 Aucun firmware n'est fourni : la page envoie le fichier construit sur l'ordinateur à partir de l'OS officiel de
 l'utilisateur. La récupération d'une machine qui ne démarre plus passe toujours par le menu de démarrage et le MIDI IN
-([FLASH.md](../FLASH.md), [06](06-flash-et-recuperation.md)).
+([RECOVERY.md](../RECOVERY.md), [06](06-flash-et-recuperation.md)).

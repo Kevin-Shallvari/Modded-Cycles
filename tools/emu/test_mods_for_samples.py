@@ -43,7 +43,9 @@ REPO = HERE.parent.parent
 # combinaisons de l'échantillon REF_MAINOS (clés de la page, ordre des cartes) : Model-TG seul, avec la sortie 6 canaux
 # (le rapport d'akrism, notes/41 §8), avec MACRO, et la plus grosse de l'échantillon
 COMBOS = ["model-tg", "6ch-usbup+model-tg", "model-tg-st+sample-preview-st+macro-tg",
-          "6ch-usbup+model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm-macro"]
+          # le Modded Cycles OS (os.json) : la seule combinaison de REF_MAINOS depuis la 2.0 ; les trois autres se
+          # construisent avec build.py -t (bibliothèque de tweaks), sans référence dans la page
+          "model-tg-st+sample-preview-st+trig-hold+arp+tempo-max+boot-anim+multiline-browser+level-pan-values+trigless-dim+midi-live-both+lfo-plus+syntakt-tg-sd-cp-toy-bits-swarm-macro-acid"]
 check = T.check
 
 

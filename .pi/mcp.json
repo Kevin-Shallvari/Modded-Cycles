@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "rea": {
+      "command": "npx",
+      "args": ["-y", "rea-agents@6.7.0", "mcp"],
+      "enabled": false,
+      "description": "Reverse-engineering MCP server (Ghidra/objdump/Rizin) for native binary analysis. Set REA_OBJDUMP_COMMAND=m68k-elf-objdump or GHIDRA_INSTALL_DIR before enabling."
+    }
+  }
+}

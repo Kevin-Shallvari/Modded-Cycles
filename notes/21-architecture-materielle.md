@@ -103,7 +103,7 @@ Ordre officiel à l'arrière : DC IN, USB, MIDI OUT/THRU, MIDI IN, MAIN OUT R/L,
 
 - **`[HYP]`** L'attribution de chaque prise suit l'ordre du manuel ; je ne l'ai pas vérifiée sur la coque.
 - **`[FAIT]`** La machine s'allume en maintenant MAIN VOLUME.
-  - **`[HYP]`** Il n'y a donc pas d'interrupteur mécanique (je n'en vois pas sur la carte) : l'appui de cet encodeur commande un circuit de maintien de l'alimentation, et c'est le logiciel qui coupe. Cela colle avec « l'état n'est sauvegardé qu'à l'extinction par le bouton » ([dossier §7](../dossier-technique.md#7-firmware-stockage-et-mises-à-jour)).
+  - **`[HYP]`** Il n'y a donc pas d'interrupteur mécanique (je n'en vois pas sur la carte) : l'appui de cet encodeur commande un circuit de maintien de l'alimentation, et c'est le logiciel qui coupe. Cela colle avec « l'état n'est sauvegardé qu'à l'extinction par le bouton » ([dossier §7](00-dossier-technique.md#7-firmware-stockage-et-mises-à-jour)).
   - Source : manuel, page 12 : « Press and hold MAIN VOLUME for a second to switch on the Model:Cycles » ([ManualsLib][MANUEL]).
 
 ## 3. Cœur numérique
@@ -112,7 +112,7 @@ Ordre officiel à l'arrière : DC IN, USB, MIDI OUT/THRU, MIDI IN, MAIN OUT R/L,
 
 - **`[FAIT]`** Marquage : logo Freescale, « COLDFIRE », « **MCF54415CMJ250** », « 0N51E », « CTDK2129G ».
   - Source : [photo 8][P8], [photo 9][P9].
-- **`[FAIT]`** C'est le MCF54415 en boîtier 256 MAPBGA, 250 MHz, −40 à +85 °C. Cela répond au `[À FAIRE]` de [03 §1](03-plateforme-coldfire.md#1-processeur) et au 1ᵉʳ point du [dossier §11](../dossier-technique.md#11-points-à-vérifier-hors-du-fil).
+- **`[FAIT]`** C'est le MCF54415 en boîtier 256 MAPBGA, 250 MHz, −40 à +85 °C. Cela répond au `[À FAIRE]` de [03 §1](03-plateforme-coldfire.md#1-processeur) et au 1ᵉʳ point du [dossier §11](00-dossier-technique.md#11-points-à-vérifier-hors-du-fil).
   - Source : *MCF5441x ColdFire Microprocessor Data Sheet*, table 2 « Orderable part numbers » ([NXP][DS-MCF]).
 - **`[FAIT]`** Ce que contient cette puce, et qui sert ici :
 
@@ -187,7 +187,7 @@ Ordre officiel à l'arrière : DC IN, USB, MIDI OUT/THRU, MIDI IN, MAIN OUT R/L,
   - Source : [photo 4][P4].
 - **`[FAIT]`** USB3300 = PHY USB **High Speed**, interface ULPI vers le contrôleur, QFN 32, −40 à +85 °C.
   - Source : fiche USB3300 ([Microchip][DS-USB3300]).
-- **`[FAIT]`** Cela répond au 2ᵉ point du [dossier §11](../dossier-technique.md#11-points-à-vérifier-hors-du-fil) : le port USB est matériellement **High Speed** (480 Mbit/s). C'est ce qu'exploite le mod 6 canaux ([04](04-usb-audio.md)).
+- **`[FAIT]`** Cela répond au 2ᵉ point du [dossier §11](00-dossier-technique.md#11-points-à-vérifier-hors-du-fil) : le port USB est matériellement **High Speed** (480 Mbit/s). C'est ce qu'exploite le mod 6 canaux ([04](04-usb-audio.md)).
 - **`[FAIT]`** Entre U14 et le CPU : réseaux de résistances RN2, RN3, RN20 marqués « 220 » (22 Ω en série sur les lignes ULPI).
   - Source : [photo 4][P4].
 - **`[FAIT]`** Côté prise J5 : L2 (boîtier à 4 plots, probablement une self de mode commun), U19 (petit boîtier 6 broches), L1, L3.
@@ -260,7 +260,7 @@ Ordre officiel à l'arrière : DC IN, USB, MIDI OUT/THRU, MIDI IN, MAIN OUT R/L,
 
 - **`[FAIT]`** Module LCD monochrome dans un cadre blanc (rétroéclairage), relié à la carte par une petite nappe souple. Une rangée de huit petits composants passifs est posée juste à côté.
   - Source : [photo 1][P1].
-- **`[HYP]`** Le contrôleur est sur le verre, piloté en SPI. La rangée de passifs serait celle des condensateurs de sa pompe de charge. Cela répondrait à la question restée sans réponse sur le forum ([dossier §2.5](../dossier-technique.md#25-écran--question-restée-sans-réponse)) : SPI, pas I2C.
+- **`[HYP]`** Le contrôleur est sur le verre, piloté en SPI. La rangée de passifs serait celle des condensateurs de sa pompe de charge. Cela répondrait à la question restée sans réponse sur le forum ([dossier §2.5](00-dossier-technique.md#25-écran--question-restée-sans-réponse)) : SPI, pas I2C.
   - Indice : le bootstrap, qui affiche le menu de démarrage, utilise deux ports SPI (DSPI0 et DSPI1) et aucun des six ports I2C ([§10](#10-recoupement-avec-le-firmware)).
 
 ## 8. Alimentation

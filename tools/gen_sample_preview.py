@@ -38,7 +38,6 @@ BASE = gx.BASE
 OUTS = {"model-tg": TW / "33-sample-preview.json", "model-tg-st": TW / "33-sample-preview-st.json"}
 TG_FILES = {"model-tg": TW / "30-model-tg.json", "model-tg-st": TW / "30-model-tg-st.json"}
 # sections liées -> masque 47x47 libéré qui les reçoit (sample_preview.ld)
-# (ceux aussi de chord-keys, qui exclut Model-TG : déclaré dans « conflicts »)
 CAVES = ((".cave1", 0x40183118), (".cave2", 0x40185018), (".cave3", 0x40185968), (".cave4", 0x40185c58))
 # -D de sample_preview.S -> symbole de Model-TG
 TG_DEFS = {"TG_TOK_OF": "tok_of", "TG_SOUND_OBJ": "sound_obj", "TG_ENSURE_LOADED": "ensure_loaded",
@@ -199,7 +198,6 @@ def make_tweak(tg, writes, pv, used):
         "os": "1.13",
         "section": 3,
         "requires": [tg],
-        "conflicts": ["chord-keys"],                   # mêmes masques ; chord-keys exclut déjà Model-TG
         "symbols": {n: f"{pv[n]:#x}" for n in SYMBOLS},
         "writes": writes,
     }

@@ -338,3 +338,12 @@ details.trouble{margin-top:24px}
 .mach-q{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .mach-pane{margin:0 0 22px;padding:0 0 18px;border-bottom:1px solid var(--line)}
 .mach-credit{margin:0 0 14px}
+
+/* step 1 is one firmware: the OS header (name, version, status, what it needs) and read-only feature rows */
+.os-head{margin:4px 0 20px}
+.os-title{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px;margin:0 0 10px}
+.os-name{font-size:24px;font-weight:700;letter-spacing:-.01em}
+.os-lede{margin:0 0 6px;font-size:15.5px;line-height:1.5;color:var(--ink-2);max-width:78ch}
+.os-lede code{font-size:.92em}
+.mod.fixed .mod-row{grid-template-columns:minmax(0,max-content) minmax(0,1fr) max-content;grid-template-areas:"ttl by tag" "short short short";cursor:default}
+.mod.fixed .ext{padding-left:0}

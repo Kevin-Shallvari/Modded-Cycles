@@ -9,7 +9,7 @@
 #
 # ⚠️ Le flash se fait par l'entrée MIDI IN de l'appareil (jack TRS 3,5 mm) : interface à sortie
 #    TRS + câble jack stéréo, ou interface DIN + adaptateur fourni. Jamais par l'USB.
-#    Lis FLASH.md avant. Tu flashes à tes risques (garantie, brick possible mais récupérable par le MIDI IN).
+#    Lis RECOVERY.md avant. Tu flashes à tes risques (garantie, brick possible mais récupérable par le MIDI IN).
 set -euo pipefail
 cd "$(dirname "$0")"
 

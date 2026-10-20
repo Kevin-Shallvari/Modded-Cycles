@@ -7,7 +7,7 @@ REM    flash.bat --verify mon.syx  verifie seulement (rien envoye)
 REM
 REM /!\ Le flash se fait par l'entree MIDI IN de l'appareil (jack TRS 3,5 mm) : interface a sortie
 REM     TRS + cable jack stereo, ou interface DIN + adaptateur fourni. Jamais par l'USB.
-REM     Lis FLASH.md avant. Tu flashes a tes risques (garantie ; brick possible mais recuperable par le MIDI IN).
+REM     Lis RECOVERY.md avant. Tu flashes a tes risques (garantie ; brick possible mais recuperable par le MIDI IN).
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 

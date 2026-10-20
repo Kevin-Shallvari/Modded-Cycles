@@ -44,6 +44,7 @@ BASE = co.BASE
 END_LIMIT = co.END_LIMIT
 OUT = ROOT / "tweaks" / co.DEV / "REGISTRY.md"
 DETOURS = {0x4EB9: "jsr", 0x4EF9: "jmp", 0x61FF: "bsr.l", 0x60FF: "bra.l"}
+LEAS = {0x41F9 + 0x200 * k: f"lea a{k}" for k in range(7)}     # lea abs.l,an : un crochet s'il vise le code d'un mod
 ENGINE = re.compile(r"^(syntakt-(?:tg-)?)(?:sd|cp|toy|bits|swarm|meter|profile)(?:-(?:sd|cp|toy|bits|swarm))*"
                     r"((?:-macro)?(?:-acid)?)$")
 
@@ -53,6 +54,12 @@ DECLARED = (
             "avec le pattern)", "notes/32 §4"),
     ("lfo-plus", "octets +88..+91 de l'enregistrement d'un son : LFO 2 empaqueté (format de DavidCaruso) ; mémoire "
                  "0x4233f000..0x4233f49b, au-dessus du BSS de l'OS, remise à zéro au premier usage", "notes/56 §3"),
+    ("step-rec", "mémoire 0x4233e800..0x4233e8ff, dans le trou libre au-dessus du BSS de l'OS (0x423380b0..0x4233efff, "
+                 "notes/56 §3.5.2) : les variables du step record, posées à son entrée (seul sr_active, dans un masque, "
+                 "vaut 0 au démarrage)", "notes/73 §3"),
+    ("mod-settings", "octets 0x404e9b80..0x404e9b8f du bloc des réglages de l'OS (0x404e9b10, 272 o, flash 0x78000), "
+                     "hors de sa somme de contrôle : l'enregistrement « MODS » des réglages des mods "
+                     "(0x404e9b63..0x404e9c0f n'est ni lu ni écrit par l'OS)", "notes/72 §3"),
 )
 
 
@@ -163,6 +170,9 @@ def classify(t, zones):
             x = int.from_bytes(new[2:6], "big")
             target = x if op in (0x4EB9, 0x4EF9) else va + 2 + (x - (1 << 32) if x >> 31 else x)
             r.update(kind="hook", op=DETOURS[op], target=target)
+        elif len(new) == 6 and int.from_bytes(new[:2], "big") in LEAS and old[:2] == new[:2] and \
+                zones.place(int.from_bytes(new[2:6], "big"), t["id"])[0] in ("mask", "payload", "cave"):
+            r.update(kind="hook", op=LEAS[int.from_bytes(new[:2], "big")], target=int.from_bytes(new[2:6], "big"))
         elif len(new) == 4 and zones.place(int.from_bytes(new, "big"), t["id"])[0] in ("mask", "payload"):
             r.update(kind="pointer", target=int.from_bytes(new, "big"))
         else:
@@ -425,6 +435,10 @@ def render(tweaks, zones, rows, warns):
     for tid, what, src in DECLARED:
         if tid in by_id:
             p(f"| {tid} | {what} | {src} |")
+    for t in sorted((t for t in tweaks if t.get("runtime")), key=lambda t: t["id"]):
+        spans = ", ".join(f"`{r['off'] + BASE:#x}` ({r['len']} o)" for r in t["runtime"])
+        p(f"| {t['id']} | octets de l'OS réécrits pendant qu'il tourne (« runtime », vérifié par "
+          f"`check_overlaps.py`) : {spans} | {note_of(t)} |")
     p("")
     # §7
     p("## 7. Ce que chaque mod touche")

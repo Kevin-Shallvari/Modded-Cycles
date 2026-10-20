@@ -344,7 +344,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("-i", "--input", help="ton .syx officiel")
-    ap.add_argument("-t", "--tweaks", help="liste d'ids separes par des virgules")
+    ap.add_argument("-t", "--tweaks", help="liste d'ids separes par des virgules (developpement)")
+    ap.add_argument("--os", action="store_true",
+                    help="construit le Modded Cycles OS : les tweaks de os.json (ce que le flasher web installe)")
     ap.add_argument("--all", action="store_true", help="applique tous les tweaks du device")
     ap.add_argument("-o", "--output", help="fichier de sortie (defaut: <in>_mod.syx)")
     ap.add_argument("--list", action="store_true", help="liste les tweaks disponibles")
@@ -378,7 +380,15 @@ def main():
         raise SystemExit("!! la section 3 ne correspond pas a l'image de reference")
     print(f"cible : {dev['device']} OS {dev['os']}")
 
-    if args.all:
+    if args.os:
+        os_def = json.loads((ROOT / "os.json").read_text(encoding="utf-8"))
+        chosen = []
+        for tid in os_def["tweaks"]:
+            if tid not in tweaks:
+                raise SystemExit(f"!! os.json : tweak inconnu : {tid}")
+            chosen.append(tweaks[tid])
+        print(f"  {os_def['name']} {os_def['version']}")
+    elif args.all:
         chosen = list(tweaks.values())
     elif args.tweaks:
         chosen = []
@@ -388,7 +398,7 @@ def main():
                 raise SystemExit(f"!! tweak inconnu : {tid}")
             chosen.append(tweaks[tid])
     else:
-        raise SystemExit("!! choisis --all ou -t <ids>")
+        raise SystemExit("!! choisis --os (le Modded Cycles OS), -t <ids> ou --all")
     check_conflicts(chosen)
     chosen.sort(key=lambda t: t["order"])            # dans l'ordre des tweaks : l'un peut s'appliquer sur l'autre
     for t in chosen:

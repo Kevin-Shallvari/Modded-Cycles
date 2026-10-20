@@ -241,7 +241,7 @@ Un fichier ne porte **qu'un seul** trailer HMAC. Il ne peut pas satisfaire les d
 
 > Source : chemins d'écriture et de vérification des MAIN OS et bootstraps 1.13, désassemblés le 30/09/2026 (`tools/mtlib`, capstone ColdFire).
 
-**Conclusion opérationnelle.** Depuis l'OS Samples installé sur un Cycles, **il n'y a pas de retour par USB**. Il faut une **interface USB-MIDI** (sortie DIN ou TRS, quelques euros ; le kit **CA-3** est déjà fourni avec la machine), reliée au **MIDI IN**, puis le menu de démarrage (FUNC + allumage, TRIG 4) et l'OS Cycles officiel ([FLASH §5](../FLASH.md#5-récupération-revenir-à-loriginal)). Détails et interfaces repérées : [12](12-flash-par-jack-trs.md).
+**Conclusion opérationnelle.** Depuis l'OS Samples installé sur un Cycles, **il n'y a pas de retour par USB**. Il faut une **interface USB-MIDI** (sortie DIN ou TRS, quelques euros ; le kit **CA-3** est déjà fourni avec la machine), reliée au **MIDI IN**, puis le menu de démarrage (FUNC + allumage, TRIG 4) et l'OS Cycles officiel ([RECOVERY.md](../RECOVERY.md)). Détails et interfaces repérées : [12](12-flash-par-jack-trs.md).
 La piste « sortie casque » (§3 de la note 12) resterait à défaut, mais elle est expérimentale et son outil `syx2wav.py` n'est pas écrit.
 
 Le mode `tools/crossflash.py --back` **est conservé** (il documente le raisonnement et produit un fichier correct pour la porte 1), mais son aide dit clairement qu'il **ne suffit pas** au retour à cause de la porte 2.

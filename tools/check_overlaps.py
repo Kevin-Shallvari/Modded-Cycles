@@ -8,6 +8,8 @@ Deux tweaks qu'on peut installer ensemble (aucun conflit déclaré entre eux ni 
     Syntakt de la version combinée sur model-tg-st (notes/31).
 Vérifie aussi :
   - chaque écriture : hexadécimal sans espace, « old » et « new » non vides et de même longueur, dans la section 3 ;
+  - les octets qu'un tweak réécrit en mémoire pendant que l'OS tourne (« runtime », notes/72) : aucun tweak qui peut
+    être installé avec lui n'y écrit, pas même un tweak qu'il demande (il écraserait ses octets), ni lui-même ;
   - les ids : uniques, et chaque « requires » nomme un tweak qui existe (un « conflicts » vers un tweak absent, d'une
     autre branche, est seulement signalé) ;
   - les charges utiles ajoutées après l'OS (« append ») de chaque ensemble installable : chacune commence là où finit
@@ -194,6 +196,25 @@ def check_overlaps(tweaks, g):
     return errs, allowed
 
 
+def check_runtime(tweaks, g, section_len):
+    """Octets réécrits pendant que l'OS tourne (« runtime » : off, len) : [violations]."""
+    errs = []
+    spans = [(w["off"], w["off"] + len(w["old"]) // 2, t["id"]) for t in tweaks for w in t.get("writes", [])]
+    for t in tweaks:
+        for i, r in enumerate(t.get("runtime", [])):
+            off, n = r.get("off"), r.get("len")
+            if not isinstance(off, int) or isinstance(off, bool) or off < 0 or not isinstance(n, int) or n <= 0 or \
+                    off + n > section_len:
+                errs.append(f"{t['id']} runtime {i} : « off » et « len » doivent être des entiers positifs dans la "
+                            "section 3")
+                continue
+            for lo, hi, tid in spans:
+                if lo < off + n and off < hi and (tid == t["id"] or g.installable((t["id"], tid))):
+                    errs.append(f"{tid} écrit en 0x{max(lo, off) + BASE:08x}, que {t['id']} réécrit pendant que l'OS "
+                                "tourne (« runtime ») : déclarer « conflicts », ou déplacer l'écriture")
+    return errs
+
+
 def chunk_len(ap):
     """Octets qu'une charge utile prend dans l'image (rangée en morceaux « pack », compressée « compress » : sa taille
     rangée « stored », notes/50, ou entière)."""
@@ -258,6 +279,7 @@ def check(tweaks, section_len):
     if errs:                                      # écritures mal formées : on ne va pas plus loin
         return errs, ""
     ov, allowed = check_overlaps(tweaks, g)
+    ov += check_runtime(tweaks, g, section_len)
     ap, nsets = check_appends(tweaks, g, section_len)
     n = sum(len(t.get("writes", [])) for t in tweaks)
     return ov + ap, (f"{len(tweaks)} tweaks, {n} écritures : aucune écriture partagée entre deux mods installables "
