@@ -142,7 +142,7 @@ async function settle(w) {
   for (let i = 0; i < 200 && w.MCFlasherApp.state.building; i++) await wait(50);
   await wait(60);
 }
-const OS_FILE = "modded-cycles-os_2.0.syx";
+const OS_FILE = "modded-cycles-os_2.1.syx";
 
 async function main() {
   let fail = 0;
@@ -156,13 +156,13 @@ async function main() {
     check(typeof w.MCBuilder === "object" && typeof w.MCFlasher === "object", "MCBuilder + MCFlasher present");
     const os = w.MC_TWEAKS.os;
     const ids = w.MC_TWEAKS.tweaks.map((x) => x.id);
-    check(ids.join() === os.tweaks.join() && os.key === ids.join("+") && ids.length === 14
-      && ids.includes("model-tg-st") && ids.includes("sample-preview-st") && ids.includes("lfo-plus") && ids.includes("mod-settings") && ids.includes("step-rec")
-      && ids.includes("syntakt-tg-sd-cp-toy-bits-swarm-macro-acid")
+    check(ids.join() === os.tweaks.join() && os.key === ids.join("+") && ids.length === 12
+      && ids.includes("lfo-plus") && ids.includes("mod-settings") && ids.includes("step-rec")
+      && ids.includes("syntakt-sd-cp-toy-bits-swarm-macro-acid-wave")
       && !ids.some((x) => /chord|6ch|track-filter|os-optimise|exact|snare|multiout/.test(x)) && !ids.includes("midi-both"),
       `tweaks.js carries exactly the ${ids.length} tweaks of ${os.name} ${os.version} (no picker, nothing else): ${ids.join()}`);
-    check(w.MC_TWEAKS.features.length === 19 && os.machines.length === 8 && os.machines[0].name === "Sampler" && os.machines[7].name === "ACID",
-      "19 features, 8 added machines from the Sampler to ACID");
+    check(w.MC_TWEAKS.features.length === 18 && os.machines.length === 8 && os.machines[0].name === "SDVtg" && os.machines[7].name === "Wave",
+      "18 features, 8 added machines from SDVtg to Wave");
     check(/build \d{4}-/.test(text(doc, "build-stamp")), "version stamp shown");
     const srcs = [...doc.querySelectorAll("script[src]")].map((x) => x.getAttribute("src"));
     check(["builder.js", "tweaks.js", "flasher.js", "app.js"].every((f) => srcs.some((x) => x.startsWith(f + "?")))
@@ -171,15 +171,15 @@ async function main() {
     check(text(doc, "tab-mods") === "Modded Cycles OS", "first tab is the OS: " + text(doc, "tab-mods"));
     // the OS header
     const head = text(doc, "os-head");
-    check(/Modded Cycles OS 2\.0/.test(head) && doc.querySelector("#os-head .tag")
+    check(/Modded Cycles OS 2\.1/.test(head) && doc.querySelector("#os-head .tag")
       && doc.querySelector("#os-head .tag").textContent === (os.status === "tested" ? "Tested" : "Experimental")
-      && /Nothing to pick/.test(head) && /after Chord/.test(head) && /Sampler/.test(head) && /SDVtg/.test(head) && /ACID/.test(head)
+      && /Nothing to pick/.test(head) && /after Chord/.test(head) && /Wave/.test(head) && /SDVtg/.test(head) && /ACID/.test(head)
       && /Syntakt_OS1\.42\.syx/.test(head) && /No Syntakt needed/.test(head),
       "OS header: name, version, status tag, nothing to pick, the 8 added machines, the two files it needs");
     // the features, by section, no checkbox, no selection bar, no search
     const feats = [...doc.querySelectorAll("#features .mod")].map((d) => d.id.slice(4));
-    check(feats.join() === "model-tg,syntakt,macro,acid,lfo-plus,trig-preview,trig-hold,arp,step-rec,tempo-max,latching-mute,sample-preview,browser-scroll,boot-anim,multiline-browser,level-pan-values,trigless-dim,midi-live-both,mod-settings",
-      "19 feature rows, by section (Sounds & machines, Sequencer, Live, Screen, USB & MIDI): " + feats.join());
+    check(feats.join() === "syntakt,macro,acid,wave,lfo-plus,trig-preview,trig-hold,arp,step-rec,tempo-max,latching-mute,browser-scroll,boot-anim,multiline-browser,level-pan-values,trigless-dim,midi-live-both,mod-settings",
+      "18 feature rows, by section (Sounds & machines, Sequencer, Live, Screen, USB & MIDI): " + feats.join());
     check(doc.querySelectorAll("#features input").length === 0 && !doc.getElementById("mod-sel") && !doc.getElementById("mod-find")
       && !doc.getElementById("mod-q"), "nothing to tick: no checkbox, no selection bar, no search field");
     check(w.MC_TWEAKS.features.every((f) => doc.querySelector(`#cat-${f.cat} #mod-${f.id} #feat-${f.id}`)), "every feature has a row in its section (cat)");
@@ -192,13 +192,11 @@ async function main() {
     const tagOfFeat = (f) => (f.status === "tested" ? "Tested" : "Experimental");
     const tags = w.MC_TWEAKS.features.map((f) => f.id + ":" + doc.querySelector(`#mod-${f.id} .tag`).textContent);
     check(tags.join() === w.MC_TWEAKS.features.map((f) => f.id + ":" + tagOfFeat(f)).join()
-      && /Experimental/.test(tags.find((x) => x.startsWith("model-tg:"))) && /Tested/.test(tags.find((x) => x.startsWith("syntakt:"))),
-      "rows tagged as tested or not (Model-TG experimental until its 1.1.0 build is tested here): " + tags.join());
+      && /Experimental/.test(tags.find((x) => x.startsWith("wave:"))) && /Tested/.test(tags.find((x) => x.startsWith("syntakt:"))),
+      "rows tagged as tested or not (Wave experimental until its build is tested on the machine): " + tags.join());
     const credits = [...doc.querySelectorAll("#features .credit a")].map((a) => a.href);
     const creditOf = (id) => [...doc.querySelectorAll(`#mod-${id} .credit a`)].map((a) => a.href);
-    check(credits.length === 17
-      && creditOf("model-tg")[0] === "https://github.com/TinyGregAudio/Model-TG" && /\/LICENSE-Model-TG\.txt$/.test(creditOf("model-tg")[1])
-      && creditOf("sample-preview")[0] === "https://github.com/TinyGregAudio/Model-TG" && /\/LICENSE-Model-TG\.txt$/.test(creditOf("sample-preview")[1])
+    check(credits.length === 13
       && ["latching-mute", "trig-preview", "browser-scroll"].every((id) => creditOf(id)[0] === "https://github.com/drumkilla/elektron-model-tweaks"
         && /\/LICENSE-elektron-model-tweaks\.txt$/.test(creditOf(id)[1]))
       && creditOf("macro")[0] === "https://github.com/pichenettes/eurorack" && /\/LICENSE-Braids\.txt$/.test(creditOf("macro")[1])
@@ -216,7 +214,7 @@ async function main() {
       && /elektron\.se\/support-downloads\/syntakt/.test(doc.getElementById("step-file").innerHTML)
       && /Syntakt OS in step 2/.test(textOf(doc, "#mod-syntakt .need")) && text(doc, "h2s") === "Load your official OS files",
       "the OS needs the Syntakt file: its drop zone and download link are shown at once, the engines row says so, step 2 says files");
-    check(w.MCFlasherApp.chosenTweaks().map((x) => x.id).join("+") === os.key && w.MCFlasherApp.chosenLabels().join() === "Modded Cycles OS 2.0",
+    check(w.MCFlasherApp.chosenTweaks().map((x) => x.id).join("+") === os.key && w.MCFlasherApp.chosenLabels().join() === "Modded Cycles OS 2.1",
       "the page builds the OS and nothing else");
     // Details: opens and closes, holds the status and the guide link; the engines row lists the five engines
     const click = async (el) => { el.click(); await wait(5); };
@@ -229,9 +227,9 @@ async function main() {
     check(/SDVtg/.test(textOf(doc, "#det-syntakt")) && /SYSwm/.test(textOf(doc, "#det-syntakt")) && /vintage snare/.test(textOf(doc, "#det-syntakt"))
       && /your Syntakt OS file/.test(textOf(doc, "#det-syntakt")) && !!doc.querySelector('#det-syntakt a[href$="#syntakt"]'),
       "the Syntakt engines row details the five engines and the extra file");
-    check(/Sampler machine \(7th\)/.test(textOf(doc, "#mod-model-tg .parts")) && /slide trigs/.test(textOf(doc, "#mod-model-tg .parts"))
-      && /Device Config › Transfer/.test(textOf(doc, "#det-model-tg")) && !!doc.querySelector('#det-model-tg a[href$="#model-tg"]'),
-      "the Sampler row lists what Model-TG brings, its note and its guide link");
+    check(/last machine, the 14th/.test(textOf(doc, "#det-wave")) && /FUNC \+ MACHINES/.test(textOf(doc, "#det-wave"))
+      && /Convert page/.test(textOf(doc, "#det-wave")) && !!doc.querySelector('#det-wave a[href$="#wave"]'),
+      "the Wave row explains the table, the browser and the Convert page, and links its guide");
     check(w.MC_TWEAKS.features.every((f) => doc.querySelector(`#det-${f.id} a.feat-guide`)), "every feature links to its guide section");
     // folding a section; a folded section still names its features; its chip unfolds it
     await click(doc.getElementById("grp-h-seq"));
@@ -254,10 +252,10 @@ async function main() {
     doc.querySelector('.lang button[data-lang="fr"]').click();
     await wait(20);
     check(/Que voulez-vous installer/.test(text(doc, "h1s")) && doc.documentElement.lang === "fr", "FR switch translates the page");
-    check(/Modded Cycles OS 2\.0/.test(text(doc, "os-head")) && /Machines ajoutées/.test(text(doc, "os-head")) && /Rien à choisir/.test(text(doc, "os-head"))
+    check(/Modded Cycles OS 2\.1/.test(text(doc, "os-head")) && /Machines ajoutées/.test(text(doc, "os-head")) && /Rien à choisir/.test(text(doc, "os-head"))
       && text(doc, "tab-mods") === "Modded Cycles OS" && text(doc, "h2s") === "Déposez vos fichiers d'OS officiels",
       "FR: OS header, tab and step 2 title translated");
-    check(/Machine Sampler \(Model-TG\)/.test(text(doc, "features")) && /Moteurs du Syntakt/.test(text(doc, "features"))
+    check(/Machine Wave/.test(text(doc, "features")) && /Moteurs du Syntakt/.test(text(doc, "features"))
       && /par drumkilla/.test(text(doc, "features")) && /Testé/.test(text(doc, "features")) && /Expérimental/.test(text(doc, "features")),
       "FR switch translates the feature rows and credits");
     check(/Crédits/.test(text(doc, "credits")) && /boîte à outils/.test(text(doc, "credits")) && /publié sous licence MIT/.test(text(doc, "credits")),
@@ -267,7 +265,7 @@ async function main() {
       && /Volume et pan en chiffres/.test(text(doc, "features")) && /Trigless trigs atténués/.test(text(doc, "features"))
       && /d'après un mod de djd_oz/.test(text(doc, "features")) && /Navigateur sur plusieurs lignes/.test(text(doc, "features"))
       && /Basculer MIDI OUT \+ THRU en direct/.test(text(doc, "features")) && /par AveyCole/.test(textOf(doc, "#mod-midi-live-both"))
-      && /Écoute des samples/.test(text(doc, "features")) && /Machine MACRO/.test(text(doc, "features")) && /d'après eurorack d'Émilie Gillet/.test(text(doc, "features"))
+      && /Machine Wave/.test(text(doc, "features")) && /Machine MACRO/.test(text(doc, "features")) && /d'après eurorack d'Émilie Gillet/.test(text(doc, "features"))
       && /Machine ACID/.test(text(doc, "features")) && /d'après Open303 de Robin Schmidt/.test(text(doc, "features"))
       && /LFO 2, 3, 4/.test(text(doc, "features")) && /d'après un mod de DavidCaruso/.test(text(doc, "features"))
       && /Audio USB : stéréo ou 6 pistes/.test(text(doc, "features")) && doc.querySelector('#det-mod-settings a[href$="#mod-settings"]')
@@ -396,7 +394,7 @@ async function main() {
     w.MC_TWEAKS.os.key = w.MC_TWEAKS.os.tweaks.join("+");
     app.loadOs(raw, "synth.syx");                                  // a new file: the build cache starts afresh
     await settle(w);
-    check(app.state.fw && app.state.fw.kind === "built" && /Firmware ready: Modded Cycles OS 2\.0\./.test(text(doc, "file-status"))
+    check(app.state.fw && app.state.fw.kind === "built" && /Firmware ready: Modded Cycles OS 2\.1\./.test(text(doc, "file-status"))
       && app.state.fw.name === OS_FILE && doc.getElementById("drop3-wrap").hidden && !app.state.fw.ref && !app.state.fw.modsRef,
       "firmware built automatically (development OS on the synthetic image): " + text(doc, "file-status").slice(0, 60));
     app.setMode("restore");
@@ -414,7 +412,7 @@ async function main() {
     check(!doc.getElementById("flash").disabled, "flash button enabled when everything is ready");
     const fastMin = Math.max(1, Math.round(w.MCFlasher.fastSeconds(app.state.fw.raw) / 60));   // 2.5 MB synthetic file: 2 min
     check(text(doc, "summary").endsWith(`via Elektron Model:Cycles · about ${fastMin} min`) && fastMin <= 2 && /confirm on its screen/.test(text(doc, "missing"))
-      && /Modded Cycles OS 2\.0/.test(text(doc, "summary")), "fast summary: " + text(doc, "summary"));
+      && /Modded Cycles OS 2\.1/.test(text(doc, "summary")), "fast summary: " + text(doc, "summary"));
     const dl = doc.getElementById("download");
     check(!doc.getElementById("alt").hidden && dl.getAttribute("download") === OS_FILE && /Elektron Transfer/.test(text(doc, "alt")),
       "step 4 offers the .syx for Elektron Transfer: " + dl.getAttribute("download"));
@@ -439,7 +437,7 @@ async function main() {
       && dev.blocks === Math.ceil(fw5.length / 0x800),
       `fast: the machine received the whole .syx, byte for byte, CRC checked (${dev.blocks} blocks) ` + dev.bad.slice(0, 2).join("; "));
     check(/Firmware sent/.test(text(doc, "result")) && /confirm the update on the Model:Cycles screen/.test(text(doc, "after"))
-      && /after Chord come/.test(text(doc, "result")) && /Sampler/.test(text(doc, "result")) && /ACID/.test(text(doc, "result")),
+      && /after Chord come/.test(text(doc, "result")) && /Wave/.test(text(doc, "result")) && /ACID/.test(text(doc, "result")),
       "fast: success -> confirm on the machine, the added machines named");
     const out5 = env5.devOut(), in5 = env5.devIn();
     out5.state = in5.state = "disconnected";
@@ -533,7 +531,7 @@ async function main() {
       await wait(150);
       doc.getElementById("ack").click();
       await wait(20);
-      check(!doc.getElementById("flash").disabled && /Modded Cycles OS 2\.0 via Elektron Model:Cycles/.test(text(doc, "summary")), "ready: " + text(doc, "summary"));
+      check(!doc.getElementById("flash").disabled && /Modded Cycles OS 2\.1 via Elektron Model:Cycles/.test(text(doc, "summary")), "ready: " + text(doc, "summary"));
       doc.getElementById("flash").click();
       await untilSent(w);
       check(app.state.finished === "ok" && same(dev.received, f.raw) && dev.bad.length === 0
@@ -542,23 +540,23 @@ async function main() {
       doc.querySelector('.lang button[data-lang="fr"]').click();
       await wait(20);
       check(doc.getElementById("drop3-title").textContent === ST_NAME && text(doc, "file3-status").includes(`OS officiel Syntakt ${ST_VERSION} reconnu`)
-        && /Firmware prêt : Modded Cycles OS 2\.0/.test(text(doc, "file-status")), "FR: loaded Syntakt file name kept, statuses translated");
+        && /Firmware prêt : Modded Cycles OS 2\.1/.test(text(doc, "file-status")), "FR: loaded Syntakt file name kept, statuses translated");
       doc.querySelector('.lang button[data-lang="en"]').click();
       await wait(20);
       // a tweak whose writes or payload differ from the Python ones is refused (a new load: builds are cached per key)
-      const tm = app.REF_MODS["tempo-max"].w, tg = app.REF_MODS["model-tg-st"].p;
+      const tm = app.REF_MODS["tempo-max"].w, tg = app.REF_MODS["syntakt-sd-cp-toy-bits-swarm-macro-acid-wave"].p;
       app.REF_MODS["tempo-max"].w = "0".repeat(64);
       app.loadOs(new Uint8Array(fs.readFileSync(REAL_OS)), "model-cycles_OS1.13.syx");
       await settle(w);
       check(!app.state.fw && /tempo-max : ecritures differentes de la reference/.test(app.state.fwError || ""),
         "a tweak whose writes differ from REF_MODS is refused: " + app.state.fwError);
       app.REF_MODS["tempo-max"].w = tm;
-      app.REF_MODS["model-tg-st"].p = "0".repeat(64);
+      app.REF_MODS["syntakt-sd-cp-toy-bits-swarm-macro-acid-wave"].p = "0".repeat(64);
       app.loadOs(new Uint8Array(fs.readFileSync(REAL_OS)), "model-cycles_OS1.13.syx");
       await settle(w);
-      check(!app.state.fw && /model-tg-st : charge utile differente de la reference/.test(app.state.fwError || ""),
+      check(!app.state.fw && /syntakt-sd-cp-toy-bits-swarm-macro-acid-wave : charge utile differente de la reference/.test(app.state.fwError || ""),
         "a tweak whose payload differs from REF_MODS is refused: " + app.state.fwError);
-      app.REF_MODS["model-tg-st"].p = tg;
+      app.REF_MODS["syntakt-sd-cp-toy-bits-swarm-macro-acid-wave"].p = tg;
       app.loadOs(new Uint8Array(fs.readFileSync(REAL_OS)), "model-cycles_OS1.13.syx");
       await settle(w);
       check(app.state.fw && app.state.fw.ref, "references restored: the OS builds again");
@@ -745,7 +743,7 @@ async function main() {
     await settle(w);
     let f = app.state.fw;
     check(f && f.kind === "built" && f.machine === "smp" && f.raw[4] === 0x0f && f.ref && f.sha === app.REF_MAINOS[key]
-      && f.name === "modded-cycles-os_2.0_for-samples_smp-os.syx",
+      && f.name === "modded-cycles-os_2.1_for-samples_smp-os.syx",
       "the OS for a Model:Samples on its OS: same MAIN OS as the Model:Cycles build, Samples packing (" + (f ? f.name : "") + ")");
     check(/Packed for your Model:Samples \(on its own OS\)/.test(text(doc, "file-status")), "status line: " + text(doc, "file-status").slice(-60));
     doc.getElementById("allow").click();
@@ -772,7 +770,7 @@ async function main() {
     await settle(w);
     f = app.state.fw;
     check(f && f.machine === "cos" && f.raw[4] === 0x11 && f.raw[8] === 0x0c && f.sha === app.REF_MAINOS[key] && !doc.getElementById("mach-w-cos").hidden
-      && f.name === "modded-cycles-os_2.0_for-samples_cyc-os.syx",
+      && f.name === "modded-cycles-os_2.1_for-samples_cyc-os.syx",
       "Model:Samples already on the Cycles OS: Cycles packing with the Samples key (" + (f ? f.name : "") + ")");
     await wait(150);
     check(!doc.getElementById("flash").disabled, "ready for a machine answering Model:Cycles: " + text(doc, "missing"));

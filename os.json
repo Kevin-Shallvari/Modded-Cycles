@@ -1,13 +1,11 @@
 {
   "_comment": "Modded Cycles OS: the one firmware the web flasher and tools/build.py --os build. Edit this file to change what the OS contains; then run tools/gen_flasher_tweaks.py and tools/ref_mainos.py (see DEVELOPMENT.md).",
   "name": "Modded Cycles OS",
-  "version": "2.0",
+  "version": "2.1",
   "status": "experimental",
   "base": { "device": "Model:Cycles", "os": "1.13" },
   "needs": ["cycles", "syntakt"],
   "tweaks": [
-    "model-tg-st",
-    "sample-preview-st",
     "trig-hold",
     "arp",
     "step-rec",
@@ -19,23 +17,20 @@
     "midi-live-both",
     "mod-settings",
     "lfo-plus",
-    "syntakt-tg-sd-cp-toy-bits-swarm-macro-acid"
+    "syntakt-sd-cp-toy-bits-swarm-macro-acid-wave"
   ],
   "machines": [
-    { "code": "sampler", "name": "Sampler", "label": "Model-TG sampler" },
     { "code": "sd", "name": "SDVtg", "label": "SD VINTAGE" },
     { "code": "cp", "name": "CPVtg", "label": "CP VINTAGE" },
     { "code": "toy", "name": "SYToy", "label": "SY TOY" },
     { "code": "bits", "name": "SYBit", "label": "SY BITS" },
     { "code": "swarm", "name": "SYSwm", "label": "SY SWARM" },
     { "code": "macro", "name": "MACRO", "label": "47 models from Braids" },
-    { "code": "acid", "name": "ACID", "label": "acid bass in the style of the TB-303" }
+    { "code": "acid", "name": "ACID", "label": "acid bass in the style of the TB-303" },
+    { "code": "wave", "name": "Wave", "label": "plays your own wavetables" }
   ],
   "features": [
-    { "id": "model-tg", "cat": "sound", "tweaks": ["model-tg-st"], "status": "experimental",
-      "credit": { "kind": "by", "who": "TinyGregAudio", "repo": "TinyGregAudio/Model-TG" }, "license": "LICENSE-Model-TG",
-      "guide": "model-tg", "notes": "notes/31" },
-    { "id": "syntakt", "cat": "sound", "tweaks": ["syntakt-tg-sd-cp-toy-bits-swarm-macro-acid"], "status": "tested",
+    { "id": "syntakt", "cat": "sound", "tweaks": ["syntakt-sd-cp-toy-bits-swarm-macro-acid-wave"], "status": "tested",
       "credit": null, "needs": "syntakt", "guide": "syntakt", "notes": "notes/17, 18, 19, 20, 21, 22, 31" },
     { "id": "macro", "cat": "sound", "tweaks": [], "status": "tested",
       "credit": { "kind": "based", "who": "Émilie Gillet", "repo": "pichenettes/eurorack" }, "license": "LICENSE-Braids",
@@ -43,6 +38,8 @@
     { "id": "acid", "cat": "sound", "tweaks": [], "status": "tested",
       "credit": { "kind": "based", "who": "Robin Schmidt", "repo": "RobinSchmidt/Open303" }, "license": "LICENSE-Open303",
       "guide": "acid", "notes": "notes/54" },
+    { "id": "wave", "cat": "sound", "tweaks": [], "status": "experimental",
+      "credit": { "kind": "by", "who": "Kevin" }, "guide": "wave", "notes": "notes/58, 59, 60, 61, 62" },
     { "id": "lfo-plus", "cat": "sound", "tweaks": ["lfo-plus"], "status": "tested",
       "credit": { "kind": "based", "who": "DavidCaruso" }, "guide": "lfo-plus", "notes": "notes/56" },
     { "id": "trig-preview", "cat": "seq", "tweaks": [], "status": "tested",
@@ -59,9 +56,6 @@
     { "id": "latching-mute", "cat": "live", "tweaks": [], "status": "tested",
       "credit": { "kind": "by", "who": "drumkilla", "repo": "drumkilla/elektron-model-tweaks" }, "license": "LICENSE-elektron-model-tweaks",
       "guide": "mute", "notes": "notes/15, 31" },
-    { "id": "sample-preview", "cat": "screen", "tweaks": ["sample-preview-st"], "status": "tested",
-      "credit": { "kind": "based", "who": "TinyGregAudio", "repo": "TinyGregAudio/Model-TG" }, "license": "LICENSE-Model-TG",
-      "guide": "sample-preview", "notes": "notes/46" },
     { "id": "browser-scroll", "cat": "screen", "tweaks": [], "status": "tested",
       "credit": { "kind": "by", "who": "drumkilla", "repo": "drumkilla/elektron-model-tweaks" }, "license": "LICENSE-elektron-model-tweaks",
       "guide": "scroll", "notes": "notes/15" },

@@ -1,4 +1,9 @@
-# Modded Cycles OS 2.0: feature inventory
+# Modded Cycles OS 2.1: feature inventory
+
+> **OS 2.1 replaces Model-TG's Sampler machine with the Wave machine.** Wave and Model-TG write to the same places
+> in the OS and cannot be in the same firmware: this build has Wave, no sample playback and no sample preview.
+> Section 2.8 covers Wave; sections 2.1, 5.6 and 6 describe Model-TG and are kept for the version that brings it
+> back.
 
 This file is a complete overview of what Modded Cycles adds to or changes in the Elektron Model:Cycles OS 1.13. For
 each feature it covers the keys that reach it, what the screen shows, its limits, where it comes from and whether it
@@ -7,11 +12,11 @@ before reworking things. It has no addresses or offsets; those are in the French
 2026-10-18, from the committed guide, README, flasher texts, release notes and notes, plus Model-TG's own
 documentation at its tag `v1.1.0`.
 
-**OS 2.0 composition:** Model-TG v1.1.0 (Sampler machine and everything it brings, including drumkilla's latching
-mute, trig preview and scrolling names), sample preview, the five Syntakt engines (SD VINTAGE, CP VINTAGE, SY TOY,
-SY BITS, SY SWARM), MACRO, ACID, arpeggiator, easier trig removal, tempo up to 546 BPM, startup animation, multi-line
-browser, volume/pan as numbers, dimmed trigless trigs, live MIDI OUT + THRU toggle, LFO 2/3/4, Mod Settings
-(USB audio in stereo or six tracks, added on 19/10/2026) and step record (added on 20/10/2026).
+**OS 2.1 composition:** the five Syntakt engines (SD VINTAGE, CP VINTAGE, SY TOY, SY BITS, SY SWARM), MACRO, ACID,
+Wave, arpeggiator, easier trig removal, tempo up to 546 BPM, startup animation, multi-line browser, volume/pan as
+numbers, dimmed trigless trigs, live MIDI OUT + THRU toggle, LFO 2/3/4, Mod Settings (USB audio in stereo or six
+tracks, added on 19/10/2026) and step record (added on 20/10/2026). Model-TG, its Sampler machine and the sample
+preview are **not** in this OS: Wave takes their place (see the note at the top).
 
 How to read the status lines:
 
@@ -38,8 +43,9 @@ project's guide calls the back key **BACK**. This file uses **MACHINES** and **B
    - [2.3 MACRO machine](#23-macro-machine)
    - [2.4 ACID machine](#24-acid-machine)
    - [2.5 LFO 2, 3, 4](#25-lfo-2-3-4)
-   - [2.6 Order of the machines in OS 2.0](#26-order-of-the-machines-in-os-20)
-   - [2.7 Load governor](#27-load-governor)
+   - [2.6 Order of the machines in OS 2.1](#26-order-of-the-machines-in-os-21)
+   - [2.7 Wave machine](#27-wave-machine)
+   - [2.8 Load governor](#28-load-governor)
 3. [Sequencer](#3-sequencer)
    - [3.1 Arpeggiator](#31-arpeggiator)
    - [3.2 Easier trig removal](#32-easier-trig-removal-trig-hold)
@@ -386,24 +392,48 @@ rewritten, then removed at Maxime's request on 11/10/2026.
 
 **Status.** Tested on a Model:Cycles on 11/10/2026 (alone, with Model-TG, and with the full set), "ça marche nickel".
 
-### 2.6 Order of the machines in OS 2.0
+### 2.6 Order of the machines in OS 2.1
 
-The guide's rule: the added machines come after Chord; the Sampler is the 7th, the engines follow in the order SD,
-CP, TOY, BITS, SWARM, then MACRO, then ACID last. With everything in OS 2.0 (also the list in the draft `os.json`):
+The guide's rule: the added machines come after Chord; the engines follow in the order SD, CP, TOY, BITS, SWARM, then
+MACRO, ACID and Wave last. With everything in OS 2.1:
 
 | # | Machine | # | Machine |
 |---|---|---|---|
-| 01–06 | Kick, Snare, Metal, Perc, Tone, Chord (stock) | 11 | SYBit |
-| 07 | Sampler (Model-TG) | 12 | SYSwm |
-| 08 | SDVtg | 13 | MACRO |
-| 09 | CPVtg | 14 | ACID |
-| 10 | SYToy | | |
+| 01–06 | Kick, Snare, Metal, Perc, Tone, Chord (stock) | 10 | SYBit |
+| 07 | SDVtg | 11 | SYSwm |
+| 08 | CPVtg | 12 | MACRO |
+| 09 | SYToy | 13 | ACID |
+| | | 14 | Wave |
 
-A project that uses machine 08 or higher only plays the same machine on a firmware with the same layout. The single OS
-fixes this layout for everyone, which removes the "the number depends on what you ticked" problem described all over
+A project that uses machine 07 or higher only plays the same machine on a firmware with the same layout. The single OS
+fixes this layout for everyone, which removes "the number depends on what you ticked" problem described all over
 the guide.
 
-### 2.7 Load governor
+### 2.7 Wave machine
+
+The last machine, number 14 (guide, "Wave machine"; notes/58–62). It plays a wavetable — a short slice of sound turned
+into an oscillator — that you prepared in the browser and sent to the machine.
+
+- **Preparing the table:** on the site's Convert page, drop a WAV; the page shows the table and plays it, then
+  **Send to the machine** switches the Model:Cycles to its sample mode, writes the file into `/Wavetables` and
+  switches it back. The file holds the table and copies every half octave, so the pitch stays clean across the
+  keyboard; that is why it takes a few megabytes.
+- **Loading:** on a **Wave** track, **FUNC** + **MACHINES** opens the preset browser in `/Wavetables` and keeps it
+  there; move the cursor onto a table and press **YES**: the screen shows **Table loaded** and the track plays it.
+- **Knobs:** **COLOR** scans the table; **SHAPE** is the envelope's position (Env Pos, 0 = nothing); **SWEEP** the
+  low-pass cutoff; **CONTOUR** its resonance; **FUNC** + **SWEEP** sets the envelope on the cutoff, stored in FINE and
+  shown as `OFF` in the middle, `-64` to `+63` on either side.
+- **Remembered:** the table's name is stored in the sound's name, so loading the sound on another track brings the
+  table back; a project does not carry the file itself, the machine must hold it.
+- **Limits:** the browser stays in `/Wavetables` on a Wave track; each track has its own table and position, so six
+  Wave tracks can play six tables. Loading a table takes a moment; the first pad press after it plays it.
+- **In the OS:** Wave replaces Model-TG's Sampler machine (they write to the same places in the OS); sample playback
+  and the sample preview are not in OS 2.1.
+- **Status:** the loader, the six tracks and the mixed machines are proven in the emulator on the OS's own code; the
+  browser, YES and the remembered table were tried on a Model:Cycles. The OS 2.1 bundle with the engines, MACRO and
+  ACID has not been tested on the machine. **Experimental.**
+
+### 2.8 Load governor
 
 Not a feature you play, but it shapes every heavy machine above (guide, "Processor load"; notes/25, 30, 36):
 

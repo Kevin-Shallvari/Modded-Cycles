@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400..700&family=Tiny5&display=swap">
-<link rel="stylesheet" href="../assets/site.css?v=2026-10-20-02">
-<link rel="stylesheet" href="../assets/guide.css?v=2026-10-20-02">
+<link rel="stylesheet" href="../assets/site.css?v=2026-10-21-01">
+<link rel="stylesheet" href="../assets/guide.css?v=2026-10-21-01">
 <script>try{var l=localStorage.getItem("mc-lang"),t=localStorage.getItem("mc-theme")}catch(e){}document.documentElement.lang=l||(/^fr\b/i.test(navigator.language||"")?"fr":"en");if(t)document.documentElement.setAttribute("data-theme",t)</script>
 </head>
 <body data-page="guide">
@@ -46,7 +46,7 @@
         <li><a href="#scroll"><span data-l="en">Scrolling names</span><span data-l="fr">Noms qui défilent</span></a></li>
         <li><a href="#trig-hold"><span data-l="en">Removing trigs</span><span data-l="fr">Effacer un trig</span></a></li>
         <li><a href="#syntakt"><span data-l="en">Syntakt engines</span><span data-l="fr">Moteurs du Syntakt</span></a></li>
-        <li><a href="#model-tg">Model-TG</a></li>
+        <li><a href="#wave">Wave</a></li>
         <li><a href="#arp"><span data-l="en">Arpeggiator</span><span data-l="fr">Arpégiateur</span></a></li>
         <li><a href="#step-rec"><span data-l="en">Step record</span><span data-l="fr">Step record</span></a></li>
         <li><a href="#tempo"><span data-l="en">Tempo up to 546 BPM</span><span data-l="fr">Tempo jusqu'à 546 BPM</span></a></li>
@@ -194,7 +194,7 @@
         <p class="lede"><span data-l="en">The Syntakt's digital engines, added as extra machines. Their code is copied from your Syntakt OS file, in your browser. In the emulator they sound like the Syntakt, sample for sample.</span><span data-l="fr">Les moteurs numériques du Syntakt, ajoutés en machines supplémentaires. Leur code est copié depuis votre fichier d'OS Syntakt, dans votre navigateur. En émulation, ils sonnent comme sur le Syntakt, échantillon par échantillon.</span></p>
 
         <h3><span data-l="en">Order in the MACHINES menu</span><span data-l="fr">Ordre dans le menu MACHINES</span></h3>
-        <p><span data-l="en">The added machines come after Chord. Their order is fixed in this OS: the <a href="#model-tg">Sampler</a> first, then the five engines, then <a href="#macro">MACRO</a> and <a href="#acid">ACID</a>.</span><span data-l="fr">Les machines ajoutées viennent après Chord. Leur ordre est fixe dans cet OS : le <a href="#model-tg">Sampler</a> d'abord, puis les cinq moteurs, puis <a href="#macro">MACRO</a> et <a href="#acid">ACID</a>.</span></p>
+        <p><span data-l="en">The added machines come after Chord. Their order is fixed in this OS: the five engines first, then <a href="#macro">MACRO</a>, <a href="#acid">ACID</a> and <a href="#wave">Wave</a>.</span><span data-l="fr">Les machines ajoutées viennent après Chord. Leur ordre est fixe dans cet OS : les cinq moteurs d'abord, puis <a href="#macro">MACRO</a>, <a href="#acid">ACID</a> et <a href="#wave">Wave</a>.</span></p>
         <div class="side fig">
           <div class="lcd-box" aria-hidden="true">
             <ol>
@@ -265,147 +265,42 @@
         <p class="note"><span data-l="en"><b>Before flashing the official firmware back,</b> set the tracks that use an added machine (7 to 14) back to an original one (Kick to Chord). The official OS doesn't have them: otherwise MACHINES can freeze on those tracks.</span><span data-l="fr"><b>Avant de reflasher le firmware officiel,</b> remettez sur une machine d'origine (de Kick à Chord) les pistes qui utilisent une machine ajoutée (7 à 14). L'OS officiel ne les a pas : sinon MACHINES peut geler sur ces pistes.</span></p>
       </section>
 
-      <section id="model-tg">
-        <h2><span class="n">8</span>Model-TG</h2>
-        <p class="by"><span data-l="en">By</span><span data-l="fr">Par</span> <a href="https://github.com/TinyGregAudio/Model-TG" target="_blank" rel="noopener">TinyGregAudio</a> · <span data-l="en">MIT license</span><span data-l="fr">licence MIT</span> · <a href="https://github.com/TinyGregAudio/Model-TG/blob/70b39dd6787770ebefc7a2d78dea1678ec012679/docs/USER_GUIDE.md" target="_blank" rel="noopener"><span data-l="en">full guide</span><span data-l="fr">guide complet (en anglais)</span></a></p>
-        <p class="lede"><span data-l="en">A Sampler machine, resampling, a retrig page with master effects, slide trigs, and Attack, Filter and Resonance on every machine. Built by its author's own build (version 1.1), with one change: in mute mode, each track key mutes at once.</span><span data-l="fr">Une machine Sampler, le rééchantillonnage, une page de retrig avec des effets master, des slide trigs, et Attack, Filtre et Résonance sur toutes les machines. Il est construit par le build de son auteur (version 1.1), avec une retouche : en mode mute, chaque touche de piste mute tout de suite.</span></p>
+      <section id="wave">
+        <h2><span class="n">8</span><span data-l="en">Wave machine</span><span data-l="fr">Machine Wave</span></h2>
+        <p class="by"><span data-l="en">Designed for this project by Kevin</span><span data-l="fr">Conçue pour ce projet par Kevin</span></p>
+        <p class="lede"><span data-l="en">One more machine, Wave, plays a wavetable you made yourself: a short slice of sound turned into an oscillator, with the copies that keep the pitch clean across the keyboard. You prepare the table in the browser, send it to the Model:Cycles over USB, and the track plays it like any other machine.</span><span data-l="fr">Une machine de plus, Wave, joue une table d'ondes que vous avez faite vous-même : un court fragment de son transformé en oscillateur, avec les copies qui gardent la hauteur propre sur tout le clavier. Vous préparez la table dans le navigateur, vous l'envoyez au Model:Cycles par USB, et la piste la joue comme n'importe quelle machine.</span></p>
 
-        <h3><span data-l="en">Loading a sample</span><span data-l="fr">Charger un échantillon</span></h3>
-        <figure class="fig">
-          <div data-device data-scenes="func,machines @>kick_01.wav/loop_96.wav/pad_C3.wav | @Sample loaded/to Sampler" data-ms="1400"></div>
-        </figure>
+        <h3><span data-l="en">Preparing a table</span><span data-l="fr">Préparer une table</span></h3>
         <ol>
-          <li><span data-l="en">On the Model:Cycles, set <b>Device Config › Transfer</b> from CYC to SMP: Elektron Transfer now sees a Model:Samples. Send your WAV files (48 kHz, mono or stereo).</span><span data-l="fr">Sur le Model:Cycles, passez <b>Device Config › Transfer</b> de CYC à SMP : Elektron Transfer voit alors un Model:Samples. Envoyez vos fichiers WAV (48 kHz, mono ou stéréo).</span></li>
-          <li><span data-l="en">Set a track to the <b>Sampler</b> machine, the 7th, right after Chord.</span><span data-l="fr">Mettez une piste sur la machine <b>Sampler</b>, la 7<sup>e</sup>, juste après Chord.</span></li>
-          <li><span data-l="en">Press <b>FUNC</b> + <b>MACHINES</b> (preset menu) and pick a file: the screen shows <b>Sample loaded to Sampler</b>.</span><span data-l="fr">Appuyez sur <b>FUNC</b> + <b>MACHINES</b> (menu des presets) et choisissez un fichier : l'écran affiche <b>Sample loaded to Sampler</b>.</span></li>
+          <li><span data-l="en">Open the <a href="../convert/">Convert</a> page of this site in Chrome or Edge, on the computer connected to the Model:Cycles.</span><span data-l="fr">Ouvrez la page <a href="../convert/">Convertir</a> de ce site dans Chrome ou Edge, sur l'ordinateur relié au Model:Cycles.</span></li>
+          <li><span data-l="en">Drop a WAV file in it: a short loop, one cycle of a waveform, a slice of a sample or a spoken word. The page shows the table it makes and plays it, so you can hear it before sending it.</span><span data-l="fr">Déposez-y un fichier WAV : une courte boucle, un cycle d'onde, un fragment de sample ou un mot. La page montre la table obtenue et la joue, pour l'entendre avant de l'envoyer.</span></li>
+          <li><span data-l="en">Press <b>Send to the machine</b>. The page switches the Model:Cycles to its sample mode, writes the file to its <b>/Wavetables</b> folder, and switches it back. Keep the machine on its usual screen during the transfer.</span><span data-l="fr">Appuyez sur <b>Envoyer à la machine</b>. La page bascule le Model:Cycles en mode sample, écrit le fichier dans son dossier <b>/Wavetables</b>, puis le remet en état. Laissez la machine sur son écran habituel pendant le transfert.</span></li>
         </ol>
-        <p><span data-l="en">To give one step its own sample, hold the step, press <b>FUNC</b> + <b>MACHINES</b> and pick a file. Up to 64 samples stay in memory, shared by every track and pattern that uses them.</span><span data-l="fr">Pour donner à un pas son propre échantillon, maintenez le pas, appuyez sur <b>FUNC</b> + <b>MACHINES</b> et choisissez un fichier. Jusqu'à 64 échantillons restent en mémoire, partagés par toutes les pistes et tous les patterns qui les utilisent.</span></p>
-        <p class="note"><span data-l="en">In SMP, use Transfer for samples only and never accept an OS update from it. Install an OS only while Transfer is on CYC; every power-on starts on CYC.</span><span data-l="fr">En SMP, ne servez-vous de Transfer que pour les échantillons et n'acceptez jamais de mise à jour d'OS de sa part. N'installez un OS que lorsque Transfer est sur CYC ; chaque démarrage repart sur CYC.</span></p>
 
-        <h3 id="sample-preview"><span data-l="en">Sample preview</span><span data-l="fr">Écoute des samples</span></h3>
-        <p class="by"><span data-l="en">Based on</span><span data-l="fr">D'après</span> <a href="https://github.com/TinyGregAudio/Model-TG" target="_blank" rel="noopener">Model-TG</a> <span data-l="en">by TinyGregAudio</span><span data-l="fr">de TinyGregAudio</span> · <span data-l="en">MIT license</span><span data-l="fr">licence MIT</span></p>
-        <p><span data-l="en">Part of the OS. In the preset menu of a Sampler track, the track's pad plays the sample under the cursor, the way the original OS lets you hear a preset before you pick it.</span><span data-l="fr">Fait partie de l'OS. Dans le menu des presets d'une piste Sampler, le pad de la piste joue l'échantillon sous le curseur, comme l'OS d'origine fait écouter un preset avant de le choisir.</span></p>
+        <h3><span data-l="en">Playing a table</span><span data-l="fr">Jouer une table</span></h3>
         <ol>
-          <li><span data-l="en">On a Sampler track, press <b>FUNC</b> + <b>MACHINES</b> (preset menu) and move the cursor onto a sample file. Nothing plays while you scroll, as with presets.</span><span data-l="fr">Sur une piste Sampler, appuyez sur <b>FUNC</b> + <b>MACHINES</b> (menu des presets) et placez le curseur sur un fichier d'échantillon. Rien ne joue pendant le défilement, comme pour les presets.</span></li>
-          <li><span data-l="en">Press the track's pad (or its trig keys in keyboard mode): you hear the highlighted sample, with the track's settings (playback mode, Start, End, filter…).</span><span data-l="fr">Appuyez sur le pad de la piste (ou sur ses touches de pas en mode clavier) : vous entendez l'échantillon sous le curseur, avec les réglages de la piste (mode de lecture, Start, End, filtre…).</span></li>
-          <li><span data-l="en">The first press on a sample that isn't in memory yet loads it: a short wait, then it plays. The next presses usually play at once.</span><span data-l="fr">Le premier appui sur un échantillon qui n'est pas encore en mémoire le charge : une courte attente, puis il joue. Les appuis suivants jouent en général tout de suite.</span></li>
-          <li><span data-l="en">Pick the file as usual to load it onto the track (<b>Sample loaded to Sampler</b>), or just leave the menu.</span><span data-l="fr">Choisissez le fichier comme d'habitude pour le charger sur la piste (<b>Sample loaded to Sampler</b>), ou quittez simplement le menu.</span></li>
+          <li><span data-l="en">Set a track to the <b>Wave</b> machine, the 14th, the last one (after <a href="#acid">ACID</a>). Its icon is Tone's.</span><span data-l="fr">Mettez une piste sur la machine <b>Wave</b>, la 14<sup>e</sup>, la dernière (après <a href="#acid">ACID</a>). Son icône est celle de Tone.</span></li>
+          <li><span data-l="en">Press <b>FUNC</b> + <b>MACHINES</b>: the browser opens in /Wavetables and stays there. Move the cursor onto a table and press <b>YES</b>: the screen says <b>Table loaded</b> and the track plays it.</span><span data-l="fr">Appuyez sur <b>FUNC</b> + <b>MACHINES</b> : le navigateur s'ouvre dans /Wavetables et y reste. Amenez le curseur sur une table et appuyez sur <b>YES</b> : l'écran affiche <b>Table loaded</b> et la piste la joue.</span></li>
+          <li><span data-l="en">The table is remembered with the sound: its name is stored in the sound's name, so loading the sound on another track brings the table back. A project does not carry the table itself: the machine must hold the file.</span><span data-l="fr">La table est retenue avec le son : son nom est rangé dans le nom du son, donc charger le son sur une autre piste ramène la table. Un projet ne transporte pas la table : la machine doit avoir le fichier.</span></li>
         </ol>
-        <dl class="facts">
-          <div><dt><span data-l="en">Tracks</span><span data-l="fr">Pistes</span></dt><dd><span data-l="en">Sampler tracks only. On the other machines, presets preview as before (a Sampler preset may play its own sample) and sample files are not previewed.</span><span data-l="fr">Pistes Sampler seulement. Sur les autres machines, les presets s'écoutent comme avant (un preset du Sampler peut faire entendre son propre échantillon) et les fichiers d'échantillon ne s'écoutent pas.</span></dd></div>
-          <div><dt><span data-l="en">Your project</span><span data-l="fr">Votre projet</span></dt><dd><span data-l="en">The track keeps its own sample: its trigs still play it, and so does its pad once you leave the menu. Its name doesn't change either. A preview loads into free memory, or in place of samples the project doesn't use.</span><span data-l="fr">La piste garde son propre échantillon : ses trigs le jouent toujours, et son pad aussi dès que vous quittez le menu. Son nom ne change pas non plus. Une écoute charge dans la mémoire libre, ou à la place d'échantillons que le projet n'utilise pas.</span></dd></div>
-          <div><dt><span data-l="en">Silence</span><span data-l="fr">Silence</span></dt><dd><span data-l="en">If there isn't enough free memory (a preview keeps room for recording and never removes a sample your project uses), or while Model-TG is resampling, the press plays nothing. The same goes for a file that isn't a readable sample. To try again, move the cursor away and back; if Model-TG was busy loading, just press again.</span><span data-l="fr">S'il n'y a pas assez de mémoire libre (une écoute garde de la place pour l'enregistrement et ne retire jamais un échantillon utilisé par votre projet), ou pendant que Model-TG rééchantillonne, l'appui ne joue rien. De même pour un fichier qui n'est pas un échantillon lisible. Pour réessayer, déplacez le curseur puis revenez sur le fichier ; si Model-TG était en train de charger, appuyez simplement de nouveau.</span></dd></div>
-          <div><dt><span data-l="en">Bonus</span><span data-l="fr">En plus</span></dt><dd><span data-l="en">Sampler presets that remember their sample should also play that sample instead of the track's.</span><span data-l="fr">Les presets du Sampler qui gardent leur échantillon devraient aussi faire entendre cet échantillon plutôt que celui de la piste.</span></dd></div>
-          <div><dt><span data-l="en">Tested</span><span data-l="fr">Testé</span></dt><dd><span data-l="en">on a Model:Cycles, with Model-TG alone and with the 5 Syntakt engines, 6-channel audio, trig removal and the arpeggiator; and in the emulator, on the OS's and Model-TG's own code, from the preset menu to the Sampler's voice. With the MACRO machine: in the emulator only.</span><span data-l="fr">sur un Model:Cycles, avec Model-TG seul et avec les 5 moteurs du Syntakt, l'audio 6 canaux, l'effacement des trigs et l'arpégiateur ; et en émulation, sur le code même de l'OS et de Model-TG, du menu des presets à la voix du Sampler. Avec la machine MACRO : en émulation seulement.</span></dd></div>
-        </dl>
 
-        <h3><span data-l="en">Playback modes</span><span data-l="fr">Modes de lecture</span></h3>
-        <p><span data-l="en">Hold <b>SETTINGS</b> and press <b>MACHINES</b>, then turn any knob to choose the mode. <b>SETTINGS</b> + <b>PUNCH</b> opens its options: effect, stereo, stutter, loop type… Everything is saved with the track.</span><span data-l="fr">Maintenez <b>SETTINGS</b> et appuyez sur <b>MACHINES</b>, puis tournez un potard pour choisir le mode. <b>SETTINGS</b> + <b>PUNCH</b> ouvre ses options : effet, stéréo, stutter, type de boucle… Tout est sauvegardé avec la piste.</span></p>
         <div class="tbl">
           <table>
-            <thead><tr><th>Mode</th><th><span data-l="en">What it does</span><span data-l="fr">Ce qu'il fait</span></th><th><span data-l="en">The four knobs</span><span data-l="fr">Les quatre potards</span></th></tr></thead>
+            <thead><tr><th><span data-l="en">Knob</span><span data-l="fr">Potard</span></th><th><span data-l="en">What it does</span><span data-l="fr">Son rôle</span></th></tr></thead>
             <tbody>
-              <tr><th>One shot</th><td><span data-l="en">plays Start → End once (default)</span><span data-l="fr">joue une fois de Start à End (par défaut)</span></td><td>Start, End, Filter, Res</td></tr>
-              <tr><th>Loop</th><td><span data-l="en">loops Start → End</span><span data-l="fr">boucle de Start à End</span></td><td>Start, End, Filter, Res</td></tr>
-              <tr><th>Slice</th><td><span data-l="en">cuts the sample into slices, the note picks one</span><span data-l="fr">découpe en tranches, la note en choisit une</span></td><td>Start, End, Filter, Res</td></tr>
-              <tr><th>Granular</th><td><span data-l="en">up to 6 grains at the note's pitch</span><span data-l="fr">jusqu'à 6 grains, à la hauteur de la note</span></td><td>Position, Grain Size, Density, Spray</td></tr>
-              <tr><th>Stretch</th><td><span data-l="en">granular with a moving playhead: time and pitch apart</span><span data-l="fr">granulaire qui avance : durée et hauteur séparées</span></td><td>Speed, Grain Size, Density, Spray</td></tr>
-              <tr><th>Pluck</th><td><span data-l="en">a plucked string, struck by a burst of the sample</span><span data-l="fr">une corde pincée, frappée par un bout de l'échantillon</span></td><td>Strike Pos, Strike Len, Tone, Feedback</td></tr>
-              <tr><th>Wave</th><td><span data-l="en">the sample as a wavetable</span><span data-l="fr">l'échantillon comme table d'ondes</span></td><td>Wave Pos, Frame Size, Smooth, Detune</td></tr>
+              <tr><th>COLOR</th><td><span data-l="en">the position in the table: it scans the waveform</span><span data-l="fr">la position dans la table : elle parcourt la forme d'onde</span></td></tr>
+              <tr><th>SHAPE</th><td><span data-l="en">the position of the envelope (Env Pos): the table is read further as the note opens</span><span data-l="fr">la position de l'enveloppe (Env Pos) : la table est lue plus loin à mesure que la note s'ouvre</span></td></tr>
+              <tr><th>SWEEP</th><td><span data-l="en">the low-pass cutoff</span><span data-l="fr">le cutoff du passe-bas</span></td></tr>
+              <tr><th>CONTOUR</th><td><span data-l="en">the resonance of that filter</span><span data-l="fr">la résonance de ce filtre</span></td></tr>
+              <tr><th><span data-l="en">FUNC + SWEEP</span><span data-l="fr">FUNC + SWEEP</span></th><td><span data-l="en">the envelope on the cutoff, shown as FINE: <b>OFF</b> in the middle, -64 to +63 on either side</span><span data-l="fr">l'enveloppe sur la coupure, affichée en FINE : <b>OFF</b> au milieu, de -64 à +63 de part et d'autre</span></td></tr>
             </tbody>
           </table>
-        </div>
-        <p><span data-l="en">Start above End plays backwards. Stereo (option <b>CHN</b>) costs about twice the processor.</span><span data-l="fr">Start au-dessus de End joue à l'envers. La stéréo (option <b>CHN</b>) demande environ deux fois plus de processeur.</span></p>
-
-        <h3><span data-l="en">Attack, Filter and Resonance</span><span data-l="fr">Attack, Filtre et Résonance</span></h3>
-        <figure class="fig">
-          <div data-device data-scenes="machines @logo | machines,decay @ATTACK | machines,sweep @FILTER | machines,contour @RESONANCE" data-ms="1100"></div>
-        </figure>
-        <p><span data-l="en">Hold <b>MACHINES</b> and turn <b>DECAY</b> for Attack (up to about 2 s), <b>SWEEP</b> for the filter, <b>CONTOUR</b> for its resonance. On every machine, the Syntakt engines included. They are real parameters: p-locks, LFO destinations, saved with the project.</span><span data-l="fr">Maintenez <b>MACHINES</b> et tournez <b>DECAY</b> pour l'Attack (jusqu'à 2 s environ), <b>SWEEP</b> pour le filtre, <b>CONTOUR</b> pour sa résonance. Sur toutes les machines, moteurs du Syntakt compris. Ce sont de vrais paramètres : p-locks, destinations du LFO, sauvegardés avec le projet.</span></p>
-
-        <h3><span data-l="en">Slide trigs</span><span data-l="fr">Slide trigs</span></h3>
-        <figure class="fig">
-          <div data-device data-scenes="settings @logo | settings,s5 @Slide on | s1,s5 @logo" data-ms="1300"></div>
-        </figure>
-        <p><span data-l="en">Hold <b>SETTINGS</b> and press a trig key: that step becomes a slide trig (<b>Slide on</b>), or an ordinary trig again (<b>Slide off</b>). On an empty step, it places a trig that is already a slide trig. Slide trigs double-blink on the trig keys.</span><span data-l="fr">Maintenez <b>SETTINGS</b> et appuyez sur une touche de pas : ce pas devient un slide trig (<b>Slide on</b>), ou redevient un trig normal (<b>Slide off</b>). Sur un pas vide, la combinaison pose directement un slide trig. Les slide trigs clignotent deux fois sur les touches de pas.</span></p>
-        <p><span data-l="en">Every parameter that differs between the trig before and the slide trig glides from one value to the other over the whole gap, and gets there as the slide trig plays. A value is the step's p-lock, or the sound's own. What glides: the machine's parameters, fine tune, Amp Decay, volume, pan, the delay and reverb sends, the LFO's speed, fade, phase and depth, and Attack, Filter and Resonance. The machine, Gate and the LFO's other settings jump as usual.</span><span data-l="fr">Chaque paramètre qui diffère entre le trig précédent et le slide trig glisse d'une valeur à l'autre pendant tout l'intervalle, et l'atteint quand le slide trig joue. La valeur est celle du p-lock du pas, ou celle du son. Ce qui glisse : les paramètres de la machine, le fine tune, l'Amp Decay, le volume, le pan, les envois vers le delay et la reverb, la vitesse, le fade, la phase et la profondeur du LFO, et Attack, Filtre et Résonance. La machine, le Gate et les autres réglages du LFO sautent comme avant.</span></p>
-        <p><span data-l="en">It works on every machine, the Syntakt engines included, and the trig before can be a trigless trig. The glide follows the tempo and the track's speed. The mark is saved with the pattern and copied with its step; removing the trig removes it.</span><span data-l="fr">Ça marche sur toutes les machines, moteurs du Syntakt compris, et le trig précédent peut être un trigless trig. Le glissement suit le tempo et la vitesse de la piste. La marque est sauvegardée avec le pattern et copiée avec son pas ; effacer le trig l'efface aussi.</span></p>
-
-        <h3 id="retrig-fx"><span data-l="en">Retrig page, master effects, sidechain</span><span data-l="fr">Page de retrig, effets master, sidechain</span></h3>
-        <p><span data-l="en">Hold <b>SETTINGS</b> and press <b>RETRIG</b>. Hold a trig key to repeat the output, locked to the tempo: key 1 repeats every 1/64, key 16 every bar, with straight and triplet values in between. The pads choose which tracks the page acts on: all are lit at first, and a press turns a track off or back on. Turn <b>DATA</b> to move between the two rows, <b>RETRIG</b> (Momentary while you hold, or Latch) and <b>FX RETURNS</b> (whether the delay and reverb repeat too), and press it to change one.</span><span data-l="fr">Maintenez <b>SETTINGS</b> et appuyez sur <b>RETRIG</b>. Tenez une touche de pas pour répéter la sortie, calée sur le tempo : la touche 1 répète toutes les 1/64, la 16 toutes les mesures, avec les valeurs droites et en triolets entre les deux. Les pads choisissent les pistes concernées : tous sont allumés au départ, et un appui éteint une piste ou la rallume. Tournez <b>DATA</b> pour passer d'une ligne à l'autre, <b>RETRIG</b> (Momentary tant que vous tenez, ou Latch) et <b>FX RETURNS</b> (le delay et la reverb répétés aussi, ou non), et appuyez dessus pour la changer.</span></p>
-        <p><span data-l="en">The 12 knobs are effects on the lit tracks, before the delay and reverb. Each one is off at 0, and the bottom line of the screen shows the effect and its value as you turn.</span><span data-l="fr">Les 12 potards sont des effets sur les pistes allumées, avant le delay et la reverb. Chacun est coupé à 0, et la ligne du bas de l'écran affiche l'effet et sa valeur quand vous tournez.</span></p>
-        <div class="tbl fluid">
-          <table>
-            <thead><tr><th><span data-l="en">Knob</span><span data-l="fr">Potard</span></th><th><span data-l="en">Effect</span><span data-l="fr">Effet</span></th></tr></thead>
-            <tbody>
-              <tr><th>1 · PITCH</th><td><span data-l="en"><b>Drive</b>: soft clipping, at the same level</span><span data-l="fr"><b>Drive</b> : saturation douce, au même niveau</span></td></tr>
-              <tr><th>2 · DECAY</th><td><span data-l="en"><b>Crush</b>: 16 bits down to 1</span><span data-l="fr"><b>Crush</b> : de 16 bits à 1</span></td></tr>
-              <tr><th>3 · COLOR</th><td><span data-l="en"><b>Rate</b>: sample rate from 48 kHz down to 1 kHz</span><span data-l="fr"><b>Rate</b> : fréquence d'échantillonnage de 48 kHz à 1 kHz</span></td></tr>
-              <tr><th>4 · SHAPE</th><td><span data-l="en"><b>Pump</b>: sidechain ducking, below</span><span data-l="fr"><b>Pump</b> : sidechain, ci-dessous</span></td></tr>
-              <tr><th>5 · SWEEP</th><td><span data-l="en"><b>Filter</b>: low-pass left of centre, high-pass right of centre</span><span data-l="fr"><b>Filtre</b> : passe-bas à gauche du centre, passe-haut à droite</span></td></tr>
-              <tr><th>6 · CONTOUR</th><td><span data-l="en"><b>Resonance</b> of the filter</span><span data-l="fr"><b>Résonance</b> du filtre</span></td></tr>
-              <tr><th>7 · DELAY</th><td><span data-l="en"><b>Ring mod</b>: 30 Hz to 4 kHz</span><span data-l="fr"><b>Ring mod</b> : de 30 Hz à 4 kHz</span></td></tr>
-              <tr><th>8 · REVERB</th><td><span data-l="en"><b>Noise riser</b>: white noise rising, on the whole output</span><span data-l="fr"><b>Noise riser</b> : un bruit blanc qui monte, sur toute la sortie</span></td></tr>
-              <tr><th>9 · LFO SPEED</th><td><span data-l="en"><b>Gate</b>: off, 1/4, 1/8, 1/8T, 1/16, 1/16T, 1/32, on the tempo</span><span data-l="fr"><b>Gate</b> : coupé, 1/4, 1/8, 1/8T, 1/16, 1/16T, 1/32, sur le tempo</span></td></tr>
-              <tr><th>10 · VOLUME</th><td><span data-l="en"><b>Tape stop</b></span><span data-l="fr"><b>Tape stop</b> : la bande qui ralentit</span></td></tr>
-              <tr><th>11 · SWING</th><td><span data-l="en"><b>Vinyl</b>: hiss and crackle, on the whole output</span><span data-l="fr"><b>Vinyl</b> : souffle et craquements, sur toute la sortie</span></td></tr>
-              <tr><th>12 · CHANCE</th><td><span data-l="en"><b>Flanger</b>: one sweep per bar</span><span data-l="fr"><b>Flanger</b> : un balayage par mesure</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p><span data-l="en">Close the page with <b>SETTINGS</b> or <b>RETRIG</b> (or <b>PATTERN</b>, to choose a pattern): the effects stay on, through pattern changes. <b>BACK</b> on the page resets the effects and a latched repeat; <b>SETTINGS</b> + <b>BACK</b> turns the effects off from anywhere.</span><span data-l="fr">Fermez la page avec <b>SETTINGS</b> ou <b>RETRIG</b> (ou <b>PATTERN</b>, pour choisir un pattern) : les effets restent actifs, même quand le pattern change. <b>BACK</b> sur la page remet à zéro les effets et une répétition en Latch ; <b>SETTINGS</b> + <b>BACK</b> coupe les effets depuis n'importe quel écran.</span></p>
-        <p><span data-l="en"><b>Sidechain.</b> The Pump knob ducks the lit tracks each time the tracks you turned off play, like a compressor keyed by the kick:</span><span data-l="fr"><b>Sidechain.</b> Le potard Pump baisse les pistes allumées chaque fois que jouent les pistes que vous avez éteintes, comme un compresseur déclenché par le kick :</span></p>
-        <figure class="fig">
-          <div data-device data-scenes="settings,retrig @RETRIG MOMENTARY/FX RETURNS OFF | t1 | shape @RETRIG MOMENTARY/FX RETURNS OFF/PUMP 64" data-ms="1300"></div>
-        </figure>
-        <ol>
-          <li><span data-l="en">On the retrig page, press the pad of the kick track (or of whichever track should lead) to turn it off. It now plays as it is, without the page's effects, and drives the pump.</span><span data-l="fr">Sur la page de retrig, appuyez sur le pad de la piste du kick (ou de celle qui doit mener) pour l'éteindre. Elle joue alors telle quelle, sans les effets de la page, et c'est elle qui fait pomper les autres.</span></li>
-          <li><span data-l="en">Turn <b>SHAPE</b> (knob 4) to set the depth, from 0 to 127.</span><span data-l="fr">Tournez <b>SHAPE</b> (potard 4) pour régler la profondeur, de 0 à 127.</span></li>
-          <li><span data-l="en">Close the page with <b>SETTINGS</b>: the pump keeps going.</span><span data-l="fr">Fermez la page avec <b>SETTINGS</b> : l'effet continue.</span></li>
-        </ol>
-        <p><span data-l="en">With no pad turned off, it pumps on every quarter note, no kick needed. Several tracks turned off all drive it. The attack is instant and the release fixed (about 170 ms): only the depth is set. The leading track has to be heard: muted, or at volume 0, it no longer drives the pump. The delay and reverb receive the ducked tracks, but their own returns aren't ducked.</span><span data-l="fr">Sans pad éteint, ça pompe sur chaque noire, sans kick. Plusieurs pistes éteintes le déclenchent toutes. L'attaque est instantanée et le relâchement fixe (environ 170 ms) : seule la profondeur se règle. La piste qui mène doit s'entendre : mutée, ou à volume 0, elle ne fait plus pomper. Le delay et la reverb reçoivent les pistes baissées, mais leurs propres retours ne baissent pas.</span></p>
-
-        <h3><span data-l="en">Shortcuts</span><span data-l="fr">Raccourcis</span></h3>
-        <div class="tbl fluid">
-          <table>
-            <thead><tr><th><span data-l="en">Keys</span><span data-l="fr">Touches</span></th><th></th></tr></thead>
-            <tbody>
-              <tr><th>SETTINGS + MACHINES</th><td><span data-l="en">playback mode (Sampler track)</span><span data-l="fr">mode de lecture (piste Sampler)</span></td></tr>
-              <tr><th>SETTINGS + PUNCH</th><td><span data-l="en">the mode's options</span><span data-l="fr">options du mode</span></td></tr>
-              <tr><th>SETTINGS + REC</th><td><span data-l="en">resampling: a track, the whole output or the computer's USB audio</span><span data-l="fr">rééchantillonnage : une piste, toute la sortie ou l'audio USB de l'ordinateur</span></td></tr>
-              <tr><th>SETTINGS + RETRIG</th><td><a href="#retrig-fx"><span data-l="en">retrig page</span><span data-l="fr">page de retrig</span></a><span data-l="en">: repeats on the trig keys, 12 master effects on the knobs, sidechain</span><span data-l="fr"> : répétitions sur les touches de pas, 12 effets master sur les potards, sidechain</span></td></tr>
-              <tr><th>SETTINGS + BACK</th><td><span data-l="en">master effects off</span><span data-l="fr">coupe les effets master</span></td></tr>
-              <tr><th><span data-l="en">SETTINGS + trig key</span><span data-l="fr">SETTINGS + touche de pas</span></th><td><span data-l="en">slide trig on or off</span><span data-l="fr">slide trig ou trig normal</span></td></tr>
-              <tr><th>MACHINES + DECAY · SWEEP · CONTOUR</th><td>Attack · <span data-l="en">Filter · Resonance</span><span data-l="fr">Filtre · Résonance</span></td></tr>
-              <tr><th>FUNC + PAGE</th><td><span data-l="en">Scale Lock: <b>Scl</b> and <b>Key</b> in the Scale menu</span><span data-l="fr">Scale Lock : <b>Scl</b> et <b>Key</b> dans le menu Scale</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p><span data-l="en">A short press on SETTINGS still opens its usual menu. Held, it no longer brings up the pattern save: it serves the shortcuts above.</span><span data-l="fr">Un appui court sur SETTINGS ouvre toujours son menu habituel. Maintenu, il ne propose plus la sauvegarde du pattern : il sert aux raccourcis ci-dessus.</span></p>
-
-        <dl class="facts">
-          <div><dt><span data-l="en">Included</span><span data-l="fr">Inclus</span></dt><dd><span data-l="en">drumkilla's three tweaks (<a href="#mute">latching mute</a>, <a href="#preview">trig preview</a>, <a href="#scroll">scrolling names</a>) are part of the OS. Mutes take effect at once, as with the latching mute alone (Model-TG itself queues them until you leave mute mode).</span><span data-l="fr">les trois tweaks de drumkilla (<a href="#mute">mute verrouillé</a>, <a href="#preview">écoute d'un pas</a>, <a href="#scroll">noms qui défilent</a>) font partie de l'OS. Les mutes s'appliquent tout de suite, comme avec le mute verrouillé seul (Model-TG, lui, les met en attente jusqu'à la sortie du mode mute).</span></dd></div>
-          <div><dt><span data-l="en">Processor</span><span data-l="fr">Processeur</span></dt><dd><span data-l="en"><b>Device Config › System</b> shows the load, now and at its worst; turn DATA right for each track's share. Silent tracks cost almost nothing.</span><span data-l="fr"><b>Device Config › System</b> affiche la charge, maintenant et au pire ; tournez DATA vers la droite pour la part de chaque piste. Les pistes silencieuses ne coûtent presque rien.</span></dd></div>
-          <div><dt><span data-l="en">Files</span><span data-l="fr">Fichiers</span></dt><dd><span data-l="en">saved takes in <code>/Resampled</code>, slice markers in <code>/Slices</code>, on the Model:Cycles' storage.</span><span data-l="fr">les prises sauvegardées dans <code>/Resampled</code>, les marqueurs de tranches dans <code>/Slices</code>, dans le stockage du Model:Cycles.</span></dd></div>
-          <div><dt><span data-l="en">Projects</span><span data-l="fr">Projets</span></dt><dd><span data-l="en">tracks set to the Sampler don't play on another firmware.</span><span data-l="fr">les pistes réglées sur le Sampler ne jouent pas sur un autre firmware.</span></dd></div>
-        </dl>
-
-        <h3><span data-l="en">With the Syntakt engines</span><span data-l="fr">Avec les moteurs du Syntakt</span></h3>
-        <div class="side fig">
-          <div class="lcd-box" aria-hidden="true">
-            <ol>
-              <li><span>06</span>Chord</li>
-              <li class="sel"><span>07</span>Sampler</li>
-              <li><span>08</span>SDVtg</li>
-              <li><span>09</span>CPVtg</li>
-            </ol>
-          </div>
-          <p style="margin:0"><span data-l="en">In this OS, the Sampler is the 7th machine and the <a href="#syntakt">engines</a> follow from the 8th. They get Attack, Filter and Resonance and slide trigs too, and their time shows on the System page.</span><span data-l="fr">Dans cet OS, le Sampler est la 7<sup>e</sup> machine et les <a href="#syntakt">moteurs</a> le suivent à partir de la 8<sup>e</sup>. Ils ont aussi l'Attack, le filtre, la résonance et les slide trigs, et leur temps s'affiche sur la page System.</span></p>
         </div>
         <dl class="facts">
-          <div><dt><span data-l="en">Tested</span><span data-l="fr">Testé</span></dt><dd><span data-l="en">Model-TG 1.1 with the 5 engines and 6-channel audio, on a Model:Cycles. Model-TG stays marked experimental.</span><span data-l="fr">Model-TG 1.1 avec les 5 moteurs et l'audio 6 canaux, sur un Model:Cycles. Model-TG reste marqué expérimental.</span></dd></div>
-          <div><dt><span data-l="en">Samples</span><span data-l="fr">Échantillons</span></dt><dd><span data-l="en">63 MB of memory instead of 64: the last one runs the engines.</span><span data-l="fr">63 Mo de mémoire au lieu de 64 : le dernier fait tourner les moteurs.</span></dd></div>
-          <div><dt><span data-l="en">Projects</span><span data-l="fr">Projets</span></dt><dd><span data-l="en">the numbers of the added machines are fixed in this OS. A project made with an earlier flasher build that had another set of machines needs those tracks set again.</span><span data-l="fr">les numéros des machines ajoutées sont fixes dans cet OS. Un projet fait avec une version précédente du flasher, qui avait un autre ensemble de machines, demande de régler de nouveau ces pistes.</span></dd></div>
+          <div><dt><span data-l="en">Tables</span><span data-l="fr">Tables</span></dt><dd><span data-l="en">the file holds the table plus copies every half octave, so high notes stay clean; that is why a table takes a few megabytes. The Convert page does it for you.</span><span data-l="fr">le fichier contient la table et des copies par demi-octave, pour que les notes aiguës restent propres ; c'est pourquoi une table pèse quelques mégaoctets. La page Convertir s'en occupe.</span></dd></div>
+          <div><dt><span data-l="en">Limits</span><span data-l="fr">Limites</span></dt><dd><span data-l="en">the browser stays in /Wavetables on a Wave track: other samples and sounds are not reachable there. Each track holds its own table and its own position, so six Wave tracks can play six tables.</span><span data-l="fr">le navigateur reste dans /Wavetables sur une piste Wave : les autres samples et sons n'y sont pas accessibles. Chaque piste a sa table et sa position, donc six pistes Wave peuvent jouer six tables.</span></dd></div>
+          <div><dt><span data-l="en">In the OS</span><span data-l="fr">Dans l'OS</span></dt><dd><span data-l="en">this OS has Wave instead of the Sampler machine of Model-TG: the two share the same places in the OS and cannot be in the same firmware. Samples are not played by this build.</span><span data-l="fr">cet OS a Wave à la place de la machine Sampler de Model-TG : les deux occupent les mêmes endroits de l'OS et ne peuvent pas être dans le même firmware. Les samples ne sont pas joués par ce build.</span></dd></div>
+          <div><dt><span data-l="en">Tested</span><span data-l="fr">Testé</span></dt><dd><span data-l="en">the browser, YES and the table remembered were tried on a Model:Cycles; the emulator checks the loader, the six tracks and the mixed machines. Wave with the engines, MACRO and ACID as one OS 2.1 has not been tested on the machine yet.</span><span data-l="fr">le navigateur, YES et la table retenue ont été essayés sur un Model:Cycles ; l'émulateur vérifie le chargeur, les six pistes et les machines mêlées. Wave avec les moteurs, MACRO et ACID dans un OS 2.1 n'a pas encore été essayé sur la machine.</span></dd></div>
         </dl>
       </section>
 
@@ -928,8 +823,8 @@
   </div>
 </footer>
 
-<script src="../assets/release.js?v=2026-10-20-02"></script>
-<script src="../assets/cycles.js?v=2026-10-20-02"></script>
-<script src="../assets/site.js?v=2026-10-20-02"></script>
+<script src="../assets/release.js?v=2026-10-21-01"></script>
+<script src="../assets/cycles.js?v=2026-10-21-01"></script>
+<script src="../assets/site.js?v=2026-10-21-01"></script>
 </body>
 </html>

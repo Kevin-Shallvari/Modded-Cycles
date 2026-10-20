@@ -4,7 +4,7 @@
 
 **One community OS for the Elektron Model:Cycles, installed from your browser in about 30 seconds.**
 
-A Sampler machine · the Syntakt engines · MACRO and ACID machines · four LFOs per track · an arpeggiator · up to 546 BPM · and more
+A Wave machine · the Syntakt engines · MACRO and ACID machines · four LFOs per track · an arpeggiator · up to 546 BPM · and more
 
 [**Open the web flasher**](https://18nelli18.github.io/Modded-Cycles/flasher/) &nbsp;·&nbsp;
 [Read the guide](https://18nelli18.github.io/Modded-Cycles/guide/) &nbsp;·&nbsp;
@@ -40,10 +40,10 @@ sends it to the machine over USB. Going back to the official firmware is one cli
 
 | Feature | What you get | Origin | Status |
 |---|---|---|---|
-| **Sampler machine** | Model-TG's Sampler as the 7th machine: samples from the internal storage with seven playback modes (one shot, loop, slice, granular, stretch, pluck, wave), slicing, resampling, a retrig page with 12 master effects, Attack, Filter and Resonance on the original machines, slide trigs, Scale Lock, sample upload through Elektron Transfer, a System page. | [TinyGregAudio/Model-TG](https://github.com/TinyGregAudio/Model-TG) 1.1.0, MIT | 🧪 Experimental |
-| **Syntakt engines** | Five real Syntakt machines, **SD VINTAGE**, **CP VINTAGE**, **SY TOY**, **SY BITS** and **SY SWARM**, as machines 8 to 12, with the Syntakt's knob names and defaults. Their code is read from your own Syntakt OS file. | Elektron's code, from your file | ✅ Tested |
-| **MACRO machine** | Machine 13: the 47 synthesis models of Braids, Émilie Gillet's macro-oscillator. `SHAPE` picks the model, `FUNC` + `PITCH` gives lo-fi. | [pichenettes/eurorack](https://github.com/pichenettes/eurorack), MIT | ✅ Tested |
-| **ACID machine** | Machine 14: an acid bass in the style of the TB-303, with cutoff, resonance, env mod, drive, saw or square, and slides from your trigs. | [RobinSchmidt/Open303](https://github.com/RobinSchmidt/Open303), MIT | ✅ Tested |
+| **Syntakt engines** | Five real Syntakt machines, **SD VINTAGE**, **CP VINTAGE**, **SY TOY**, **SY BITS** and **SY SWARM**, as machines 7 to 11, with the Syntakt's knob names and defaults. Their code is read from your own Syntakt OS file. | Elektron's code, from your file | ✅ Tested |
+| **MACRO machine** | Machine 12: the 47 synthesis models of Braids, Émilie Gillet's macro-oscillator. `SHAPE` picks the model, `FUNC` + `PITCH` gives lo-fi. | [pichenettes/eurorack](https://github.com/pichenettes/eurorack), MIT | ✅ Tested |
+| **ACID machine** | Machine 13: an acid bass in the style of the TB-303, with cutoff, resonance, env mod, drive, saw or square, and slides from your trigs. | [RobinSchmidt/Open303](https://github.com/RobinSchmidt/Open303), MIT | ✅ Tested |
+| **Wave machine** | Machine 14, the last one: plays a wavetable you prepared in the browser and sent over USB to `/Wavetables`. `COLOR` scans the table, `SHAPE` is the envelope's position, `FUNC` + `SWEEP` the filter envelope; the table is remembered with the sound. | This project | 🧪 Experimental |
 | **LFO 2, 3, 4** | Three more LFOs per track: on the LFO page, press `LFO` again. LFO 2 is saved with the sound and can be p-locked. | After DavidCaruso | ✅ Tested |
 | **Arpeggiator** | Hold several notes with `RETRIG` and they arpeggiate; `FUNC` + `RETRIG` sets direction and range, saved with the pattern. | This project | ✅ Tested |
 | **Step record** | Sequencer stopped, press `REC` twice: each note you play (TRIG keys, pads, MIDI) lands on the blinking step. `PLAY` skips, `STOP` goes back; knobs turned first become p-locks. | This project | ✅ Tested |
@@ -51,7 +51,6 @@ sends it to the machine over USB. Going back to the official firmware is one cli
 | **Trig preview** | Sequencer stopped or paused: hold a step and press `PAGE` to hear it. | drumkilla, via Model-TG | ✅ Tested |
 | **Tempo up to 546 BPM** | The `TEMPO` knob, tap tempo, MIDI clock and saved projects go past 300 BPM. | This project | ✅ Tested |
 | **Latching mute** | Hold `TRACK` and tap `FUNC`: mute mode stays on. | drumkilla, via Model-TG | ✅ Tested |
-| **Sample preview** | On a Sampler track, in the preset menu, the track's pad plays the sample under the cursor. | This project, a piece of Model-TG | ✅ Tested |
 | **Scrolling names** | Sound names too long for the screen scroll in the browser. | drumkilla, via Model-TG | ✅ Tested |
 | **Startup animation** | The four squares of the modded-cycles logo pop in and “modded-cycles” types itself underneath. | This project | ✅ Tested |
 | **Multi-line browser** | The preset browser shows three names at once in a small font. | This project, from a community idea | ✅ Tested |
@@ -60,11 +59,11 @@ sends it to the machine over USB. Going back to the official firmware is one cli
 | **Live MIDI OUT + THRU toggle** | With `THR` selected, `FUNC` + press `LEVEL/DATA` adds the Cycles' own MIDI to what it forwards, or takes it away. | [AveyCole](https://github.com/AveyCole/Modded-Cycles) | ✅ Tested |
 | **Mod Settings: USB audio** | `SETTINGS` has a last line, **Mods**, with the mods' own settings. **USB Audio** sends the computer the stereo mix (2CH, as stock) or each track on its own channel (6CH) to record stems; press `LEVEL/DATA` to switch, no reflash. | 6-channel audio after [scottmetoyer/ms-multi-output](https://github.com/scottmetoyer/ms-multi-output), MIT | ✅ Tested |
 
-The added machines come after Chord, always in this order: 07 Sampler, 08 SDVtg, 09 CPVtg, 10 SYToy, 11 SYBit,
-12 SYSwm, 13 MACRO, 14 ACID.
+The added machines come after Chord, always in this order: 07 SDVtg, 08 CPVtg, 09 SYToy, 10 SYBit, 11 SYSwm,
+12 MACRO, 13 ACID, 14 Wave.
 
 **Status of the OS itself: Experimental.** Every feature was checked in an emulator that runs the OS's own code,
-and most were tested on a real Model:Cycles on their own, but this exact firmware (version 2.0) has not run on a
+and most were tested on a real Model:Cycles on their own, but this exact firmware (version 2.1) has not run on a
 machine yet. The status column above is the status of each feature.
 
 Every feature, every key combination and every limit is written up in [FEATURES.md](FEATURES.md). The guide on the
@@ -72,10 +71,12 @@ website explains each one step by step, with the buttons to press.
 
 ### Not in the OS, and why
 
-- **Per-track filter**: stores its settings where LFO 2, 3, 4 store theirs, and does not work with Model-TG. It
-  comes back once the Sampler side is rewritten.
-- **Optimised OS** (the same sound with far less processor work): not compatible with the Sampler, MACRO, ACID and
-  the Syntakt engines yet. Porting it to the OS is the next job.
+- **Model-TG and its Sampler machine**: not in this OS, because Wave writes to the same places in the OS. Sample
+  playback and the sample preview come back with the work that makes the two machines coexist.
+- **Per-track filter**: stores its settings where LFO 2, 3, 4 store theirs. It comes back once its side is
+  rewritten.
+- **Optimised OS** (the same sound with far less processor work): not compatible with MACRO, ACID and the Syntakt
+  engines yet. Porting it to the OS is the next job.
 - **MIDI OUT while in THRU**: the live toggle above does the same and more.
 - **Chord Keys** was removed from the project on 18/10/2026 because of conflicts with the rest. Thanks to Nico
   Heuser for it; its code stays in the git history.

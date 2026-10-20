@@ -112,3 +112,32 @@ les détours gardent leurs octets.
 - Sur la machine (Kevin) : Wave seule, puis une combinaison avec les moteurs et ACID ; FUNC + SWEEP sur une piste Wave
   (texte à l'écran, effet sur la coupure), SHAPE (Env Pos) ; enregistrer, recharger.
 - Les images propres à Wave (fiche, onde) : à reprendre pour toutes les machines ajoutées.
+
+## 7. Dans l'OS 2.1 (21/10/2026)
+
+Décision de Kevin : l'OS de sa branche de prévisualisation porte Wave à la place de Model-TG. `36-wavetable.json`
+déclare `conflicts` avec `model-tg-st` (notes/61 : même glue SMP, mêmes six sites de l'OS), et les 127 combinaisons de
+`gen_wave_combos.py` sont construites sans Model-TG : les deux machines ne peuvent pas tenir dans le même firmware,
+alors que l'OS 2.0 de `main` est bâti autour du Sampler de Model-TG.
+
+Ce qui change dans `os.json` (`"version": "2.1"`, statut `experimental`) :
+
+- `"tweaks"` : plus de `model-tg-st` ni de `sample-preview-st` ; `syntakt-tg-<moteurs>-macro-acid` est remplacé par
+  `syntakt-sd-cp-toy-bits-swarm-macro-acid-wave` (14 machines, numérotation de `gen_wave_combos.py` : moteurs 07 à 11,
+  MACRO 12, ACID 13, Wave 14) ;
+- `"machines"` : le Sampler disparaît, Wave entre en dernier ;
+- `"features"` : lignes `model-tg` et `sample-preview` retirées ; ligne `wave` ajoutée (`cat` `sound`, `guide` `wave`,
+  notes 58 à 62).
+
+Vérifications `[FAIT]` :
+
+- `tools/build.py --os` construit l'OS : MAIN OS `5af7e300…d49bf3efac`, 504 528 o de charge utile depuis le Syntakt ;
+- `tools/ref_mainos.py` a réécrit `REF_MAINOS` et `REF_MODS` (12 tweaks) ;
+- `tools/check_overlaps.py` et `tools/registry.py --check` passent (411 tweaks, 110 masques libres) ;
+- `tools/webflash_smoke.sh` avec les deux fichiers officiels : l'OS construit dans la page donne le même MAIN OS que
+  `REF_MAINOS`, chaque tweak vérifié contre `REF_MODS` ;
+- `tools/emu/test_wavetable.py` : TOUT OK (chargeur, six pistes, machines mêlées).
+
+`[À FAIRE]` : la preuve `tools/emu/test_wave_combos.py` sur l'ensemble de l'OS 2.1 (moteurs, MACRO, ACID et Wave)
+n'a pas été menée à son terme ici (longue) ; l'essai sur la machine de cet OS précis reste à faire, et la fusion
+Wave + Model-TG (jalon 3 de [60](60-wave-autonome.md)) reste le seul chemin pour retrouver aussi le Sampler.
